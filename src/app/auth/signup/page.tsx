@@ -138,13 +138,13 @@ export default function SignUpPage() {
                 <Label htmlFor="role" className="text-charcoal-700">Role</Label>
                 <div className="relative">
                   <BookOpen className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-charcoal-400" />
-                  <Select value={formData.role} onValueChange={(value) => handleInputChange('role', value)}>
-                    <SelectTrigger className="pl-10 border-charcoal-300 focus:border-primary focus:ring-primary">
+                  <Select value={formData.role} onValueChange={(value: 'student' | 'teacher') => handleInputChange('role', value)}>
+                    <SelectTrigger className="pl-10 border-charcoal-300 focus:border-primary focus:ring-primary bg-white hover:bg-charcoal-50 hover:border-charcoal-400 transition-colors">
                       <SelectValue placeholder="Select your role" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="student">Student</SelectItem>
-                      <SelectItem value="teacher">Teacher</SelectItem>
+                    <SelectContent className="bg-white border-charcoal-200">
+                      <SelectItem value="student" className="text-charcoal-900 hover:bg-primary/10 hover:text-primary cursor-pointer transition-colors">Student</SelectItem>
+                      <SelectItem value="teacher" className="text-charcoal-900 hover:bg-primary/10 hover:text-primary cursor-pointer transition-colors">Teacher</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
