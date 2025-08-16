@@ -96,7 +96,7 @@ export default function StudentDashboard() {
       case 'info':
         return <BookOpen className="h-4 w-4 text-blue-500" />;
       default:
-        return <Clock className="h-4 w-4 text-gray-500" />;
+        return <Clock className="h-4 w-4 text-charcoal-500" />;
     }
   };
 
@@ -109,28 +109,21 @@ export default function StudentDashboard() {
       case 'info':
         return 'text-blue-600';
       default:
-        return 'text-gray-600';
+        return 'text-charcoal-600';
     }
   };
 
-  const getProgressColor = (progress: number) => {
-    if (progress >= 80) return 'bg-green-500';
-    if (progress >= 60) return 'bg-blue-500';
-    if (progress >= 40) return 'bg-yellow-500';
-    return 'bg-red-500';
-  };
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Student Dashboard</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold tracking-tight text-charcoal-900">Student Dashboard</h1>
+          <p className="text-charcoal-600">
             Welcome back, {user?.user_metadata?.full_name || user?.email}. Continue your learning journey.
           </p>
         </div>
-        <Button asChild>
+        <Button asChild className="bg-primary hover:bg-primary-600 text-white">
           <a href="/courses">
             <BookOpen className="h-4 w-4 mr-2" />
             Browse Courses
@@ -139,54 +132,54 @@ export default function StudentDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="border-charcoal-200 bg-charcoal-50/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Enrolled Courses</CardTitle>
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-charcoal-800">Enrolled Courses</CardTitle>
+            <BookOpen className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalCourses}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-2xl font-bold text-charcoal-900">{totalCourses}</div>
+            <p className="text-xs text-charcoal-600">
               Active courses
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-charcoal-200 bg-primary-50/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average Progress</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-primary-800">Average Progress</CardTitle>
+            <TrendingUp className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{averageProgress.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-2xl font-bold text-primary-900">{averageProgress.toFixed(1)}%</div>
+            <p className="text-xs text-primary-600">
               Across all courses
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-charcoal-200 bg-charcoal-50/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed Chapters</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-charcoal-800">Completed Chapters</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{completedChapters}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-2xl font-bold text-charcoal-900">{completedChapters}</div>
+            <p className="text-xs text-charcoal-600">
               Total completed
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-charcoal-200 bg-primary-50/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Study Streak</CardTitle>
-            <Award className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-primary-800">Study Streak</CardTitle>
+            <Award className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">7 days</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-2xl font-bold text-primary-900">7 days</div>
+            <p className="text-xs text-primary-600">
               Current streak
             </p>
           </CardContent>
@@ -194,123 +187,139 @@ export default function StudentDashboard() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-7">
         {/* Course Progress */}
-        <Card className="col-span-4">
+        <Card className="col-span-4 border-charcoal-200">
           <CardHeader>
-            <CardTitle>My Courses Progress</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-xl text-charcoal-900">My Courses Progress</CardTitle>
+            <CardDescription className="text-charcoal-600">
               Track your progress across all enrolled courses
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {studentEnrollments.map((enrollment) => {
-                const course = enrolledCourses.find(c => c.id === enrollment.course_id);
-                if (!course) return null;
+            {studentEnrollments.length > 0 ? (
+              <div className="space-y-6">
+                {studentEnrollments.map((enrollment) => {
+                  const course = enrolledCourses.find(c => c.id === enrollment.course_id);
+                  if (!course) return null;
 
-                return (
-                  <div key={enrollment.id} className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="h-10 w-10 bg-primary rounded-lg flex items-center justify-center">
-                          <BookOpen className="h-5 w-5 text-primary-foreground" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium">{course.title}</h4>
-                          <p className="text-sm text-muted-foreground">{course.subject}</p>
-                        </div>
-                      </div>
-                      <Badge variant="secondary">
-                        {enrollment.progress_percentage}%
-                      </Badge>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Progress</span>
-                        <span>{enrollment.progress_percentage}%</span>
-                      </div>
-                      <Progress 
-                        value={enrollment.progress_percentage} 
-                        className="h-2"
-                      />
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button size="sm" className="flex-1">
-                        <Play className="h-4 w-4 mr-2" />
-                        Continue
-                      </Button>
-                      <Button size="sm" variant="outline" className="flex-1">
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Course
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Right Sidebar */}
-        <div className="col-span-3 space-y-4">
-          {/* Upcoming Assignments */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Upcoming Assignments</CardTitle>
-              <CardDescription>
-                Stay on top of your deadlines
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {upcomingAssignments.map((assignment) => {
-                  const dueDate = new Date(assignment.due_date);
-                  const daysUntilDue = Math.ceil((dueDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                  
                   return (
-                    <div key={assignment.id} className="flex items-start space-x-3 p-3 rounded-lg border">
-                      <div className="mt-1">
-                        <AlertCircle className="h-4 w-4 text-yellow-500" />
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        <p className="text-sm font-medium">{assignment.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Due in {daysUntilDue} day{daysUntilDue !== 1 ? 's' : ''}
-                        </p>
-                        <Badge variant="outline" className="text-xs">
-                          {assignment.total_points} points
+                    <div key={enrollment.id} className="space-y-4 p-4 rounded-lg border border-charcoal-200 bg-charcoal-50/50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="h-12 w-12 bg-primary rounded-lg flex items-center justify-center">
+                            <BookOpen className="h-6 w-6 text-white" />
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-charcoal-900">{course.title}</h4>
+                            <p className="text-sm text-charcoal-600">{course.subject}</p>
+                          </div>
+                        </div>
+                        <Badge variant="secondary" className="bg-primary/10 text-primary-700 border-primary/20">
+                          {enrollment.progress_percentage}%
                         </Badge>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-charcoal-600">Progress</span>
+                          <span className="font-medium text-charcoal-900">{enrollment.progress_percentage}%</span>
+                        </div>
+                        <Progress 
+                          value={enrollment.progress_percentage} 
+                          className="h-2"
+                        />
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button size="sm" className="flex-1 bg-primary hover:bg-primary-600 text-white">
+                          <Play className="h-4 w-4 mr-2" />
+                          Continue
+                        </Button>
+                        <Button size="sm" variant="outline" className="flex-1 border-charcoal-300 text-charcoal-700 hover:bg-charcoal-50">
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Course
+                        </Button>
                       </div>
                     </div>
                   );
                 })}
-                {upcomingAssignments.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No upcoming assignments
-                  </p>
-                )}
               </div>
+            ) : (
+              <div className="text-center py-12">
+                <BookOpen className="h-12 w-12 text-charcoal-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-charcoal-900 mb-2">No enrolled courses</h3>
+                <p className="text-charcoal-600 mb-4">Start your learning journey by enrolling in courses</p>
+                <Button asChild className="bg-primary hover:bg-primary-600 text-white">
+                  <a href="/courses">
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    Browse Courses
+                  </a>
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Right Sidebar */}
+        <div className="col-span-3 space-y-6">
+          {/* Upcoming Assignments */}
+          <Card className="border-charcoal-200">
+            <CardHeader>
+              <CardTitle className="text-lg text-charcoal-900">Upcoming Assignments</CardTitle>
+              <CardDescription className="text-charcoal-600">
+                Stay on top of your deadlines
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {upcomingAssignments.length > 0 ? (
+                <div className="space-y-3">
+                  {upcomingAssignments.map((assignment) => {
+                    const dueDate = new Date(assignment.due_date);
+                    const daysUntilDue = Math.ceil((dueDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                    
+                    return (
+                      <div key={assignment.id} className="flex items-start space-x-3 p-3 rounded-lg border border-charcoal-200 bg-charcoal-50/50">
+                        <div className="mt-1">
+                          <AlertCircle className="h-4 w-4 text-yellow-500" />
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <p className="text-sm font-medium text-charcoal-900">{assignment.title}</p>
+                          <p className="text-xs text-charcoal-600">
+                            Due in {daysUntilDue} day{daysUntilDue !== 1 ? 's' : ''}
+                          </p>
+                          <Badge variant="outline" className="text-xs border-primary/20 text-primary-700">
+                            {assignment.total_points} points
+                          </Badge>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <AlertCircle className="h-8 w-8 text-charcoal-400 mx-auto mb-2" />
+                  <p className="text-sm text-charcoal-600">No upcoming assignments</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Recent Activities */}
-          <Card>
+          <Card className="border-charcoal-200">
             <CardHeader>
-              <CardTitle>Recent Activities</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-lg text-charcoal-900">Recent Activities</CardTitle>
+              <CardDescription className="text-charcoal-600">
                 Your latest learning milestones
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {recentActivities.map((activity) => (
-                  <div key={activity.id} className="flex items-start space-x-3">
+                  <div key={activity.id} className="flex items-start space-x-3 p-2 rounded-lg hover:bg-charcoal-50 transition-colors">
                     <div className="mt-1">
                       {getStatusIcon(activity.status)}
                     </div>
                     <div className="flex-1 space-y-1">
-                      <p className="text-sm font-medium leading-none">
+                      <p className="text-sm font-medium leading-none text-charcoal-900">
                         {activity.message}
                       </p>
                       <p className={`text-xs ${getStatusColor(activity.status)}`}>
@@ -325,33 +334,31 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-
-
       {/* Quick Actions */}
-      <Card>
+      <Card className="border-charcoal-200">
         <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-xl text-charcoal-900">Quick Actions</CardTitle>
+          <CardDescription className="text-charcoal-600">
             Common tasks and shortcuts
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Button variant="outline" className="h-20 flex-col space-y-2">
-              <Play className="h-6 w-6" />
-              <span>Continue Learning</span>
+            <Button variant="outline" className="h-16 flex-col space-y-2 border-charcoal-300 text-charcoal-700 hover:bg-charcoal-50 hover:border-primary">
+              <Play className="h-5 w-5" />
+              <span className="text-sm">Continue Learning</span>
             </Button>
-            <Button variant="outline" className="h-20 flex-col space-y-2">
-              <FileText className="h-6 w-6" />
-              <span>View Resources</span>
+            <Button variant="outline" className="h-16 flex-col space-y-2 border-charcoal-300 text-charcoal-700 hover:bg-charcoal-50 hover:border-primary">
+              <FileText className="h-5 w-5" />
+              <span className="text-sm">View Resources</span>
             </Button>
-            <Button variant="outline" className="h-20 flex-col space-y-2">
-              <Users className="h-6 w-6" />
-              <span>Join Study Group</span>
+            <Button variant="outline" className="h-16 flex-col space-y-2 border-charcoal-300 text-charcoal-700 hover:bg-charcoal-50 hover:border-primary">
+              <Users className="h-5 w-5" />
+              <span className="text-sm">Join Study Group</span>
             </Button>
-            <Button variant="outline" className="h-20 flex-col space-y-2">
-              <Calendar className="h-6 w-6" />
-              <span>Schedule Study</span>
+            <Button variant="outline" className="h-16 flex-col space-y-2 border-charcoal-300 text-charcoal-700 hover:bg-charcoal-50 hover:border-primary">
+              <Calendar className="h-5 w-5" />
+              <span className="text-sm">Schedule Study</span>
             </Button>
           </div>
         </CardContent>

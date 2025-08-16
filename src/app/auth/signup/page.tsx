@@ -1,186 +1,145 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Eye, EyeOff, User, Mail, Lock, Users, ArrowRight, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-
-
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, BookOpen } from 'lucide-react';
 
 export default function SignUpPage() {
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'student' | 'teacher'>('student');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    role: 'student' as 'student' | 'teacher'
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   
+  const { signUp } = useAuth();
   const router = useRouter();
-  const { signUp } = useAuth(); // Move this to top level - NEVER call hooks conditionally
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Don't render the form until mounted to prevent SSR issues
-  if (!mounted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 px-4 py-8">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-    
-    // Client-side validation
-    if (password !== confirmPassword) {
+    setIsLoading(true);
+    setError('');
+
+    // Validation
+    if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
-      setLoading(false);
+      setIsLoading(false);
       return;
     }
-    
-    if (password.length < 6) {
+
+    if (formData.password.length < 6) {
       setError('Password must be at least 6 characters long');
-      setLoading(false);
+      setIsLoading(false);
       return;
     }
-    
+
     try {
-      const { error: authError } = await signUp(email, password, fullName, role);
+      const { error } = await signUp(formData.email, formData.password, formData.fullName, formData.role);
       
-      if (authError) {
-        setError(authError.message);
-        return;
+      if (error) {
+        setError(error.message);
+      } else {
+        router.push('/dashboard');
       }
-      
-      // Show success message
-      setSuccess('Account created successfully! Please check your email to verify your account.');
-      
-      // Clear form
-      setFullName('');
-      setEmail('');
-      setPassword('');
-      setConfirmPassword('');
-      
-      // Redirect to signin after a delay
-      setTimeout(() => {
-        router.push('/auth/signin');
-      }, 3000);
-      
     } catch (err) {
-      setError('An unexpected error occurred. Please try again.');
-      console.error('Sign up error:', err);
+      setError('An unexpected error occurred');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo/Brand Section */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full mb-4">
-            <span className="text-2xl font-bold text-white">L</span>
-          </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            Learnify LMS
-          </h1>
+        {/* Back to home link */}
+        <div className="mb-6">
+          <Link 
+            href="/" 
+            className="inline-flex items-center text-charcoal-600 hover:text-charcoal-800 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Home
+          </Link>
         </div>
 
-        <Card className="shadow-2xl border-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
-          <CardHeader className="text-center space-y-2">
-            <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
-              Create Account
-            </CardTitle>
-            <CardDescription className="text-gray-600 dark:text-gray-400">
-              Join Learnify LMS and start your learning journey
+        {/* Logo and title */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center mb-4">
+            <img src="/images/Logo.PNG" alt="Learnify Logo" className="w-12 h-12" />
+          </div>
+          <h1 className="text-2xl font-bold text-charcoal-900">Create your account</h1>
+          <p className="text-charcoal-600 mt-2">Join Learnify and start your learning journey</p>
+        </div>
+
+        <Card className="border-charcoal-200 shadow-lg">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl text-charcoal-900">Sign Up</CardTitle>
+            <CardDescription className="text-charcoal-600">
+              Fill in your details to create your account
             </CardDescription>
           </CardHeader>
-          
-          <CardContent className="space-y-6">
-            {/* Error Display */}
-            {error && (
-              <div className="flex items-center space-x-2 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-md">
-                <AlertCircle className="h-4 w-4 text-red-500" />
-                <span className="text-sm text-red-700 dark:text-red-400">{error}</span>
-              </div>
-            )}
-
-            {/* Success Display */}
-            {success && (
-              <div className="flex items-center space-x-2 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-md">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span className="text-sm text-green-700 dark:text-green-400">{success}</span>
-              </div>
-            )}
-
+          <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
+              
               <div className="space-y-2">
-                <Label htmlFor="fullName" className="text-gray-700 dark:text-gray-300">
-                  Full Name
-                </Label>
+                <Label htmlFor="fullName" className="text-charcoal-700">Full Name</Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-charcoal-400" />
                   <Input
                     id="fullName"
                     type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="pl-10 h-11"
                     placeholder="Enter your full name"
+                    value={formData.fullName}
+                    onChange={(e) => handleInputChange('fullName', e.target.value)}
+                    className="pl-10 border-charcoal-300 focus:border-primary focus:ring-primary"
                     required
-                    disabled={loading}
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-700 dark:text-gray-300">
-                  Email Address
-                </Label>
+                <Label htmlFor="email" className="text-charcoal-700">Email</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-charcoal-400" />
                   <Input
                     id="email"
                     type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 h-11"
                     placeholder="Enter your email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    className="pl-10 border-charcoal-300 focus:border-primary focus:ring-primary"
                     required
-                    disabled={loading}
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
-                <Label htmlFor="role" className="text-gray-700 dark:text-gray-300">
-                  Role
-                </Label>
+                <Label htmlFor="role" className="text-charcoal-700">Role</Label>
                 <div className="relative">
-                  <Users className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Select value={role} onValueChange={(value: 'student' | 'teacher') => setRole(value)} disabled={loading}>
-                    <SelectTrigger className="pl-10 h-11">
+                  <BookOpen className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-charcoal-400" />
+                  <Select value={formData.role} onValueChange={(value) => handleInputChange('role', value)}>
+                    <SelectTrigger className="pl-10 border-charcoal-300 focus:border-primary focus:ring-primary">
                       <SelectValue placeholder="Select your role" />
                     </SelectTrigger>
                     <SelectContent>
@@ -190,114 +149,74 @@ export default function SignUpPage() {
                   </Select>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-gray-700 dark:text-gray-300">
-                  Password
-                </Label>
+                <Label htmlFor="password" className="text-charcoal-700">Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-charcoal-400" />
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10 h-11"
-                    placeholder="Enter your password"
+                    placeholder="Create a password"
+                    value={formData.password}
+                    onChange={(e) => handleInputChange('password', e.target.value)}
+                    className="pl-10 pr-10 border-charcoal-300 focus:border-primary focus:ring-primary"
                     required
-                    disabled={loading}
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-11 px-3 py-2 hover:bg-transparent"
+                    className="absolute right-0 top-0 h-full px-3 text-charcoal-400 hover:text-charcoal-600"
                     onClick={() => setShowPassword(!showPassword)}
-                    disabled={loading}
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-gray-400" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-gray-400" />
-                    )}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Password must be at least 6 characters long
-                </p>
               </div>
-              
+
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-gray-700 dark:text-gray-300">
-                  Confirm Password
-                </Label>
+                <Label htmlFor="confirmPassword" className="text-charcoal-700">Confirm Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-charcoal-400" />
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="pl-10 pr-10 h-11"
                     placeholder="Confirm your password"
+                    value={formData.confirmPassword}
+                    onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                    className="pl-10 pr-10 border-charcoal-300 focus:border-primary focus:ring-primary"
                     required
-                    disabled={loading}
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-11 px-3 py-2 hover:bg-transparent"
+                    className="absolute right-0 top-0 h-full px-3 text-charcoal-400 hover:text-charcoal-600"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    disabled={loading}
                   >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-4 w-4 text-gray-400" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-gray-400" />
-                    )}
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium"
-                disabled={loading}
+              <Button 
+                type="submit" 
+                className="w-full bg-primary hover:bg-primary-600 text-white h-11"
+                disabled={isLoading}
               >
-                {loading ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Creating Account...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <span>Create Account</span>
-                    <ArrowRight className="h-5 w-5" />
-                  </div>
-                )}
+                {isLoading ? 'Creating account...' : 'Create Account'}
               </Button>
             </form>
 
-            <div className="text-center space-y-4">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-gray-300 dark:border-gray-600" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white dark:bg-gray-800 px-2 text-gray-500 dark:text-gray-400">
-                    Or
-                  </span>
-                </div>
-              </div>
-              
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+            <div className="mt-6 text-center">
+              <p className="text-sm text-charcoal-600">
                 Already have an account?{' '}
                 <Link 
                   href="/auth/signin" 
-                  className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium hover:underline transition-colors"
+                  className="text-primary hover:text-primary-600 font-medium transition-colors"
                 >
-                  Sign in here
+                  Sign in
                 </Link>
               </p>
             </div>

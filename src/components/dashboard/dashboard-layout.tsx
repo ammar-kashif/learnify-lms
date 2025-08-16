@@ -1,247 +1,217 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useAuth } from '@/contexts/auth-context';
-import { getNavigationByRole } from '@/config/navigation';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { 
-  LayoutDashboard, 
-  BookOpen, 
-  Users, 
-  FileText, 
-  BarChart3, 
-  MessageSquare, 
+  Menu, 
+  X, 
+  LogOut, 
+  User,
+  ChevronDown,
+  LayoutDashboard,
+  BookOpen,
+  Users,
+  FileText,
+  BarChart3,
+  MessageSquare,
   Settings,
   GraduationCap,
   ClipboardList,
   Award,
   Calendar,
-  ChevronDown,
-  Menu,
-  X,
-  Search,
+  TrendingUp,
+  Play,
+  Star,
+  History,
+  Heart,
+  Clock,
+  AlertCircle,
+  Megaphone,
+  Mail,
+  MessageCircle,
+  Sliders,
   Bell,
-  User,
-  LogOut,
-  Sun,
-  Moon
+  List,
+  Paperclip,
+  PieChart,
+  Activity
 } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
+import { getNavigationByRole } from '@/config/navigation';
 
-interface DashboardLayoutProps {
-  children: React.ReactNode;
+// Icon mapping for navigation items
+const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } = {
+  LayoutDashboard,
+  BookOpen,
+  Users,
+  FileText,
+  BarChart3,
+  MessageSquare,
+  Settings,
+  GraduationCap,
+  ClipboardList,
+  Award,
+  Calendar,
+  TrendingUp,
+  Play,
+  Star,
+  History,
+  Heart,
+  Clock,
+  AlertCircle,
+  Megaphone,
+  Mail,
+  MessageCircle,
+  Sliders,
+  Bell,
+  List,
+  Paperclip,
+  PieChart,
+  Activity
+};
+
+// Logo Component
+function Logo() {
+  return (
+    <div className="flex items-center space-x-3">
+      <img src="/images/Logo.PNG" alt="Learnify Logo" className="w-10 h-10" />
+      <span className="text-xl font-bold text-charcoal-800">Learnify</span>
+    </div>
+  );
 }
 
-export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
-  const pathname = usePathname();
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, signOut } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const navigation = getNavigationByRole(user?.user_metadata?.role || 'student');
 
-  const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
-  };
-
-  const isActive = (href: string) => {
-    if (href === '/dashboard') {
-      return pathname === '/dashboard';
-    }
-    return pathname.startsWith(href);
+  const handleSignOut = async () => {
+    await signOut();
   };
 
   const renderIcon = (iconName: string) => {
-    const iconMap: { [key: string]: React.ReactNode } = {
-      LayoutDashboard: <LayoutDashboard className="h-4 w-4" />,
-      BookOpen: <BookOpen className="h-4 w-4" />,
-      Users: <Users className="h-4 w-4" />,
-      FileText: <FileText className="h-4 w-4" />,
-      BarChart3: <BarChart3 className="h-4 w-4" />,
-      MessageSquare: <MessageSquare className="h-4 w-4" />,
-      Settings: <Settings className="h-4 w-4" />,
-      GraduationCap: <GraduationCap className="h-4 w-4" />,
-      ClipboardList: <ClipboardList className="h-4 w-4" />,
-      Award: <Award className="h-4 w-4" />,
-      Calendar: <Calendar className="h-4 w-4" />,
-      List: <FileText className="h-4 w-4" />,
-      Paperclip: <FileText className="h-4 w-4" />,
-      TrendingUp: <BarChart3 className="h-4 w-4" />,
-      PieChart: <BarChart3 className="h-4 w-4" />,
-      Activity: <BarChart3 className="h-4 w-4" />,
-      Megaphone: <MessageSquare className="h-4 w-4" />,
-      Mail: <MessageSquare className="h-4 w-4" />,
-      MessageCircle: <MessageSquare className="h-4 w-4" />,
-      User: <User className="h-4 w-4" />,
-      Sliders: <Settings className="h-4 w-4" />,
-      Bell: <Bell className="h-4 w-4" />,
-      Play: <BookOpen className="h-4 w-4" />,
-      Star: <Award className="h-4 w-4" />,
-      History: <Calendar className="h-4 w-4" />,
-      Heart: <Users className="h-4 w-4" />,
-      Clock: <Calendar className="h-4 w-4" />,
-      AlertCircle: <Bell className="h-4 w-4" />
-    };
-    return iconMap[iconName] || <FileText className="h-4 w-4" />;
-  };
-
-  const renderNavigationItem = (item: any, level: number = 0) => {
-    const hasChildren = item.children && item.children.length > 0;
-    const isItemActive = isActive(item.href);
-
-    return (
-      <div key={item.href} className="space-y-1">
-        <Link
-          href={item.href}
-          className={`flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-            isItemActive
-              ? 'bg-primary text-primary-foreground'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-          } ${level > 0 ? 'ml-4' : ''}`}
-        >
-          <div className="flex items-center space-x-3">
-            {renderIcon(item.icon)}
-            <span>{item.title}</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            {item.badge && (
-              <Badge variant="secondary" className="text-xs">
-                {item.badge}
-              </Badge>
-            )}
-            {hasChildren && (
-              <ChevronDown className="h-4 w-4" />
-            )}
-          </div>
-        </Link>
-        
-        {hasChildren && (
-          <div className="ml-4 space-y-1">
-            {item.children.map((child: any) => renderNavigationItem(child, level + 1))}
-          </div>
-        )}
-      </div>
-    );
+    const IconComponent = iconMap[iconName];
+    return IconComponent ? <IconComponent className="h-5 w-5" /> : <FileText className="h-5 w-5" />;
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-50 flex">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      {/* Sidebar - Fixed position, joined with header */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-charcoal-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 flex flex-col ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
-        <div className="flex h-full flex-col">
-          {/* Sidebar header */}
-          <div className="flex h-16 items-center justify-between px-6 border-b border-border">
-            <div className="flex items-center space-x-2">
-              <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
-                <BookOpen className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <span className="text-lg font-bold">Learnify LMS</span>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* User info */}
-          <div className="px-6 py-4 border-b border-border">
-            <div className="flex items-center space-x-3">
-              <div className="h-10 w-10 bg-primary rounded-full flex items-center justify-center">
-                <User className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">
-                  {user?.user_metadata?.full_name || user?.email || 'User'}
-                </p>
-                <p className="text-xs text-muted-foreground capitalize">
-                  {user?.user_metadata?.role || 'student'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
-            {navigation.map((item) => renderNavigationItem(item))}
-          </nav>
-
-          {/* Sidebar footer */}
-          <div className="p-4 border-t border-border">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={signOut}
-              className="w-full justify-start text-muted-foreground hover:text-foreground"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div className="lg:pl-64">
-        {/* Top header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 sm:px-6">
+        {/* Logo and close button - This will join with the header */}
+        <div className="flex items-center justify-between h-16 px-6 border-b border-charcoal-200 flex-shrink-0">
+          <Logo />
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setSidebarOpen(true)}
             className="lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+
+        {/* Navigation - Fixed height, no scrolling */}
+        <div className="flex-1 px-3 py-4">
+          <nav className="space-y-1">
+            {navigation.map((item) => (
+              <Button
+                key={item.title}
+                variant="ghost"
+                className="w-full justify-start text-charcoal-700 hover:text-primary hover:bg-primary/10 h-10 px-3"
+                asChild
+              >
+                <a href={item.href} className="flex items-center">
+                  {renderIcon(item.icon)}
+                  <span className="ml-3 text-sm font-medium">{item.title}</span>
+                </a>
+              </Button>
+            ))}
+          </nav>
+        </div>
+
+        {/* User profile card - Fixed at bottom, always visible */}
+        <div className="p-4 border-t border-charcoal-200 flex-shrink-0">
+          <Card className="bg-charcoal-50 border-charcoal-200">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+                  <User className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-charcoal-800 truncate">
+                    {user?.user_metadata?.full_name || user?.email}
+                  </p>
+                  <p className="text-xs text-charcoal-600 capitalize">
+                    {user?.user_metadata?.role || 'student'}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Main content - With left margin to account for fixed sidebar */}
+      <div className="flex-1 flex flex-col">
+        {/* Top header - Joined with sidebar */}
+        <header className="bg-white border-b border-charcoal-200 h-16 flex items-center justify-between px-6 flex-shrink-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="lg:hidden"
+            onClick={() => setSidebarOpen(true)}
           >
             <Menu className="h-5 w-5" />
           </Button>
 
-          <div className="flex flex-1 items-center gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search..."
-                className="w-full pl-8 pr-4 py-2 bg-muted border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-            </div>
-          </div>
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <Button
+                variant="ghost"
+                className="flex items-center space-x-2 text-charcoal-700 hover:text-primary hover:bg-primary/10"
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+              >
+                <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                  <User className="h-4 w-4 text-white" />
+                </div>
+                <span className="hidden sm:block text-sm font-medium">
+                  {user?.user_metadata?.full_name || user?.email}
+                </span>
+                <ChevronDown className="h-4 w-4" />
+              </Button>
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleTheme}
-            >
-              {theme === 'light' ? (
-                <Moon className="h-4 w-4" />
-              ) : (
-                <Sun className="h-4 w-4" />
+              {userMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-charcoal-200 py-1 z-50">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-charcoal-700 hover:text-primary hover:bg-primary/10"
+                    onClick={handleSignOut}
+                  >
+                    <LogOut className="h-4 w-4 mr-3" />
+                    Sign Out
+                  </Button>
+                </div>
               )}
-            </Button>
-            
-            <Button variant="ghost" size="sm">
-              <Bell className="h-4 w-4" />
-            </Button>
+            </div>
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="flex-1 p-4 sm:p-6">
+        {/* Page content - Scrollable */}
+        <main className="flex-1 p-6 bg-gray-50 overflow-y-auto">
           {children}
         </main>
       </div>
