@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { getNavigationByRole } from '@/config/navigation';
+import ThemeToggle from '@/components/theme-toggle';
 
 // Icon mapping for navigation items
 const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } = {
@@ -98,7 +99,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
@@ -107,12 +108,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         />
       )}
 
-      {/* Sidebar - Fixed position, joined with header */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-charcoal-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 flex flex-col ${
+      {/* Sidebar - Fixed and non-scrollable */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-900 border-r border-charcoal-200 dark:border-gray-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0 flex flex-col overflow-y-hidden ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
         {/* Logo and close button - This will join with the header */}
-        <div className="flex items-center justify-between h-16 px-6 border-b border-charcoal-200 flex-shrink-0">
+        <div className="flex items-center justify-between h-16 px-6 border-b border-charcoal-200 dark:border-gray-800 flex-shrink-0">
           <Logo />
           <Button
             variant="ghost"
@@ -131,7 +132,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Button
                 key={item.title}
                 variant="ghost"
-                className="w-full justify-start text-charcoal-700 hover:text-primary hover:bg-primary/10 h-10 px-3"
+                className="w-full justify-start text-charcoal-700 dark:text-gray-300 hover:text-primary hover:bg-primary/10 h-10 px-3"
                 asChild
               >
                 <a href={item.href} className="flex items-center">
@@ -144,18 +145,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         {/* User profile card - Fixed at bottom, always visible */}
-        <div className="p-4 border-t border-charcoal-200 flex-shrink-0">
-          <Card className="bg-charcoal-50 border-charcoal-200">
+        <div className="p-4 border-t border-charcoal-200 dark:border-gray-800 flex-shrink-0">
+          <Card className="bg-charcoal-50 dark:bg-gray-800 border-charcoal-200 dark:border-gray-800">
             <CardContent className="p-4">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
                   <User className="h-5 w-5 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-charcoal-800 truncate">
+                  <p className="text-sm font-medium text-charcoal-800 dark:text-gray-100 truncate">
                     {user?.user_metadata?.full_name || user?.email}
                   </p>
-                  <p className="text-xs text-charcoal-600 capitalize">
+                  <p className="text-xs text-charcoal-600 dark:text-gray-400 capitalize">
                     {user?.user_metadata?.role || 'student'}
                   </p>
                 </div>
@@ -166,9 +167,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       {/* Main content - With left margin to account for fixed sidebar */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col lg:ml-64">
         {/* Top header - Joined with sidebar */}
-        <header className="bg-white border-b border-charcoal-200 h-16 flex items-center justify-between px-6 flex-shrink-0">
+        <header className="bg-white dark:bg-gray-900 border-b border-charcoal-200 dark:border-gray-800 h-16 flex items-center justify-between px-6 flex-shrink-0">
           <Button
             variant="ghost"
             size="sm"
@@ -178,11 +179,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Menu className="h-5 w-5" />
           </Button>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <ThemeToggle />
             <div className="relative">
               <Button
                 variant="ghost"
-                className="flex items-center space-x-2 text-charcoal-700 hover:text-primary hover:bg-primary/10"
+                className="flex items-center space-x-2 text-charcoal-700 dark:text-gray-300 hover:text-primary hover:bg-primary/10"
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
               >
                 <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
@@ -195,10 +197,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Button>
 
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-charcoal-200 py-1 z-50">
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-900 rounded-md shadow-lg border border-charcoal-200 dark:border-gray-800 py-1 z-50">
                   <Button
                     variant="ghost"
-                    className="w-full justify-start text-charcoal-700 hover:text-primary hover:bg-primary/10"
+                    className="w-full justify-start text-charcoal-700 dark:text-gray-300 hover:text-primary hover:bg-primary/10"
                     onClick={handleSignOut}
                   >
                     <LogOut className="h-4 w-4 mr-3" />
@@ -211,7 +213,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         {/* Page content - Scrollable */}
-        <main className="flex-1 p-6 bg-gray-50 overflow-y-auto">
+        <main className="flex-1 p-6 bg-gray-50 dark:bg-gray-900 overflow-y-auto">
           {children}
         </main>
       </div>

@@ -59,7 +59,7 @@ export default function ForgotPasswordPage() {
             <img src="/images/Logo.PNG" alt="Learnify Logo" className="w-12 h-12" />
           </div>
           <h1 className="text-2xl font-bold text-charcoal-900">Reset your password</h1>
-          <p className="text-charcoal-600 mt-2">Enter your email to receive reset instructions</p>
+          <p className="text-charcoal-600 mt-2">Enter your email to receive a reset link</p>
         </div>
 
         <Card className="border-charcoal-200 shadow-lg">
@@ -76,7 +76,7 @@ export default function ForgotPasswordPage() {
                   <p className="text-sm text-red-600">{error}</p>
                 </div>
               )}
-
+              
               {success && (
                 <div className="p-3 bg-green-50 border border-green-200 rounded-md">
                   <p className="text-sm text-green-600">{success}</p>
@@ -108,7 +108,7 @@ export default function ForgotPasswordPage() {
               </Button>
             </form>
 
-            <div className="mt-6 text-center space-y-3">
+            <div className="mt-6 text-center">
               <p className="text-sm text-charcoal-600">
                 Remember your password?{' '}
                 <Link 
@@ -116,16 +116,6 @@ export default function ForgotPasswordPage() {
                   className="text-primary hover:text-primary-600 font-medium transition-colors"
                 >
                   Sign in
-                </Link>
-              </p>
-              
-              <p className="text-sm text-charcoal-600">
-                Don't have an account?{' '}
-                <Link 
-                  href="/auth/signup" 
-                  className="text-primary hover:text-primary-600 font-medium transition-colors"
-                >
-                  Sign up
                 </Link>
               </p>
             </div>

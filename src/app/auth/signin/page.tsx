@@ -40,13 +40,13 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Back to home link */}
         <div className="mb-6">
           <Link 
             href="/" 
-            className="inline-flex items-center text-charcoal-600 hover:text-charcoal-800 transition-colors"
+            className="inline-flex items-center text-charcoal-600 dark:text-gray-300 hover:text-charcoal-800 dark:hover:text-white transition-colors"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Home
@@ -58,59 +58,59 @@ export default function SignInPage() {
           <div className="flex items-center justify-center mb-4">
             <img src="/images/Logo.PNG" alt="Learnify Logo" className="w-12 h-12" />
           </div>
-          <h1 className="text-2xl font-bold text-charcoal-900">Welcome back</h1>
-          <p className="text-charcoal-600 mt-2">Sign in to your Learnify account</p>
+          <h1 className="text-2xl font-bold text-charcoal-900 dark:text-gray-100">Welcome back</h1>
+          <p className="text-charcoal-600 dark:text-gray-300 mt-2">Sign in to your Learnify account</p>
         </div>
 
-        <Card className="border-charcoal-200 shadow-lg">
+        <Card className="border-charcoal-200 dark:border-gray-800 dark:bg-gray-900 shadow-lg">
           <CardHeader className="text-center">
-            <CardTitle className="text-xl text-charcoal-900">Sign In</CardTitle>
-            <CardDescription className="text-charcoal-600">
+            <CardTitle className="text-xl text-charcoal-900 dark:text-gray-100">Sign In</CardTitle>
+            <CardDescription className="text-charcoal-600 dark:text-gray-300">
               Enter your credentials to access your account
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                  <p className="text-sm text-red-600">{error}</p>
+                <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-md">
+                  <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
                 </div>
               )}
               
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-charcoal-700">Email</Label>
+                <Label htmlFor="email" className="text-charcoal-700 dark:text-gray-200">Email</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-charcoal-400" />
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-charcoal-400 dark:text-gray-400" />
                   <Input
                     id="email"
                     type="email"
                     placeholder="Enter your email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 border-charcoal-300 focus:border-primary focus:ring-primary"
+                    className="pl-10 border-charcoal-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:border-primary focus:ring-primary"
                     required
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-charcoal-700">Password</Label>
+                <Label htmlFor="password" className="text-charcoal-700 dark:text-gray-200">Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-charcoal-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-charcoal-400 dark:text-gray-400" />
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10 border-charcoal-300 focus:border-primary focus:ring-primary"
+                    className="pl-10 pr-10 border-charcoal-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:border-primary focus:ring-primary"
                     required
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3 text-charcoal-400 hover:text-charcoal-600"
+                    className="absolute right-0 top-0 h-full px-3 text-charcoal-400 dark:text-gray-400 hover:text-charcoal-600 dark:hover:text-gray-200"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -119,6 +119,16 @@ export default function SignInPage() {
               </div>
 
               <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <input
+                    id="remember"
+                    type="checkbox"
+                    className="rounded border-charcoal-300 dark:border-gray-700 text-primary focus:ring-primary"
+                  />
+                  <Label htmlFor="remember" className="text-sm text-charcoal-600 dark:text-gray-300">
+                    Remember me
+                  </Label>
+                </div>
                 <Link 
                   href="/auth/forgot-password" 
                   className="text-sm text-primary hover:text-primary-600 transition-colors"
@@ -137,7 +147,7 @@ export default function SignInPage() {
             </form>
 
             <div className="mt-6 text-center">
-              <p className="text-sm text-charcoal-600">
+              <p className="text-sm text-charcoal-600 dark:text-gray-300">
                 Don't have an account?{' '}
                 <Link 
                   href="/auth/signup" 

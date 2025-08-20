@@ -245,6 +245,6 @@ export const getNavigationByRole = (role: string): NavigationItem[] => {
     case 'student':
       return studentNavigation;
     default:
-      return studentNavigation; // Default to student navigation
+      return [];
   }
 };

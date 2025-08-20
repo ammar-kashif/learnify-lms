@@ -3,77 +3,80 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { mockCourses } from '@/data/mock-data';
+import { BookOpen, Clock, Users, Star } from 'lucide-react';
 
 export default function CoursesPage() {
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Cambridge O Levels Courses</h1>
-        <p className="text-gray-600 mt-2">
-          Explore our comprehensive collection of Cambridge O Levels courses designed to prepare you for academic excellence.
-        </p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
+              Explore Our Courses
+            </h1>
+            <p className="mt-4 text-xl text-gray-600 max-w-3xl mx-auto">
+              Discover a wide range of Cambridge O Levels courses designed to help you excel in your academic journey.
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {mockCourses.map((course) => (
-          <Card key={course.id} className="hover:shadow-lg transition-shadow border-gray-200 bg-white">
-            <CardHeader>
-              <div className="flex items-center justify-between mb-2">
-                <Badge variant="secondary" className="text-xs bg-primary/10 text-primary-700 border-primary/20">
+      {/* Courses Grid */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          {mockCourses.map((course) => (
+            <Card key={course.id} className="group hover:shadow-2xl transition-all duration-300 border-gray-200 bg-white backdrop-blur-sm hover:scale-105">
+              <CardHeader className="text-center pb-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4 group-hover:scale-110 transition-transform duration-300">
+                  <BookOpen className="h-8 w-8 text-primary" />
+                </div>
+                <CardTitle className="text-xl font-bold text-gray-900">
+                  {course.title}
+                </CardTitle>
+                <CardDescription className="text-gray-600">
                   {course.subject}
-                </Badge>
-                <Badge variant={course.status === 'active' ? 'default' : 'outline'} className={course.status === 'active' ? 'bg-primary text-white' : 'border-gray-300 text-gray-700'}>
-                  {course.status}
-                </Badge>
-              </div>
-              <CardTitle className="text-lg text-gray-900">{course.title}</CardTitle>
-              <CardDescription className="line-clamp-3 text-gray-600">
-                {course.description}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-600">Duration</span>
-                  <span className="font-medium text-gray-900">{course.duration_weeks} weeks</span>
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="text-center space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-center space-x-4 text-sm text-gray-600">
+                    <div className="flex items-center space-x-1">
+                      <Clock className="h-4 w-4" />
+                      <span>{course.duration_weeks} weeks</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <Users className="h-4 w-4" />
+                      <span>{course.current_students} students</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-center space-x-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star 
+                        key={i} 
+                        className={`h-4 w-4 ${i < Math.floor(course.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'}`} 
+                      />
+                    ))}
+                    <span className="ml-2 text-sm text-gray-600">({course.rating})</span>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-600">Students</span>
-                  <span className="font-medium text-gray-900">
-                    {course.current_students}/{course.max_students}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-600">Price</span>
-                  <span className="font-medium text-primary">${course.price}</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-primary h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${(course.current_students / course.max_students) * 100}%` }}
-                  />
-                </div>
-                <div className="flex space-x-2">
-                  <Button asChild size="sm" className="flex-1 bg-primary hover:bg-primary-600 text-white">
-                    <Link href={`/courses/${course.id}`}>View Course</Link>
-                  </Button>
-                  <Button asChild size="sm" variant="outline" className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50">
-                    <Link href={`/courses/${course.id}/enroll`}>Enroll Now</Link>
+                
+                <div className="pt-4 border-t border-gray-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-2xl font-bold text-gray-900">${course.price}</span>
+                    <Badge variant="secondary" className="bg-primary/10 text-primary-700 border-primary/20">
+                      {course.level}
+                    </Badge>
+                  </div>
+                  <Button className="w-full bg-primary hover:bg-primary-600 text-white">
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    Enroll Now
                   </Button>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <div className="mt-12 text-center">
-        <p className="text-gray-600 mb-4">
-          Can't find what you're looking for?
-        </p>
-        <Button asChild variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50">
-          <Link href="/contact">Contact Us</Link>
-        </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     </div>
   );

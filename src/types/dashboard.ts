@@ -22,6 +22,7 @@ export interface Course {
   max_students: number;
   current_students: number;
   status: 'active' | 'draft' | 'archived';
+  rating: number;
   created_by: string;
   created_at: string;
   updated_at: string;

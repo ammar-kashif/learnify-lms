@@ -19,6 +19,7 @@ import {
   X
 } from 'lucide-react';
 import { useState } from 'react';
+import ThemeToggle from '@/components/theme-toggle';
 
 export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -29,42 +30,42 @@ export default function HomePage() {
       title: 'Easy Course Creation',
       description: 'Intuitive tools to create engaging courses with multimedia content',
       color: 'text-primary',
-      bgColor: 'bg-primary-50'
+      bgColor: 'bg-primary-50 dark:bg-gray-800/60'
     },
     {
       icon: BarChart3,
       title: 'Progress Tracking',
       description: 'Monitor student progress and performance with detailed analytics',
-      color: 'text-gray-600',
-      bgColor: 'bg-gray-50'
+      color: 'text-gray-600 dark:text-gray-300',
+      bgColor: 'bg-gray-50 dark:bg-gray-800/60'
     },
     {
       icon: Shield,
       title: 'Secure & Reliable',
       description: 'Enterprise-grade security with real-time backups and monitoring',
       color: 'text-primary',
-      bgColor: 'bg-primary-50'
+      bgColor: 'bg-primary-50 dark:bg-gray-800/60'
     },
     {
       icon: Smartphone,
       title: 'Mobile Friendly',
       description: 'Responsive design that works perfectly on all devices',
-      color: 'text-gray-600',
-      bgColor: 'bg-gray-50'
+      color: 'text-gray-600 dark:text-gray-300',
+      bgColor: 'bg-gray-50 dark:bg-gray-800/60'
     },
     {
       icon: MessageSquare,
       title: 'Real-time Collaboration',
       description: 'Interactive forums, discussions, and live sessions',
       color: 'text-primary',
-      bgColor: 'bg-primary-50'
+      bgColor: 'bg-primary-50 dark:bg-gray-800/60'
     },
     {
       icon: Users,
       title: 'Advanced Analytics',
       description: 'Comprehensive insights into learning outcomes and engagement',
-      color: 'text-gray-600',
-      bgColor: 'bg-gray-50'
+      color: 'text-gray-600 dark:text-gray-300',
+      bgColor: 'bg-gray-50 dark:bg-gray-800/60'
     }
   ];
 
@@ -76,39 +77,40 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
       {/* Navigation Bar */}
-      <nav className="bg-white/90 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
+      <nav className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo and Brand */}
             <div className="flex items-center space-x-3">
               <img src="/images/Logo.PNG" alt="Learnify Logo" className="w-24 h-24" />
-              <span className="text-xl font-bold text-charcoal-900">Learnify</span>
+              <span className="text-xl font-bold text-charcoal-900 dark:text-gray-100">Learnify</span>
             </div>
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-8">
-              <Link href="/" className="text-gray-700 hover:text-primary transition-colors font-medium">
+              <Link href="/" className="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors font-medium">
                 Home
               </Link>
-              <Link href="/courses" className="text-gray-700 hover:text-primary transition-colors font-medium">
+              <Link href="/courses" className="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors font-medium">
                 Courses
               </Link>
-              <Link href="#features" className="text-gray-700 hover:text-primary transition-colors font-medium">
+              <Link href="#features" className="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors font-medium">
                 Features
               </Link>
-              <Link href="#about" className="text-gray-700 hover:text-primary transition-colors font-medium">
+              <Link href="#about" className="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors font-medium">
                 About
               </Link>
-              <Link href="#contact" className="text-gray-700 hover:text-primary transition-colors font-medium">
+              <Link href="#contact" className="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors font-medium">
                 Contact
               </Link>
             </div>
 
             {/* Desktop Auth Buttons */}
-            <div className="hidden md:flex items-center space-x-4">
-              <Button asChild variant="ghost" className="text-gray-700 hover:text-primary hover:bg-primary/10">
+            <div className="hidden md:flex items-center space-x-2">
+              <ThemeToggle />
+              <Button asChild variant="ghost" className="text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-primary/10">
                 <Link href="/auth/signin">Sign In</Link>
               </Button>
               <Button asChild className="bg-primary hover:bg-primary-600 text-white">
@@ -122,7 +124,7 @@ export default function HomePage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="text-gray-700 hover:text-primary hover:bg-primary/10"
+                className="text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-primary/10"
               >
                 {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </Button>
@@ -131,25 +133,25 @@ export default function HomePage() {
 
           {/* Mobile Navigation Menu */}
           {mobileMenuOpen && (
-            <div className="md:hidden border-t border-gray-200 py-4">
+            <div className="md:hidden border-t border-gray-200 dark:border-gray-800 py-4">
               <div className="flex flex-col space-y-4">
-                <Link href="/" className="text-gray-700 hover:text-primary transition-colors font-medium">
+                <Link href="/" className="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors font-medium">
                   Home
                 </Link>
-                <Link href="/courses" className="text-gray-700 hover:text-primary transition-colors font-medium">
+                <Link href="/courses" className="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors font-medium">
                   Courses
                 </Link>
-                <Link href="#features" className="text-gray-700 hover:text-primary transition-colors font-medium">
+                <Link href="#features" className="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors font-medium">
                   Features
                 </Link>
-                <Link href="#about" className="text-gray-700 hover:text-primary transition-colors font-medium">
+                <Link href="#about" className="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors font-medium">
                   About
                 </Link>
-                <Link href="#contact" className="text-gray-700 hover:text-primary transition-colors font-medium">
+                <Link href="#contact" className="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors font-medium">
                   Contact
                 </Link>
-                <div className="pt-4 border-t border-gray-200">
-                  <Button asChild variant="ghost" className="w-full justify-start text-gray-700 hover:text-primary hover:bg-primary/10 mb-2">
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
+                  <Button asChild variant="ghost" className="w-full justify-start text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-primary/10 mb-2">
                     <Link href="/auth/signin">Sign In</Link>
                   </Button>
                   <Button asChild className="w-full bg-primary hover:bg-primary-600 text-white">
@@ -164,18 +166,18 @@ export default function HomePage() {
 
       {/* Hero Section */}
       <section className="px-4 py-20 text-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-gray-100/50"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-gray-100/50 dark:from-primary/10 dark:to-gray-800/50"></div>
         <div className="relative mx-auto max-w-4xl">
           <Badge variant="secondary" className="mb-6 px-4 py-2 text-sm font-medium bg-primary/10 text-primary-700 border-primary/20">
             🚀 Now with AI-powered learning
           </Badge>
-          <h1 className="mb-6 text-5xl font-bold tracking-tight text-gray-900 sm:text-6xl lg:text-7xl">
+          <h1 className="mb-6 text-5xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-6xl lg:text-7xl">
             Welcome to{' '}
             <span className="bg-gradient-to-r from-primary via-primary-600 to-gray-600 bg-clip-text text-transparent">
               Learnify LMS
             </span>
           </h1>
-          <p className="mb-8 text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+          <p className="mb-8 text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
             A modern, powerful learning management system designed for educators and students. 
             Create, manage, and deliver engaging learning experiences with cutting-edge technology.
           </p>
@@ -186,7 +188,7 @@ export default function HomePage() {
                 <ArrowRight className="h-5 w-5" />
               </Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="h-12 px-8 text-lg border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-all duration-300">
+            <Button asChild size="lg" variant="outline" className="h-12 px-8 text-lg border-2 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-300">
               <Link href="/courses" className="flex items-center space-x-2">
                 <Play className="h-5 w-5" />
                 <span>Browse Courses</span>
@@ -198,10 +200,10 @@ export default function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-2xl mx-auto">
             {stats.map((stat, index) => (
               <div key={index} className="text-center">
-                <div className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
+                <div className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-1">
                   {stat.number}
                 </div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-600 dark:text-gray-300">
                   {stat.label}
                 </div>
               </div>
@@ -217,17 +219,17 @@ export default function HomePage() {
             <Badge variant="outline" className="mb-4 px-4 py-2 text-sm font-medium border-primary/20 text-primary-700">
               ✨ Features
             </Badge>
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">
               Why Choose Learnify LMS?
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
               Experience the future of education with our comprehensive learning platform
             </p>
           </div>
           
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {features.map((feature, index) => (
-              <Card key={index} className="group hover:shadow-2xl transition-all duration-300 border-gray-200 bg-white backdrop-blur-sm hover:scale-105">
+              <Card key={index} className="group hover:shadow-2xl transition-all duration-300 border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 backdrop-blur-sm hover:scale-105">
                 <CardHeader className="text-center pb-4">
                   <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 ${feature.bgColor} group-hover:scale-110 transition-transform duration-300`}>
                     <feature.icon className={`h-8 w-8 ${feature.color}`} />
@@ -237,7 +239,7 @@ export default function HomePage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="text-center">
-                  <CardDescription className="text-gray-600 text-base leading-relaxed">
+                  <CardDescription className="text-gray-600 dark:text-gray-300 text-base leading-relaxed">
                     {feature.description}
                   </CardDescription>
                 </CardContent>
@@ -248,18 +250,18 @@ export default function HomePage() {
       </section>
 
       {/* Social Proof Section */}
-      <section id="about" className="px-4 py-20 bg-white/80">
+      <section id="about" className="px-4 py-20 bg-white/80 dark:bg-gray-900">
         <div className="mx-auto max-w-4xl text-center">
           <div className="flex justify-center items-center space-x-1 mb-6">
             {[...Array(5)].map((_, i) => (
               <Star key={i} className="h-6 w-6 fill-yellow-400 text-yellow-400" />
             ))}
-            <span className="ml-2 text-lg font-semibold text-gray-900">4.9/5</span>
+            <span className="ml-2 text-lg font-semibold text-gray-900 dark:text-gray-100">4.9/5</span>
           </div>
-          <p className="text-lg text-gray-600 mb-8">
+          <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
             Trusted by over 10,000+ educators and students worldwide
           </p>
-          <div className="flex flex-wrap justify-center items-center gap-8 text-gray-500">
+          <div className="flex flex-wrap justify-center items-center gap-8 text-gray-500 dark:text-gray-400">
             <div className="flex items-center space-x-2">
               <CheckCircle className="h-5 w-5 text-green-500" />
               <span>ISO 27001 Certified</span>

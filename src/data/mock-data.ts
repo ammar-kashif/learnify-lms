@@ -81,6 +81,7 @@ export const mockCourses: Course[] = [
     max_students: 30,
     current_students: 28,
     status: 'active',
+    rating: 4.8,
     created_by: 'user-1',
     created_at: '2024-01-15T00:00:00Z',
     updated_at: '2024-01-15T00:00:00Z'
@@ -97,6 +98,7 @@ export const mockCourses: Course[] = [
     max_students: 25,
     current_students: 22,
     status: 'active',
+    rating: 4.6,
     created_by: 'user-2',
     created_at: '2024-01-20T00:00:00Z',
     updated_at: '2024-01-20T00:00:00Z'
@@ -113,6 +115,7 @@ export const mockCourses: Course[] = [
     max_students: 28,
     current_students: 25,
     status: 'active',
+    rating: 4.7,
     created_by: 'user-3',
     created_at: '2024-02-01T00:00:00Z',
     updated_at: '2024-02-01T00:00:00Z'
@@ -129,6 +132,7 @@ export const mockCourses: Course[] = [
     max_students: 30,
     current_students: 27,
     status: 'active',
+    rating: 4.5,
     created_by: 'user-4',
     created_at: '2024-02-10T00:00:00Z',
     updated_at: '2024-02-10T00:00:00Z'
@@ -145,6 +149,7 @@ export const mockCourses: Course[] = [
     max_students: 35,
     current_students: 32,
     status: 'active',
+    rating: 4.9,
     created_by: 'user-1',
     created_at: '2024-01-25T00:00:00Z',
     updated_at: '2024-01-25T00:00:00Z'
@@ -161,6 +166,7 @@ export const mockCourses: Course[] = [
     max_students: 20,
     current_students: 18,
     status: 'active',
+    rating: 4.4,
     created_by: 'user-2',
     created_at: '2024-02-05T00:00:00Z',
     updated_at: '2024-02-05T00:00:00Z'
