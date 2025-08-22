@@ -1,0 +1,12 @@
+node_modules/
+.next/
+out/
+build/
+dist/
+*.config.js
+*.config.ts
+coverage/
+.husky/
+public/
+*.min.js
+*.bundle.js

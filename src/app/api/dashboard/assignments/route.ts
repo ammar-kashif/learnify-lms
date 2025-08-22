@@ -53,7 +53,8 @@ export async function GET(request: NextRequest) {
     // Get assignments for those chapters
     const { data: assignments, error: assignmentsError } = await supabase
       .from('assignments')
-      .select(`
+      .select(
+        `
         *,
         chapters (
           id,
@@ -64,7 +65,8 @@ export async function GET(request: NextRequest) {
             subject
           )
         )
-      `)
+      `
+      )
       .in('chapter_id', chapterIds)
       .order('due_date', { ascending: true });
 
@@ -75,10 +77,12 @@ export async function GET(request: NextRequest) {
 
     if (status === 'upcoming') {
       const now = new Date();
-      filteredAssignments = assignments?.filter(a => new Date(a.due_date) > now) || [];
+      filteredAssignments =
+        assignments?.filter(a => new Date(a.due_date) > now) || [];
     } else if (status === 'overdue') {
       const now = new Date();
-      filteredAssignments = assignments?.filter(a => new Date(a.due_date) < now) || [];
+      filteredAssignments =
+        assignments?.filter(a => new Date(a.due_date) < now) || [];
     } else if (status === 'completed') {
       // This would need a submissions table to track completion
       // For now, return empty array
@@ -89,13 +93,15 @@ export async function GET(request: NextRequest) {
     const enrichedAssignments = filteredAssignments.map(assignment => {
       const dueDate = new Date(assignment.due_date);
       const now = new Date();
-      const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      
+      const daysUntilDue = Math.ceil(
+        (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
       return {
         ...assignment,
         daysUntilDue,
         isOverdue: dueDate < now,
-        isDueSoon: daysUntilDue <= 3 && daysUntilDue >= 0
+        isDueSoon: daysUntilDue <= 3 && daysUntilDue >= 0,
       };
     });
 

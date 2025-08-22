@@ -1,11 +1,13 @@
-    import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
 // Check if environment variables are available
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Missing Supabase environment variables. Please check your .env.local file.');
+  console.warn(
+    'Missing Supabase environment variables. Please check your .env.local file.'
+  );
 }
 
 // Create Supabase client with fallback values for build time
@@ -147,6 +149,9 @@ export interface Database {
   };
 }
 
-export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
-export type Inserts<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert'];
-export type Updates<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Update'];
+export type Tables<T extends keyof Database['public']['Tables']> =
+  Database['public']['Tables'][T]['Row'];
+export type Inserts<T extends keyof Database['public']['Tables']> =
+  Database['public']['Tables'][T]['Insert'];
+export type Updates<T extends keyof Database['public']['Tables']> =
+  Database['public']['Tables'][T]['Update'];

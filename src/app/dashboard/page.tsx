@@ -5,7 +5,13 @@ import { useAuth } from '@/contexts/auth-context';
 import DashboardLayout from '@/components/dashboard/dashboard-layout';
 import TeacherDashboard from '@/components/dashboard/teacher-dashboard';
 import StudentDashboard from '@/components/dashboard/student-dashboard';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 
@@ -20,7 +26,7 @@ export default function DashboardPage() {
   // Show loading state while auth is loading
   if (loading || !mounted) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <Card className="w-96">
           <CardHeader>
             <CardTitle className="text-center">Loading Dashboard</CardTitle>
@@ -39,7 +45,7 @@ export default function DashboardPage() {
   // Redirect to signin if not authenticated
   if (!user) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <Card className="w-96">
           <CardHeader>
             <CardTitle className="text-center">Access Denied</CardTitle>

@@ -4,19 +4,19 @@ export const teacherNavigation: NavigationItem[] = [
   {
     title: 'Dashboard',
     href: '/dashboard',
-    icon: 'LayoutDashboard'
+    icon: 'LayoutDashboard',
   },
   {
     title: 'My Courses',
     href: '/dashboard/courses',
     icon: 'BookOpen',
-    badge: '6'
+    badge: '6',
   },
   {
     title: 'Students',
     href: '/dashboard/students',
     icon: 'Users',
-    badge: '45'
+    badge: '45',
   },
   {
     title: 'Content',
@@ -26,19 +26,19 @@ export const teacherNavigation: NavigationItem[] = [
       {
         title: 'Chapters',
         href: '/dashboard/content/chapters',
-        icon: 'List'
+        icon: 'List',
       },
       {
         title: 'Resources',
         href: '/dashboard/content/resources',
-        icon: 'Paperclip'
+        icon: 'Paperclip',
       },
       {
         title: 'Assignments',
         href: '/dashboard/content/assignments',
-        icon: 'ClipboardList'
-      }
-    ]
+        icon: 'ClipboardList',
+      },
+    ],
   },
   {
     title: 'Analytics',
@@ -48,19 +48,19 @@ export const teacherNavigation: NavigationItem[] = [
       {
         title: 'Student Progress',
         href: '/dashboard/analytics/progress',
-        icon: 'TrendingUp'
+        icon: 'TrendingUp',
       },
       {
         title: 'Course Performance',
         href: '/dashboard/analytics/courses',
-        icon: 'PieChart'
+        icon: 'PieChart',
       },
       {
         title: 'Engagement Metrics',
         href: '/dashboard/analytics/engagement',
-        icon: 'Activity'
-      }
-    ]
+        icon: 'Activity',
+      },
+    ],
   },
   {
     title: 'Communications',
@@ -70,19 +70,19 @@ export const teacherNavigation: NavigationItem[] = [
       {
         title: 'Announcements',
         href: '/dashboard/communications/announcements',
-        icon: 'Megaphone'
+        icon: 'Megaphone',
       },
       {
         title: 'Messages',
         href: '/dashboard/communications/messages',
-        icon: 'Mail'
+        icon: 'Mail',
       },
       {
         title: 'Forums',
         href: '/dashboard/communications/forums',
-        icon: 'MessageCircle'
-      }
-    ]
+        icon: 'MessageCircle',
+      },
+    ],
   },
   {
     title: 'Settings',
@@ -92,33 +92,33 @@ export const teacherNavigation: NavigationItem[] = [
       {
         title: 'Profile',
         href: '/dashboard/settings/profile',
-        icon: 'User'
+        icon: 'User',
       },
       {
         title: 'Preferences',
         href: '/dashboard/settings/preferences',
-        icon: 'Sliders'
+        icon: 'Sliders',
       },
       {
         title: 'Notifications',
         href: '/dashboard/settings/notifications',
-        icon: 'Bell'
-      }
-    ]
-  }
+        icon: 'Bell',
+      },
+    ],
+  },
 ];
 
 export const studentNavigation: NavigationItem[] = [
   {
     title: 'Dashboard',
     href: '/dashboard',
-    icon: 'LayoutDashboard'
+    icon: 'LayoutDashboard',
   },
   {
     title: 'My Courses',
     href: '/dashboard/courses',
     icon: 'BookOpen',
-    badge: '3'
+    badge: '3',
   },
   {
     title: 'Learning',
@@ -128,25 +128,25 @@ export const studentNavigation: NavigationItem[] = [
       {
         title: 'Current Lessons',
         href: '/dashboard/learning/current',
-        icon: 'Play'
+        icon: 'Play',
       },
       {
         title: 'Progress',
         href: '/dashboard/learning/progress',
-        icon: 'TrendingUp'
+        icon: 'TrendingUp',
       },
       {
         title: 'Resources',
         href: '/dashboard/learning/resources',
-        icon: 'FileText'
-      }
-    ]
+        icon: 'FileText',
+      },
+    ],
   },
   {
     title: 'Assignments',
     href: '/dashboard/assignments',
     icon: 'ClipboardList',
-    badge: '5'
+    badge: '5',
   },
   {
     title: 'Grades',
@@ -156,19 +156,19 @@ export const studentNavigation: NavigationItem[] = [
       {
         title: 'Current Grades',
         href: '/dashboard/grades/current',
-        icon: 'Star'
+        icon: 'Star',
       },
       {
         title: 'Grade History',
         href: '/dashboard/grades/history',
-        icon: 'History'
+        icon: 'History',
       },
       {
         title: 'Analytics',
         href: '/dashboard/grades/analytics',
-        icon: 'BarChart3'
-      }
-    ]
+        icon: 'BarChart3',
+      },
+    ],
   },
   {
     title: 'Community',
@@ -178,19 +178,19 @@ export const studentNavigation: NavigationItem[] = [
       {
         title: 'Study Groups',
         href: '/dashboard/community/study-groups',
-        icon: 'Users'
+        icon: 'Users',
       },
       {
         title: 'Forums',
         href: '/dashboard/community/forums',
-        icon: 'MessageCircle'
+        icon: 'MessageCircle',
       },
       {
         title: 'Peer Support',
         href: '/dashboard/community/peer-support',
-        icon: 'Heart'
-      }
-    ]
+        icon: 'Heart',
+      },
+    ],
   },
   {
     title: 'Calendar',
@@ -200,19 +200,19 @@ export const studentNavigation: NavigationItem[] = [
       {
         title: 'Upcoming',
         href: '/dashboard/calendar/upcoming',
-        icon: 'Clock'
+        icon: 'Clock',
       },
       {
         title: 'Deadlines',
         href: '/dashboard/calendar/deadlines',
-        icon: 'AlertCircle'
+        icon: 'AlertCircle',
       },
       {
         title: 'Events',
         href: '/dashboard/calendar/events',
-        icon: 'Calendar'
-      }
-    ]
+        icon: 'Calendar',
+      },
+    ],
   },
   {
     title: 'Settings',
@@ -222,20 +222,20 @@ export const studentNavigation: NavigationItem[] = [
       {
         title: 'Profile',
         href: '/dashboard/settings/profile',
-        icon: 'User'
+        icon: 'User',
       },
       {
         title: 'Preferences',
         href: '/dashboard/settings/preferences',
-        icon: 'Sliders'
+        icon: 'Sliders',
       },
       {
         title: 'Notifications',
         href: '/dashboard/settings/notifications',
-        icon: 'Bell'
-      }
-    ]
-  }
+        icon: 'Bell',
+      },
+    ],
+  },
 ];
 
 export const getNavigationByRole = (role: string): NavigationItem[] => {

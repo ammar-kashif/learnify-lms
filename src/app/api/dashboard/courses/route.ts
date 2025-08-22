@@ -27,7 +27,8 @@ export async function GET(request: NextRequest) {
       // Get teacher's courses
       const { data, error } = await supabase
         .from('teacher_courses')
-        .select(`
+        .select(
+          `
           *,
           courses (
             id,
@@ -44,23 +45,26 @@ export async function GET(request: NextRequest) {
             created_at,
             updated_at
           )
-        `)
+        `
+        )
         .eq('teacher_id', userId);
 
       if (error) throw error;
 
-      courses = data?.map(tc => ({
-        ...tc.courses,
-        teacher_assignment: {
-          assigned_at: tc.assigned_at,
-          is_primary: tc.is_primary
-        }
-      })) || [];
+      courses =
+        data?.map(tc => ({
+          ...tc.courses,
+          teacher_assignment: {
+            assigned_at: tc.assigned_at,
+            is_primary: tc.is_primary,
+          },
+        })) || [];
     } else {
       // Get student's enrolled courses
       const { data, error } = await supabase
         .from('student_enrollments')
-        .select(`
+        .select(
+          `
           *,
           courses (
             id,
@@ -77,20 +81,22 @@ export async function GET(request: NextRequest) {
             created_at,
             updated_at
           )
-        `)
+        `
+        )
         .eq('student_id', userId);
 
       if (error) throw error;
 
-      courses = data?.map(enrollment => ({
-        ...enrollment.courses,
-        enrollment: {
-          enrolled_at: enrollment.enrolled_at,
-          progress_percentage: enrollment.progress_percentage,
-          last_accessed: enrollment.last_accessed,
-          status: enrollment.status
-        }
-      })) || [];
+      courses =
+        data?.map(enrollment => ({
+          ...enrollment.courses,
+          enrollment: {
+            enrolled_at: enrollment.enrolled_at,
+            progress_percentage: enrollment.progress_percentage,
+            last_accessed: enrollment.last_accessed,
+            status: enrollment.status,
+          },
+        })) || [];
     }
 
     return NextResponse.json({ courses });

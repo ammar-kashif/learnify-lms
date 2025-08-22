@@ -1,4 +1,12 @@
-import { Course, Chapter, User, StudentEnrollment, TeacherCourse, Assignment, StudentProgress } from '@/types/dashboard';
+import {
+  Course,
+  Chapter,
+  User,
+  StudentEnrollment,
+  TeacherCourse,
+  Assignment,
+  StudentProgress,
+} from '@/types/dashboard';
 
 // Mock Users
 export const mockUsers: User[] = [
@@ -9,7 +17,7 @@ export const mockUsers: User[] = [
     role: 'teacher',
     avatar_url: '/avatars/john-smith.jpg',
     created_at: '2024-01-15T00:00:00Z',
-    updated_at: '2024-01-15T00:00:00Z'
+    updated_at: '2024-01-15T00:00:00Z',
   },
   {
     id: 'user-2',
@@ -18,7 +26,7 @@ export const mockUsers: User[] = [
     role: 'teacher',
     avatar_url: '/avatars/sarah-johnson.jpg',
     created_at: '2024-01-20T00:00:00Z',
-    updated_at: '2024-01-20T00:00:00Z'
+    updated_at: '2024-01-20T00:00:00Z',
   },
   {
     id: 'user-3',
@@ -27,7 +35,7 @@ export const mockUsers: User[] = [
     role: 'teacher',
     avatar_url: '/avatars/michael-brown.jpg',
     created_at: '2024-02-01T00:00:00Z',
-    updated_at: '2024-02-01T00:00:00Z'
+    updated_at: '2024-02-01T00:00:00Z',
   },
   {
     id: 'user-4',
@@ -36,7 +44,7 @@ export const mockUsers: User[] = [
     role: 'teacher',
     avatar_url: '/avatars/emma-wilson.jpg',
     created_at: '2024-02-10T00:00:00Z',
-    updated_at: '2024-02-10T00:00:00Z'
+    updated_at: '2024-02-10T00:00:00Z',
   },
   {
     id: 'user-5',
@@ -45,7 +53,7 @@ export const mockUsers: User[] = [
     role: 'student',
     avatar_url: '/avatars/alex-chen.jpg',
     created_at: '2024-01-25T00:00:00Z',
-    updated_at: '2024-01-25T00:00:00Z'
+    updated_at: '2024-01-25T00:00:00Z',
   },
   {
     id: 'user-6',
@@ -54,7 +62,7 @@ export const mockUsers: User[] = [
     role: 'student',
     avatar_url: '/avatars/sophia-rodriguez.jpg',
     created_at: '2024-02-05T00:00:00Z',
-    updated_at: '2024-02-05T00:00:00Z'
+    updated_at: '2024-02-05T00:00:00Z',
   },
   {
     id: 'user-7',
@@ -63,8 +71,8 @@ export const mockUsers: User[] = [
     role: 'student',
     avatar_url: '/avatars/david-kim.jpg',
     created_at: '2024-02-15T00:00:00Z',
-    updated_at: '2024-02-15T00:00:00Z'
-  }
+    updated_at: '2024-02-15T00:00:00Z',
+  },
 ];
 
 // Mock Courses (Cambridge O Levels)
@@ -74,7 +82,8 @@ export const mockCourses: Course[] = [
     title: 'Cambridge O Level Mathematics',
     subject: 'Mathematics',
     level: 'O Level',
-    description: 'Comprehensive coverage of O Level Mathematics including algebra, geometry, trigonometry, and statistics.',
+    description:
+      'Comprehensive coverage of O Level Mathematics including algebra, geometry, trigonometry, and statistics.',
     thumbnail_url: '/courses/mathematics.jpg',
     duration_weeks: 24,
     price: 299.99,
@@ -84,14 +93,15 @@ export const mockCourses: Course[] = [
     rating: 4.8,
     created_by: 'user-1',
     created_at: '2024-01-15T00:00:00Z',
-    updated_at: '2024-01-15T00:00:00Z'
+    updated_at: '2024-01-15T00:00:00Z',
   },
   {
     id: 'course-2',
     title: 'Cambridge O Level Physics',
     subject: 'Physics',
     level: 'O Level',
-    description: 'Fundamental physics concepts including mechanics, electricity, waves, and modern physics.',
+    description:
+      'Fundamental physics concepts including mechanics, electricity, waves, and modern physics.',
     thumbnail_url: '/courses/physics.jpg',
     duration_weeks: 20,
     price: 349.99,
@@ -101,14 +111,15 @@ export const mockCourses: Course[] = [
     rating: 4.6,
     created_by: 'user-2',
     created_at: '2024-01-20T00:00:00Z',
-    updated_at: '2024-01-20T00:00:00Z'
+    updated_at: '2024-01-20T00:00:00Z',
   },
   {
     id: 'course-3',
     title: 'Cambridge O Level Chemistry',
     subject: 'Chemistry',
     level: 'O Level',
-    description: 'Core chemistry principles covering atomic structure, bonding, reactions, and organic chemistry.',
+    description:
+      'Core chemistry principles covering atomic structure, bonding, reactions, and organic chemistry.',
     thumbnail_url: '/courses/chemistry.jpg',
     duration_weeks: 22,
     price: 329.99,
@@ -118,14 +129,15 @@ export const mockCourses: Course[] = [
     rating: 4.7,
     created_by: 'user-3',
     created_at: '2024-02-01T00:00:00Z',
-    updated_at: '2024-02-01T00:00:00Z'
+    updated_at: '2024-02-01T00:00:00Z',
   },
   {
     id: 'course-4',
     title: 'Cambridge O Level Biology',
     subject: 'Biology',
     level: 'O Level',
-    description: 'Life sciences including cell biology, genetics, ecology, and human physiology.',
+    description:
+      'Life sciences including cell biology, genetics, ecology, and human physiology.',
     thumbnail_url: '/courses/biology.jpg',
     duration_weeks: 26,
     price: 319.99,
@@ -135,14 +147,15 @@ export const mockCourses: Course[] = [
     rating: 4.5,
     created_by: 'user-4',
     created_at: '2024-02-10T00:00:00Z',
-    updated_at: '2024-02-10T00:00:00Z'
+    updated_at: '2024-02-10T00:00:00Z',
   },
   {
     id: 'course-5',
     title: 'Cambridge O Level English Language',
     subject: 'English',
     level: 'O Level',
-    description: 'Advanced English language skills including reading, writing, speaking, and listening.',
+    description:
+      'Advanced English language skills including reading, writing, speaking, and listening.',
     thumbnail_url: '/courses/english.jpg',
     duration_weeks: 18,
     price: 279.99,
@@ -152,14 +165,15 @@ export const mockCourses: Course[] = [
     rating: 4.9,
     created_by: 'user-1',
     created_at: '2024-01-25T00:00:00Z',
-    updated_at: '2024-01-25T00:00:00Z'
+    updated_at: '2024-01-25T00:00:00Z',
   },
   {
     id: 'course-6',
     title: 'Cambridge O Level Computer Science',
     subject: 'Computer Science',
     level: 'O Level',
-    description: 'Programming fundamentals, algorithms, data structures, and computer systems.',
+    description:
+      'Programming fundamentals, algorithms, data structures, and computer systems.',
     thumbnail_url: '/courses/computer-science.jpg',
     duration_weeks: 20,
     price: 369.99,
@@ -169,8 +183,8 @@ export const mockCourses: Course[] = [
     rating: 4.4,
     created_by: 'user-2',
     created_at: '2024-02-05T00:00:00Z',
-    updated_at: '2024-02-05T00:00:00Z'
-  }
+    updated_at: '2024-02-05T00:00:00Z',
+  },
 ];
 
 // Mock Chapters
@@ -180,40 +194,43 @@ export const mockChapters: Chapter[] = [
     id: 'chapter-1',
     course_id: 'course-1',
     title: 'Algebra Fundamentals',
-    description: 'Introduction to algebraic expressions, equations, and inequalities.',
+    description:
+      'Introduction to algebraic expressions, equations, and inequalities.',
     order: 1,
     duration_minutes: 90,
     video_url: '/videos/math-algebra-1.mp4',
     resources_url: '/resources/math-algebra-1.pdf',
     status: 'published',
     created_at: '2024-01-15T00:00:00Z',
-    updated_at: '2024-01-15T00:00:00Z'
+    updated_at: '2024-01-15T00:00:00Z',
   },
   {
     id: 'chapter-2',
     course_id: 'course-1',
     title: 'Geometry and Trigonometry',
-    description: 'Plane geometry, coordinate geometry, and trigonometric functions.',
+    description:
+      'Plane geometry, coordinate geometry, and trigonometric functions.',
     order: 2,
     duration_minutes: 120,
     video_url: '/videos/math-geometry-1.mp4',
     resources_url: '/resources/math-geometry-1.pdf',
     status: 'published',
     created_at: '2024-01-20T00:00:00Z',
-    updated_at: '2024-01-20T00:00:00Z'
+    updated_at: '2024-01-20T00:00:00Z',
   },
   {
     id: 'chapter-3',
     course_id: 'course-1',
     title: 'Statistics and Probability',
-    description: 'Data analysis, probability theory, and statistical inference.',
+    description:
+      'Data analysis, probability theory, and statistical inference.',
     order: 3,
     duration_minutes: 100,
     video_url: '/videos/math-stats-1.mp4',
     resources_url: '/resources/math-stats-1.pdf',
     status: 'published',
     created_at: '2024-01-25T00:00:00Z',
-    updated_at: '2024-01-25T00:00:00Z'
+    updated_at: '2024-01-25T00:00:00Z',
   },
   // Physics Chapters
   {
@@ -227,20 +244,21 @@ export const mockChapters: Chapter[] = [
     resources_url: '/resources/physics-mechanics-1.pdf',
     status: 'published',
     created_at: '2024-01-20T00:00:00Z',
-    updated_at: '2024-01-20T00:00:00Z'
+    updated_at: '2024-01-20T00:00:00Z',
   },
   {
     id: 'chapter-5',
     course_id: 'course-2',
     title: 'Electricity and Magnetism',
-    description: 'Electric circuits, magnetic fields, and electromagnetic induction.',
+    description:
+      'Electric circuits, magnetic fields, and electromagnetic induction.',
     order: 2,
     duration_minutes: 95,
     video_url: '/videos/physics-electricity-1.mp4',
     resources_url: '/resources/physics-electricity-1.pdf',
     status: 'published',
     created_at: '2024-01-25T00:00:00Z',
-    updated_at: '2024-01-25T00:00:00Z'
+    updated_at: '2024-01-25T00:00:00Z',
   },
   // Chemistry Chapters
   {
@@ -254,7 +272,7 @@ export const mockChapters: Chapter[] = [
     resources_url: '/resources/chemistry-atomic-1.pdf',
     status: 'published',
     created_at: '2024-02-01T00:00:00Z',
-    updated_at: '2024-02-01T00:00:00Z'
+    updated_at: '2024-02-01T00:00:00Z',
   },
   {
     id: 'chapter-7',
@@ -267,8 +285,8 @@ export const mockChapters: Chapter[] = [
     resources_url: '/resources/chemistry-bonding-1.pdf',
     status: 'published',
     created_at: '2024-02-05T00:00:00Z',
-    updated_at: '2024-02-05T00:00:00Z'
-  }
+    updated_at: '2024-02-05T00:00:00Z',
+  },
 ];
 
 // Mock Student Enrollments
@@ -280,7 +298,7 @@ export const mockStudentEnrollments: StudentEnrollment[] = [
     enrolled_at: '2024-01-25T00:00:00Z',
     progress_percentage: 75,
     last_accessed: '2024-03-15T10:30:00Z',
-    status: 'active'
+    status: 'active',
   },
   {
     id: 'enrollment-2',
@@ -289,7 +307,7 @@ export const mockStudentEnrollments: StudentEnrollment[] = [
     enrolled_at: '2024-02-01T00:00:00Z',
     progress_percentage: 45,
     last_accessed: '2024-03-14T14:20:00Z',
-    status: 'active'
+    status: 'active',
   },
   {
     id: 'enrollment-3',
@@ -298,7 +316,7 @@ export const mockStudentEnrollments: StudentEnrollment[] = [
     enrolled_at: '2024-02-05T00:00:00Z',
     progress_percentage: 60,
     last_accessed: '2024-03-15T09:15:00Z',
-    status: 'active'
+    status: 'active',
   },
   {
     id: 'enrollment-4',
@@ -307,7 +325,7 @@ export const mockStudentEnrollments: StudentEnrollment[] = [
     enrolled_at: '2024-02-10T00:00:00Z',
     progress_percentage: 30,
     last_accessed: '2024-03-13T16:45:00Z',
-    status: 'active'
+    status: 'active',
   },
   {
     id: 'enrollment-5',
@@ -316,8 +334,8 @@ export const mockStudentEnrollments: StudentEnrollment[] = [
     enrolled_at: '2024-02-15T00:00:00Z',
     progress_percentage: 20,
     last_accessed: '2024-03-12T11:30:00Z',
-    status: 'active'
-  }
+    status: 'active',
+  },
 ];
 
 // Mock Teacher Courses
@@ -327,43 +345,43 @@ export const mockTeacherCourses: TeacherCourse[] = [
     teacher_id: 'user-1',
     course_id: 'course-1',
     assigned_at: '2024-01-15T00:00:00Z',
-    is_primary: true
+    is_primary: true,
   },
   {
     id: 'tc-2',
     teacher_id: 'user-1',
     course_id: 'course-5',
     assigned_at: '2024-01-25T00:00:00Z',
-    is_primary: true
+    is_primary: true,
   },
   {
     id: 'tc-3',
     teacher_id: 'user-2',
     course_id: 'course-2',
     assigned_at: '2024-01-20T00:00:00Z',
-    is_primary: true
+    is_primary: true,
   },
   {
     id: 'tc-4',
     teacher_id: 'user-2',
     course_id: 'course-6',
     assigned_at: '2024-02-05T00:00:00Z',
-    is_primary: true
+    is_primary: true,
   },
   {
     id: 'tc-5',
     teacher_id: 'user-3',
     course_id: 'course-3',
     assigned_at: '2024-02-01T00:00:00Z',
-    is_primary: true
+    is_primary: true,
   },
   {
     id: 'tc-6',
     teacher_id: 'user-4',
     course_id: 'course-4',
     assigned_at: '2024-02-10T00:00:00Z',
-    is_primary: true
-  }
+    is_primary: true,
+  },
 ];
 
 // Mock Assignments
@@ -376,7 +394,7 @@ export const mockAssignments: Assignment[] = [
     due_date: '2024-03-20T23:59:59Z',
     total_points: 25,
     submission_count: 28,
-    created_at: '2024-03-10T00:00:00Z'
+    created_at: '2024-03-10T00:00:00Z',
   },
   {
     id: 'assignment-2',
@@ -386,7 +404,7 @@ export const mockAssignments: Assignment[] = [
     due_date: '2024-03-25T23:59:59Z',
     total_points: 30,
     submission_count: 25,
-    created_at: '2024-03-12T00:00:00Z'
+    created_at: '2024-03-12T00:00:00Z',
   },
   {
     id: 'assignment-3',
@@ -396,8 +414,8 @@ export const mockAssignments: Assignment[] = [
     due_date: '2024-03-22T23:59:59Z',
     total_points: 40,
     submission_count: 20,
-    created_at: '2024-03-08T00:00:00Z'
-  }
+    created_at: '2024-03-08T00:00:00Z',
+  },
 ];
 
 // Mock Student Progress
@@ -409,7 +427,7 @@ export const mockStudentProgress: StudentProgress[] = [
     completed: true,
     completed_at: '2024-03-01T00:00:00Z',
     score: 85,
-    time_spent_minutes: 120
+    time_spent_minutes: 120,
   },
   {
     student_id: 'user-5',
@@ -418,14 +436,14 @@ export const mockStudentProgress: StudentProgress[] = [
     completed: true,
     completed_at: '2024-03-10T00:00:00Z',
     score: 78,
-    time_spent_minutes: 150
+    time_spent_minutes: 150,
   },
   {
     student_id: 'user-5',
     course_id: 'course-1',
     chapter_id: 'chapter-3',
     completed: false,
-    time_spent_minutes: 45
+    time_spent_minutes: 45,
   },
   {
     student_id: 'user-6',
@@ -434,15 +452,15 @@ export const mockStudentProgress: StudentProgress[] = [
     completed: true,
     completed_at: '2024-03-05T00:00:00Z',
     score: 92,
-    time_spent_minutes: 110
+    time_spent_minutes: 110,
   },
   {
     student_id: 'user-6',
     course_id: 'course-1',
     chapter_id: 'chapter-2',
     completed: false,
-    time_spent_minutes: 60
-  }
+    time_spent_minutes: 60,
+  },
 ];
 
 // Helper functions
@@ -453,8 +471,12 @@ export const getCoursesByTeacher = (teacherId: string): Course[] => {
   return mockCourses.filter(course => teacherCourseIds.includes(course.id));
 };
 
-export const getEnrollmentsByStudent = (studentId: string): StudentEnrollment[] => {
-  return mockStudentEnrollments.filter(enrollment => enrollment.student_id === studentId);
+export const getEnrollmentsByStudent = (
+  studentId: string
+): StudentEnrollment[] => {
+  return mockStudentEnrollments.filter(
+    enrollment => enrollment.student_id === studentId
+  );
 };
 
 export const getCoursesByStudent = (studentId: string): Course[] => {
@@ -474,5 +496,7 @@ export const getAssignmentsByCourse = (courseId: string): Assignment[] => {
   const courseChapterIds = mockChapters
     .filter(chapter => chapter.course_id === courseId)
     .map(chapter => chapter.id);
-  return mockAssignments.filter(assignment => courseChapterIds.includes(assignment.chapter_id));
+  return mockAssignments.filter(assignment =>
+    courseChapterIds.includes(assignment.chapter_id)
+  );
 };

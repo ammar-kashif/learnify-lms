@@ -9,8 +9,12 @@ export default function ThemeToggle() {
 
   useEffect(() => {
     // Initialize from localStorage or system preference
-    const stored = typeof window !== 'undefined' ? localStorage.getItem('theme') : null;
-    const prefersDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const stored =
+      typeof window !== 'undefined' ? localStorage.getItem('theme') : null;
+    const prefersDark =
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches;
     const shouldUseDark = stored ? stored === 'dark' : prefersDark;
 
     document.documentElement.classList.toggle('dark', shouldUseDark);
@@ -23,7 +27,9 @@ export default function ThemeToggle() {
     document.documentElement.classList.toggle('dark', next);
     try {
       localStorage.setItem('theme', next ? 'dark' : 'light');
-    } catch {}
+    } catch {
+      // Ignore localStorage errors
+    }
   };
 
   return (
@@ -33,11 +39,9 @@ export default function ThemeToggle() {
       size="sm"
       aria-label="Toggle theme"
       onClick={toggleTheme}
-      className="text-charcoal-700 hover:text-primary hover:bg-primary/10"
+      className="text-charcoal-700 hover:bg-primary/10 hover:text-primary"
     >
       {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
     </Button>
   );
 }
-
-

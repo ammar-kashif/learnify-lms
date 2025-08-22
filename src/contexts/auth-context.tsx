@@ -9,8 +9,16 @@ export interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signUp: (email: string, password: string, fullName: string, role: 'student' | 'teacher') => Promise<{ error: AuthError | PostgrestError | null }>;
+  signIn: (
+    email: string,
+    password: string
+  ) => Promise<{ error: AuthError | null }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName: string,
+    role: 'student' | 'teacher'
+  ) => Promise<{ error: AuthError | PostgrestError | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
 }
@@ -26,7 +34,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Get initial session
     const getInitialSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         setSession(session);
         setUser(session?.user ?? null);
       } catch (error) {
@@ -39,14 +49,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getInitialSession();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event, session);
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session);
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
     return () => subscription.unsubscribe();
   }, []);
@@ -66,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // If signin is successful, check if user profile exists
       if (data.user) {
         console.log('🔍 Checking if user profile exists for:', data.user.id);
-        
+
         const { data: profile, error: profileError } = await supabase
           .from('users')
           .select('*')
@@ -76,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (profileError && profileError.code === 'PGRST116') {
           // Profile doesn't exist, create it
           console.log('📝 User profile not found, creating one...');
-          
+
           const userProfile = {
             id: data.user.id,
             email: data.user.email!,
@@ -91,7 +101,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .insert([userProfile]);
 
           if (createError) {
-            console.error('❌ Failed to create user profile during signin:', createError);
+            console.error(
+              '❌ Failed to create user profile during signin:',
+              createError
+            );
           } else {
             console.log('✅ User profile created during signin');
           }
@@ -107,10 +120,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string, role: 'student' | 'teacher') => {
+  const signUp = async (
+    email: string,
+    password: string,
+    fullName: string,
+    role: 'student' | 'teacher'
+  ) => {
     try {
       console.log('🚀 Starting signup process for:', email);
-      
+
       // Sign up the user
       const { error: signUpError, data } = await supabase.auth.signUp({
         email,
@@ -133,20 +151,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // If signup is successful and we have a user, create the user profile
       if (data.user) {
         console.log('📝 Creating user profile for ID:', data.user.id);
-        
+
         // Wait a moment to ensure the auth session is established
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
+
         // Get the current session to ensure we're authenticated
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         console.log('🔐 Current session:', session);
-        
+
         if (!session) {
-          console.warn('⚠️ No active session found, user may need to confirm email');
+          console.warn(
+            '⚠️ No active session found, user may need to confirm email'
+          );
           // For email confirmation flow, we'll create the profile later
           return { error: null };
         }
-        
+
         const userProfile = {
           id: session.user.id, // Use session.user.id to match auth.uid() for RLS
           email: data.user.email!,
@@ -158,11 +180,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         console.log('📋 User profile data to insert:', userProfile);
         console.log('🔑 Current auth.uid():', session.user.id);
-        console.log('🔍 Profile ID matches auth.uid():', userProfile.id === session.user.id);
+        console.log(
+          '🔍 Profile ID matches auth.uid():',
+          userProfile.id === session.user.id
+        );
 
         console.log('🚀 Attempting to insert profile into users table...');
         console.log('📊 Profile data:', JSON.stringify(userProfile, null, 2));
-        
+
         const { error: profileError, data: profileData } = await supabase
           .from('users')
           .insert([userProfile])
@@ -174,15 +199,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             message: profileError.message,
             details: profileError.details,
             hint: profileError.hint,
-            code: profileError.code
+            code: profileError.code,
           });
-          
+
           // If it's an RLS policy violation, provide specific guidance
           if (profileError.code === '42501') {
-            console.error('🚫 RLS Policy Violation - User might not be properly authenticated');
-            console.error('💡 Try signing in first, then the profile will be created automatically');
+            console.error(
+              '🚫 RLS Policy Violation - User might not be properly authenticated'
+            );
+            console.error(
+              '💡 Try signing in first, then the profile will be created automatically'
+            );
           }
-          
+
           // Return the profile creation error so user knows something went wrong
           return { error: profileError };
         }

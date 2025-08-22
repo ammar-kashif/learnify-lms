@@ -30,16 +30,20 @@ coverage/
 test-results/
 playwright-report/
 playwright/.cache/
+*.lcov
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*.sublime-*
 
 # OS
 .DS_Store
 Thumbs.db
+*.tmp
+*.temp
 
 # Logs
 logs/
@@ -50,9 +54,6 @@ pids/
 *.pid
 *.seed
 *.pid.lock
-
-# Coverage directory used by tools like istanbul
-coverage/
 
 # Dependency directories
 jspm_packages/
@@ -69,15 +70,39 @@ jspm_packages/
 # Yarn Integrity file
 .yarn-integrity
 
-# dotenv environment variables file
-.env
-
 # Prisma
 prisma/migrations/
 
 # Supabase
 .supabase/
-
 complete_table_policies.sql
 debug_users_policy.sql
+
+# Development Tools
+.eslintcache
+.prettiercache
+.stylelintcache
+*.cache
+
+# Package managers
+.pnpm-store/
+.yarn/
+.yarnrc.yml
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build artifacts
+*.min.js
+*.min.css
+*.bundle.js
+*.bundle.css
+*.chunk.js
+*.chunk.css
+
+# Local development
+.local/
+.localhost/
+
+# Cursor
 .cursorignore

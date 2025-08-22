@@ -27,7 +27,8 @@ export async function GET(request: NextRequest) {
       // Get teacher stats
       const { data: courses, error: coursesError } = await supabase
         .from('teacher_courses')
-        .select(`
+        .select(
+          `
           course_id,
           courses (
             id,
@@ -36,7 +37,8 @@ export async function GET(request: NextRequest) {
             max_students,
             price
           )
-        `)
+        `
+        )
         .eq('teacher_id', userId);
 
       if (coursesError) throw coursesError;
@@ -50,58 +52,77 @@ export async function GET(request: NextRequest) {
 
       const totalCourses = courses?.length || 0;
       const totalStudents = enrollments?.length || 0;
-      const totalRevenue = courses?.reduce((sum, tc) => {
-        const course = tc.courses as any;
-        return sum + (course?.price || 0) * (course?.current_students || 0);
-      }, 0) || 0;
+      const totalRevenue =
+        courses?.reduce((sum, tc) => {
+          const course = tc.courses as any;
+          return sum + (course?.price || 0) * (course?.current_students || 0);
+        }, 0) || 0;
 
-      const averageProgress = enrollments?.length > 0 
-        ? enrollments.reduce((sum, e) => sum + e.progress_percentage, 0) / enrollments.length
-        : 0;
+      const averageProgress =
+        enrollments?.length > 0
+          ? enrollments.reduce((sum, e) => sum + e.progress_percentage, 0) /
+            enrollments.length
+          : 0;
 
       stats = {
         totalCourses,
         totalStudents,
         totalRevenue,
         averageProgress: Math.round(averageProgress * 10) / 10,
-        activeEnrollments: enrollments?.filter(e => e.status === 'active').length || 0,
-        completionRate: enrollments?.length > 0 
-          ? (enrollments.filter(e => e.status === 'completed').length / enrollments.length) * 100
-          : 0
+        activeEnrollments:
+          enrollments?.filter(e => e.status === 'active').length || 0,
+        completionRate:
+          enrollments?.length > 0
+            ? (enrollments.filter(e => e.status === 'completed').length /
+                enrollments.length) *
+              100
+            : 0,
       };
     } else {
       // Get student stats
       const { data: enrollments, error: enrollmentsError } = await supabase
         .from('student_enrollments')
-        .select(`
+        .select(
+          `
           *,
           courses (
             id,
             title,
             duration_weeks
           )
-        `)
+        `
+        )
         .eq('student_id', userId);
 
       if (enrollmentsError) throw enrollmentsError;
 
       const totalCourses = enrollments?.length || 0;
-      const averageProgress = enrollments?.length > 0 
-        ? enrollments.reduce((sum, e) => sum + e.progress_percentage, 0) / enrollments.length
-        : 0;
+      const averageProgress =
+        enrollments?.length > 0
+          ? enrollments.reduce((sum, e) => sum + e.progress_percentage, 0) /
+            enrollments.length
+          : 0;
 
-      const completedChapters = enrollments?.reduce((sum, enrollment) => {
-        const course = enrollment.courses as any;
-        return sum + Math.floor((enrollment.progress_percentage / 100) * (course?.duration_weeks || 0));
-      }, 0) || 0;
+      const completedChapters =
+        enrollments?.reduce((sum, enrollment) => {
+          const course = enrollment.courses as any;
+          return (
+            sum +
+            Math.floor(
+              (enrollment.progress_percentage / 100) *
+                (course?.duration_weeks || 0)
+            )
+          );
+        }, 0) || 0;
 
       stats = {
         totalCourses,
         averageProgress: Math.round(averageProgress * 10) / 10,
         completedChapters,
-        activeEnrollments: enrollments?.filter(e => e.status === 'active').length || 0,
+        activeEnrollments:
+          enrollments?.filter(e => e.status === 'active').length || 0,
         studyStreak: 7, // Mock data for now
-        weeklyGoal: 85 // Mock data for now
+        weeklyGoal: 85, // Mock data for now
       };
     }
 
