@@ -9,6 +9,7 @@ export interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  userRole: string | null;
   signIn: (
     email: string,
     password: string
@@ -17,7 +18,7 @@ export interface AuthContextType {
     email: string,
     password: string,
     fullName: string,
-    role: 'student' | 'teacher'
+    role: 'student' | 'teacher' | 'superadmin'
   ) => Promise<{ error: AuthError | PostgrestError | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
@@ -29,18 +30,79 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  // Function to fetch user role from profile
+  const fetchUserRole = async (userId: string) => {
+    try {
+      // Add timeout protection
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 5000)
+      );
+      
+      const fetchPromise = supabase
+        .from('users')
+        .select('role')
+        .eq('id', userId)
+        .single();
+      
+      const { data: profile, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
+      
+      if (error) {
+        console.error('Error fetching user role:', error);
+        return null;
+      }
+      
+      console.log('🔍 Fetched user role from profile:', profile.role);
+      return profile.role;
+    } catch (error) {
+      console.error('Error fetching user role:', error);
+      // Return null to indicate we couldn't fetch the role
+      return null;
+    }
+  };
+
+  // Function to get role with fallback
+  const getRoleWithFallback = async (userId: string, userMetadata: any) => {
+    try {
+      const profileRole = await fetchUserRole(userId);
+      if (profileRole) {
+        return profileRole;
+      }
+      // Fallback to metadata role
+      console.log('🔄 Using fallback role from metadata:', userMetadata?.role);
+      return userMetadata?.role || 'student';
+    } catch (error) {
+      console.error('Error getting role with fallback:', error);
+      return null;
+    }
+  };
 
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+        // Add timeout protection
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), 10000)
+        );
+        
+        const sessionPromise = supabase.auth.getSession();
+        
+        const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+        
         setSession(session);
         setUser(session?.user ?? null);
+        
+        // Fetch user role if we have a user
+        if (session?.user) {
+          const role = await getRoleWithFallback(session.user.id, session.user.user_metadata);
+          setUserRole(role);
+        }
       } catch (error) {
         console.error('Error getting initial session:', error);
+        // Set loading to false even if there's an error
+        setLoading(false);
       } finally {
         setLoading(false);
       }
@@ -55,6 +117,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('Auth state changed:', event, session);
       setSession(session);
       setUser(session?.user ?? null);
+      
+      // Fetch user role if we have a user
+      if (session?.user) {
+        const role = await getRoleWithFallback(session.user.id, session.user.user_metadata);
+        setUserRole(role);
+      } else {
+        setUserRole(null);
+      }
+      
       setLoading(false);
     });
 
@@ -63,57 +134,90 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error, data } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      // Add timeout protection for the entire signin process
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Sign in timeout')), 15000)
+      );
+      
+      const signInPromise = (async () => {
+        const { error, data } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
 
-      if (error) {
-        console.error('Sign in error:', error);
-        return { error };
-      }
-
-      // If signin is successful, check if user profile exists
-      if (data.user) {
-        console.log('🔍 Checking if user profile exists for:', data.user.id);
-
-        const { data: profile, error: profileError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
-
-        if (profileError && profileError.code === 'PGRST116') {
-          // Profile doesn't exist, create it
-          console.log('📝 User profile not found, creating one...');
-
-          const userProfile = {
-            id: data.user.id,
-            email: data.user.email!,
-            full_name: data.user.user_metadata?.full_name || 'Unknown User',
-            role: data.user.user_metadata?.role || 'student',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          };
-
-          const { error: createError } = await supabase
-            .from('users')
-            .insert([userProfile]);
-
-          if (createError) {
-            console.error(
-              '❌ Failed to create user profile during signin:',
-              createError
-            );
-          } else {
-            console.log('✅ User profile created during signin');
-          }
-        } else if (profile) {
-          console.log('✅ User profile found:', profile);
+        if (error) {
+          console.error('Sign in error:', error);
+          return { error };
         }
-      }
 
-      return { error: null };
+        // If signin is successful, check if user profile exists
+        if (data.user) {
+          console.log('🔍 Checking if user profile exists for:', data.user.id);
+          console.log('🔍 User metadata:', data.user.user_metadata);
+
+          try {
+            const { data: profile, error: profileError } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', data.user.id)
+              .single();
+
+            if (profileError && profileError.code === 'PGRST116') {
+              // Profile doesn't exist, create it
+              console.log('📝 User profile not found, creating one...');
+
+              const userProfile = {
+                id: data.user.id,
+                email: data.user.email!,
+                full_name: data.user.user_metadata?.full_name || 'Unknown User',
+                role: data.user.user_metadata?.role || 'student',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              };
+
+              const { error: createError } = await supabase
+                .from('users')
+                .insert([userProfile]);
+
+              if (createError) {
+                console.error(
+                  '❌ Failed to create user profile during signin:',
+                  createError
+                );
+              } else {
+                console.log('✅ User profile created during signin');
+              }
+            } else if (profile) {
+              console.log('✅ User profile found:', profile);
+              console.log('🔍 Profile role:', profile.role);
+              
+              // Update user metadata with the role from the profile if it's different
+              if (profile.role !== data.user.user_metadata?.role) {
+                console.log('🔄 Updating user metadata role from profile:', profile.role);
+                try {
+                  const { error: updateError } = await supabase.auth.updateUser({
+                    data: { role: profile.role }
+                  });
+                  if (updateError) {
+                    console.error('❌ Failed to update user metadata:', updateError);
+                  } else {
+                    console.log('✅ User metadata updated with role:', profile.role);
+                  }
+                } catch (updateError) {
+                  console.error('❌ Error updating user metadata:', updateError);
+                }
+              }
+            }
+          } catch (profileError) {
+            console.error('❌ Error checking/creating user profile:', profileError);
+            // Don't fail the signin if profile operations fail
+          }
+        }
+
+        return { error: null };
+      })();
+
+      return await Promise.race([signInPromise, timeoutPromise]) as any;
     } catch (error) {
       console.error('Sign in error:', error);
       return { error: error as AuthError };
@@ -124,7 +228,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     email: string,
     password: string,
     fullName: string,
-    role: 'student' | 'teacher'
+    role: 'student' | 'teacher' | 'superadmin'
   ) => {
     try {
       console.log('🚀 Starting signup process for:', email);
@@ -262,6 +366,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     session,
     loading,
+    userRole,
     signIn,
     signUp,
     signOut,

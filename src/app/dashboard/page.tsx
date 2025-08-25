@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
+import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/dashboard/dashboard-layout';
 import TeacherDashboard from '@/components/dashboard/teacher-dashboard';
 import StudentDashboard from '@/components/dashboard/student-dashboard';
@@ -16,7 +17,8 @@ import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { user, loading } = useAuth();
+  const { user, userRole, loading } = useAuth();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -63,10 +65,30 @@ export default function DashboardPage() {
     );
   }
 
+  // Redirect superadmin to admin panel
+  if (userRole === 'superadmin') {
+    router.push('/admin');
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Card className="w-96">
+          <CardHeader>
+            <CardTitle className="text-center">Redirecting...</CardTitle>
+            <CardDescription className="text-center">
+              Taking you to the admin panel...
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // Render dashboard based on user role
   return (
     <DashboardLayout>
-      {user.user_metadata?.role === 'teacher' ? (
+      {userRole === 'teacher' ? (
         <TeacherDashboard />
       ) : (
         <StudentDashboard />

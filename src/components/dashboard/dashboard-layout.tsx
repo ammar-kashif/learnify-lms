@@ -36,6 +36,7 @@ import {
   Paperclip,
   PieChart,
   Activity,
+  Shield,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { getNavigationByRole } from '@/config/navigation';
@@ -71,6 +72,7 @@ const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } =
     Paperclip,
     PieChart,
     Activity,
+    Shield,
   };
 
 // Logo Component
@@ -88,13 +90,11 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, signOut } = useAuth();
+  const { user, userRole, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
-  const navigation = getNavigationByRole(
-    user?.user_metadata?.role || 'student'
-  );
+  const navigation = getNavigationByRole(userRole || 'student');
 
   const handleSignOut = async () => {
     await signOut();
@@ -172,7 +172,7 @@ export default function DashboardLayout({
                     {user?.user_metadata?.full_name || user?.email}
                   </p>
                   <p className="text-xs capitalize text-charcoal-600 dark:text-gray-400">
-                    {user?.user_metadata?.role || 'student'}
+                    {userRole || 'student'}
                   </p>
                 </div>
               </div>
