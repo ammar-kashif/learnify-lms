@@ -375,6 +375,36 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteAssignment = async (teacherId: string, courseId: string) => {
+    if (confirm('Are you sure you want to remove this teacher-course assignment? This action cannot be undone.')) {
+      try {
+        console.log('🗑️ Removing teacher-course assignment:', { teacherId, courseId });
+        
+        const { error } = await supabase
+          .from('teacher_courses')
+          .delete()
+          .eq('teacher_id', teacherId)
+          .eq('course_id', courseId);
+
+        if (error) {
+          console.error('❌ Failed to remove assignment:', error);
+          throw error;
+        }
+
+        console.log('✅ Assignment removed successfully');
+
+        // Show success message
+        alert('Teacher-course assignment removed successfully!');
+        
+        // Refresh the data
+        await fetchData();
+      } catch (error) {
+        console.error('💥 Error removing assignment:', error);
+        alert(`Failed to remove assignment: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+  };
+
   const handleDeleteCourse = async (courseId: string) => {
     if (confirm('Are you sure you want to delete this course? This action cannot be undone.')) {
       try {
@@ -547,49 +577,49 @@ export default function AdminDashboard() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
+          <Card className="bg-white text-gray-900 dark:bg-white dark:text-gray-900">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-gray-900">Total Users</CardTitle>
+              <Users className="h-4 w-4 text-gray-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{users.length}</div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-gray-600">
                 {students.length} students, {teachers.length} teachers
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white text-gray-900 dark:bg-white dark:text-gray-900">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Courses</CardTitle>
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-gray-900">Total Courses</CardTitle>
+              <BookOpen className="h-4 w-4 text-gray-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{courses.length}</div>
-              <p className="text-xs text-muted-foreground">Active courses</p>
+              <p className="text-xs text-gray-600">Active courses</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white text-gray-900 dark:bg-white dark:text-gray-900">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Assignments</CardTitle>
-              <GraduationCap className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-gray-900">Assignments</CardTitle>
+              <GraduationCap className="h-4 w-4 text-gray-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{teacherCourses.length}</div>
-              <p className="text-xs text-muted-foreground">Teacher-course pairs</p>
+              <p className="text-xs text-gray-600">Teacher-course pairs</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white text-gray-900 dark:bg-white dark:text-gray-900">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">System Status</CardTitle>
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-gray-900">System Status</CardTitle>
+              <BarChart3 className="h-4 w-4 text-gray-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">Active</div>
-              <p className="text-xs text-muted-foreground">All systems operational</p>
+              <p className="text-xs text-gray-600">All systems operational</p>
             </CardContent>
           </Card>
         </div>
@@ -608,8 +638,8 @@ export default function AdminDashboard() {
                   onClick={() => setActiveTab(tab.id as any)}
                   className={`py-4 px-1 border-b-2 font-medium text-sm ${
                     activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-blue-500 text-gray-900'
+                      : 'border-transparent text-gray-700 hover:text-gray-900 hover:border-gray-300'
                   }`}
                 >
                   <tab.icon className="h-5 w-5 inline mr-2" />
@@ -624,7 +654,7 @@ export default function AdminDashboard() {
             {activeTab === 'users' && (
               <div>
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold">User Management</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">User Management</h2>
                   <Button onClick={() => setShowAddUser(true)}>
                     <UserPlus className="h-4 w-4 mr-2" />
                     Add User
@@ -683,7 +713,7 @@ export default function AdminDashboard() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleDeleteUser(user.id)}
-                              className="text-red-600 hover:text-red-900"
+                              className="bg-white border-gray-300 text-red-600 hover:text-red-900 hover:bg-gray-50"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -700,7 +730,7 @@ export default function AdminDashboard() {
             {activeTab === 'courses' && (
               <div>
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold">Course Management</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">Course Management</h2>
                   <Button onClick={() => setShowAddCourse(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Add Course
@@ -709,21 +739,21 @@ export default function AdminDashboard() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {courses.map((course) => (
-                    <Card key={course.id}>
+                    <Card key={course.id} className="bg-white text-gray-900 dark:bg-white dark:text-gray-900">
                       <CardHeader>
-                        <CardTitle className="text-lg">{course.title}</CardTitle>
-                        <CardDescription>{course.description}</CardDescription>
+                        <CardTitle className="text-lg text-gray-900">{course.title}</CardTitle>
+                        <CardDescription className="text-gray-700">{course.description}</CardDescription>
                       </CardHeader>
                       <CardContent>
                         <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-500">
+                          <span className="text-sm text-gray-600">
                             Created: {new Date(course.created_at).toLocaleDateString()}
                           </span>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleDeleteCourse(course.id)}
-                            className="text-red-600 hover:text-red-900"
+                            className="bg-white border-gray-300 text-red-600 hover:text-red-900 hover:bg-gray-50"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -739,7 +769,7 @@ export default function AdminDashboard() {
             {activeTab === 'assignments' && (
               <div>
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold">Teacher Assignments</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">Teacher Assignments</h2>
                   <Button onClick={() => setShowAssignCourse(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Assign Course
@@ -783,7 +813,8 @@ export default function AdminDashboard() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="text-red-600 hover:text-red-900"
+                                onClick={() => handleDeleteAssignment(assignment.teacher_id, assignment.course_id)}
+                                className="bg-white border-gray-300 text-red-600 hover:text-red-900 hover:bg-gray-50"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -804,7 +835,7 @@ export default function AdminDashboard() {
       {showAddUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-medium mb-4">Add New User</h3>
+            <h3 className="text-lg font-medium mb-4 text-gray-900">Add New User</h3>
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
               <p className="text-sm text-blue-800">
                 <strong>What happens when you create a user:</strong>
@@ -832,7 +863,7 @@ export default function AdminDashboard() {
             <form onSubmit={handleAddUser}>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="email">Email *</Label>
+                  <Label htmlFor="email" className="text-gray-900">Email *</Label>
                   <Input
                     id="email"
                     type="email"
@@ -840,14 +871,14 @@ export default function AdminDashboard() {
                     onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
                     required
                     placeholder="user@example.com"
-                    className={userForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email) ? 'border-red-300' : ''}
+                    className={`bg-white border-gray-300 text-gray-900 ${userForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email) ? 'border-red-300' : ''}`}
                   />
                   {userForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email) && (
                     <p className="text-xs text-red-500 mt-1">Please enter a valid email address</p>
                   )}
                 </div>
                 <div>
-                  <Label htmlFor="password">Password *</Label>
+                  <Label htmlFor="password" className="text-gray-900">Password *</Label>
                   <Input
                     id="password"
                     type="password"
@@ -855,24 +886,25 @@ export default function AdminDashboard() {
                     onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
                     required
                     placeholder="Minimum 6 characters"
-                    className={userForm.password && userForm.password.length < 6 ? 'border-red-300' : ''}
+                    className={`bg-white border-gray-300 text-gray-900 ${userForm.password && userForm.password.length < 6 ? 'border-red-300' : ''}`}
                   />
                   {userForm.password && userForm.password.length < 6 && (
                     <p className="text-xs text-red-500 mt-1">Password must be at least 6 characters long</p>
                   )}
                 </div>
                 <div>
-                  <Label htmlFor="fullName">Full Name *</Label>
+                  <Label htmlFor="fullName" className="text-gray-900">Full Name *</Label>
                   <Input
                     id="fullName"
                     value={userForm.fullName}
                     onChange={(e) => setUserForm({ ...userForm, fullName: e.target.value })}
                     required
                     placeholder="John Doe"
+                    className="bg-white border-gray-300 text-gray-900"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="role">Role *</Label>
+                  <Label htmlFor="role" className="text-gray-900">Role *</Label>
                   <Select
                     value={userForm.role}
                     onValueChange={(value: 'student' | 'teacher' | 'superadmin') => 
@@ -896,6 +928,7 @@ export default function AdminDashboard() {
                   variant="outline"
                   onClick={() => setShowAddUser(false)}
                   disabled={dataLoading}
+                  className="bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
                 >
                   Cancel
                 </Button>
@@ -923,25 +956,27 @@ export default function AdminDashboard() {
       {showAddCourse && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-medium mb-4">Add New Course</h3>
+            <h3 className="text-lg font-medium mb-4 text-gray-900">Add New Course</h3>
             <form onSubmit={handleAddCourse}>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="title">Course Title</Label>
+                  <Label htmlFor="title" className="text-gray-900">Course Title</Label>
                   <Input
                     id="title"
                     value={courseForm.title}
                     onChange={(e) => setCourseForm({ ...courseForm, title: e.target.value })}
                     required
+                    className="bg-white border-gray-300 text-gray-900"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description" className="text-gray-900">Description</Label>
                   <Input
                     id="description"
                     value={courseForm.description}
                     onChange={(e) => setCourseForm({ ...courseForm, description: e.target.value })}
                     required
+                    className="bg-white border-gray-300 text-gray-900"
                   />
                 </div>
               </div>
@@ -950,6 +985,7 @@ export default function AdminDashboard() {
                   type="button"
                   variant="outline"
                   onClick={() => setShowAddCourse(false)}
+                  className="bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
                 >
                   Cancel
                 </Button>
@@ -964,11 +1000,11 @@ export default function AdminDashboard() {
       {showAssignCourse && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-medium mb-4">Assign Course to Teacher</h3>
+            <h3 className="text-lg font-medium mb-4 text-gray-900">Assign Course to Teacher</h3>
             <form onSubmit={handleAssignCourse}>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="teacherId">Teacher</Label>
+                  <Label htmlFor="teacherId" className="text-gray-900">Teacher</Label>
                   <Select
                     value={assignmentForm.teacherId}
                     onValueChange={(value) => setAssignmentForm({ ...assignmentForm, teacherId: value })}
@@ -986,7 +1022,7 @@ export default function AdminDashboard() {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="courseId">Course</Label>
+                  <Label htmlFor="courseId" className="text-gray-900">Course</Label>
                   <Select
                     value={assignmentForm.courseId}
                     onValueChange={(value) => setAssignmentForm({ ...assignmentForm, courseId: value })}
@@ -1009,6 +1045,7 @@ export default function AdminDashboard() {
                   type="button"
                   variant="outline"
                   onClick={() => setShowAssignCourse(false)}
+                  className="bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
                 >
                   Cancel
                 </Button>
