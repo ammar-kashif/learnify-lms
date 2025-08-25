@@ -883,18 +883,9 @@ export default function AdminDashboard() {
                       <SelectValue placeholder="Select a role" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border border-gray-300">
-                      <SelectItem value="student" className="text-gray-900 hover:bg-gray-100 flex items-center">
-                        <div className="w-3 h-3 rounded-full bg-gray-400 mr-2"></div>
-                        Student
-                      </SelectItem>
-                      <SelectItem value="teacher" className="text-gray-900 hover:bg-green-100 flex items-center">
-                        <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
-                        Teacher
-                      </SelectItem>
-                      <SelectItem value="superadmin" className="text-gray-900 hover:bg-orange-100 flex items-center">
-                        <div className="w-3 h-3 rounded-full bg-orange-500 mr-2"></div>
-                        Superadmin
-                      </SelectItem>
+                      <SelectItem value="student" className="text-gray-900 hover:bg-gray-100">Student</SelectItem>
+                      <SelectItem value="teacher" className="text-gray-900 hover:bg-gray-100">Teacher</SelectItem>
+                      <SelectItem value="superadmin" className="text-gray-900 hover:bg-gray-100">Superadmin</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -982,12 +973,12 @@ export default function AdminDashboard() {
                     value={assignmentForm.teacherId}
                     onValueChange={(value) => setAssignmentForm({ ...assignmentForm, teacherId: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white border-gray-300 text-gray-900">
                       <SelectValue placeholder="Select a teacher" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white border border-gray-300">
                       {teachers.map((teacher) => (
-                        <SelectItem key={teacher.id} value={teacher.id}>
+                        <SelectItem key={teacher.id} value={teacher.id} className="text-gray-900 hover:bg-gray-100">
                           {teacher.full_name} ({teacher.email})
                         </SelectItem>
                       ))}
@@ -1000,12 +991,12 @@ export default function AdminDashboard() {
                     value={assignmentForm.courseId}
                     onValueChange={(value) => setAssignmentForm({ ...assignmentForm, courseId: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white border-gray-300 text-gray-900">
                       <SelectValue placeholder="Select a course" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white border border-gray-300">
                       {courses.map((course) => (
-                        <SelectItem key={course.id} value={course.id}>
+                        <SelectItem key={course.id} value={course.id} className="text-gray-900 hover:bg-gray-100">
                           {course.title}
                         </SelectItem>
                       ))}
