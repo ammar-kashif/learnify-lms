@@ -338,6 +338,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('Sign out error:', error);
+      } else {
+        // Clear local state
+        setUser(null);
+        setSession(null);
+        setUserRole(null);
+        
+        // Redirect to landing page immediately
+        if (typeof window !== 'undefined') {
+          // Use router.push for smoother navigation
+          window.location.href = '/';
+        }
       }
     } catch (error) {
       console.error('Sign out error:', error);

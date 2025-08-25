@@ -80,7 +80,7 @@ function Logo() {
   return (
     <div className="flex items-center space-x-3">
       <img src="/images/Logo.PNG" alt="Learnify Logo" className="h-10 w-10" />
-      <span className="text-xl font-bold text-charcoal-800">Learnify</span>
+      <span className="text-xl font-bold text-charcoal-800 dark:text-white">Learnify</span>
     </div>
   );
 }
@@ -176,6 +176,15 @@ export default function DashboardLayout({
                   </p>
                 </div>
               </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-3 w-full justify-start text-charcoal-700 hover:bg-primary/10 hover:text-primary dark:text-gray-300"
+                onClick={handleSignOut}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign Out
+              </Button>
             </CardContent>
           </Card>
         </div>

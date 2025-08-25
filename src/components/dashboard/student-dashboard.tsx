@@ -133,10 +133,10 @@ export default function StudentDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-charcoal-900">
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
             Student Dashboard
           </h1>
-          <p className="text-charcoal-600">
+          <p className="text-gray-600 dark:text-gray-300">
             Welcome back, {user?.user_metadata?.full_name || user?.email}.
             Continue your learning journey.
           </p>
@@ -151,32 +151,32 @@ export default function StudentDashboard() {
 
       {/* Stats Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-charcoal-200 bg-charcoal-50/50 dark:border-gray-800 dark:bg-gray-800">
+        <Card className="border-0 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-charcoal-800 dark:text-gray-200">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
               Enrolled Courses
             </CardTitle>
             <BookOpen className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-charcoal-900 dark:text-gray-100">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
               {totalCourses}
             </div>
-            <p className="text-xs text-charcoal-600 dark:text-gray-400">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
               Active courses
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-charcoal-200 bg-primary-50/50 dark:border-gray-800 dark:bg-gray-800">
+        <Card className="border-0 bg-gradient-to-br from-primary-50 to-primary-100 dark:from-gray-800 dark:to-gray-700 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-primary-800 dark:text-primary-300">
+            <CardTitle className="text-sm font-medium text-primary-600 dark:text-primary-400">
               Average Progress
             </CardTitle>
             <TrendingUp className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary-900 dark:text-primary-300">
+            <div className="text-2xl font-bold text-primary-900 dark:text-white">
               {averageProgress.toFixed(1)}%
             </div>
             <p className="text-xs text-primary-600 dark:text-primary-400">
@@ -185,32 +185,32 @@ export default function StudentDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-charcoal-200 bg-charcoal-50/50 dark:border-gray-800 dark:bg-gray-800">
+        <Card className="border-0 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-charcoal-800 dark:text-gray-200">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
               Completed Chapters
             </CardTitle>
             <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-charcoal-900 dark:text-gray-100">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
               {completedChapters}
             </div>
-            <p className="text-xs text-charcoal-600 dark:text-gray-400">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
               Total completed
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-charcoal-200 bg-primary-50/50 dark:border-gray-800 dark:bg-gray-800">
+        <Card className="border-0 bg-gradient-to-br from-primary-50 to-primary-100 dark:from-gray-800 dark:to-gray-700 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-primary-800 dark:text-primary-300">
+            <CardTitle className="text-sm font-medium text-primary-600 dark:text-primary-400">
               Study Streak
             </CardTitle>
             <Award className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary-900 dark:text-primary-300">
+            <div className="text-2xl font-bold text-primary-900 dark:text-white">
               7 days
             </div>
             <p className="text-xs text-primary-600 dark:text-primary-400">
@@ -223,12 +223,12 @@ export default function StudentDashboard() {
       {/* Main Content Grid */}
       <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-7">
         {/* Course Progress */}
-        <Card className="col-span-4 border-charcoal-200 dark:border-gray-800">
+        <Card className="col-span-4 border-gray-200 dark:border-gray-700">
           <CardHeader>
-            <CardTitle className="text-xl text-charcoal-900 dark:text-gray-100">
+            <CardTitle className="text-xl text-gray-900 dark:text-white">
               My Courses Progress
             </CardTitle>
-            <CardDescription className="text-charcoal-600 dark:text-gray-300">
+            <CardDescription className="text-gray-600 dark:text-gray-300">
               Track your progress across all enrolled courses
             </CardDescription>
           </CardHeader>
@@ -244,7 +244,7 @@ export default function StudentDashboard() {
                   return (
                     <div
                       key={enrollment.id}
-                      className="space-y-4 rounded-lg border border-charcoal-200 bg-charcoal-50/50 p-4 dark:border-gray-800 dark:bg-gray-800"
+                      className="space-y-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 p-4"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
@@ -252,27 +252,27 @@ export default function StudentDashboard() {
                             <BookOpen className="h-6 w-6 text-white" />
                           </div>
                           <div>
-                            <h4 className="font-medium text-charcoal-900 dark:text-gray-100">
+                            <h4 className="font-medium text-gray-900 dark:text-white">
                               {course.title}
                             </h4>
-                            <p className="text-sm text-charcoal-600 dark:text-gray-300">
+                            <p className="text-sm text-gray-600 dark:text-gray-300">
                               {course.subject}
                             </p>
                           </div>
                         </div>
                         <Badge
                           variant="secondary"
-                          className="border-primary/20 bg-primary/10 text-primary-700"
+                          className="border-primary/20 bg-primary/10 text-primary-700 dark:text-primary-300"
                         >
                           {enrollment.progress_percentage}%
                         </Badge>
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span className="text-charcoal-600 dark:text-gray-300">
+                          <span className="text-gray-600 dark:text-gray-400">
                             Progress
                           </span>
-                          <span className="font-medium text-charcoal-900 dark:text-gray-100">
+                          <span className="font-medium text-gray-900 dark:text-white">
                             {enrollment.progress_percentage}%
                           </span>
                         </div>
@@ -292,7 +292,7 @@ export default function StudentDashboard() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="flex-1 border-charcoal-300 text-charcoal-700 hover:bg-charcoal-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                          className="flex-1 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                         >
                           <Eye className="mr-2 h-4 w-4" />
                           View Course
@@ -304,11 +304,11 @@ export default function StudentDashboard() {
               </div>
             ) : (
               <div className="py-12 text-center">
-                <BookOpen className="mx-auto mb-4 h-12 w-12 text-charcoal-400" />
-                <h3 className="mb-2 text-lg font-medium text-charcoal-900 dark:text-gray-100">
+                <BookOpen className="mx-auto mb-4 h-12 w-12 text-gray-400 dark:text-gray-500" />
+                <h3 className="mb-2 text-lg font-medium text-gray-900 dark:text-white">
                   No enrolled courses
                 </h3>
-                <p className="mb-4 text-charcoal-600 dark:text-gray-300">
+                <p className="mb-4 text-gray-600 dark:text-gray-300">
                   Start your learning journey by enrolling in courses
                 </p>
                 <Button
@@ -328,12 +328,12 @@ export default function StudentDashboard() {
         {/* Right Sidebar */}
         <div className="col-span-3 space-y-6">
           {/* Upcoming Assignments */}
-          <Card className="border-charcoal-200 dark:border-gray-800">
+          <Card className="border-gray-200 dark:border-gray-700">
             <CardHeader>
-              <CardTitle className="text-lg text-charcoal-900 dark:text-gray-100">
+              <CardTitle className="text-lg text-gray-900 dark:text-white">
                 Upcoming Assignments
               </CardTitle>
-              <CardDescription className="text-charcoal-600 dark:text-gray-300">
+              <CardDescription className="text-gray-600 dark:text-gray-300">
                 Stay on top of your deadlines
               </CardDescription>
             </CardHeader>
@@ -350,22 +350,22 @@ export default function StudentDashboard() {
                     return (
                       <div
                         key={assignment.id}
-                        className="flex items-start space-x-3 rounded-lg border border-charcoal-200 bg-charcoal-50/50 p-3 dark:border-gray-800 dark:bg-gray-800"
+                        className="flex items-start space-x-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 p-3"
                       >
                         <div className="mt-1">
                           <AlertCircle className="h-4 w-4 text-yellow-500" />
                         </div>
                         <div className="flex-1 space-y-1">
-                          <p className="text-sm font-medium text-charcoal-900 dark:text-gray-100">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
                             {assignment.title}
                           </p>
-                          <p className="text-xs text-charcoal-600 dark:text-gray-400">
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
                             Due in {daysUntilDue} day
                             {daysUntilDue !== 1 ? 's' : ''}
                           </p>
                           <Badge
                             variant="outline"
-                            className="border-primary/20 text-xs text-primary-700"
+                            className="border-primary/20 text-xs text-primary-700 dark:text-primary-300"
                           >
                             {assignment.total_points} points
                           </Badge>
@@ -376,8 +376,8 @@ export default function StudentDashboard() {
                 </div>
               ) : (
                 <div className="py-8 text-center">
-                  <AlertCircle className="mx-auto mb-2 h-8 w-8 text-charcoal-400" />
-                  <p className="text-sm text-charcoal-600 dark:text-gray-300">
+                  <AlertCircle className="mx-auto mb-2 h-8 w-8 text-gray-400 dark:text-gray-500" />
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
                     No upcoming assignments
                   </p>
                 </div>
@@ -386,12 +386,12 @@ export default function StudentDashboard() {
           </Card>
 
           {/* Recent Activities */}
-          <Card className="border-charcoal-200 dark:border-gray-800">
+          <Card className="border-gray-200 dark:border-gray-700">
             <CardHeader>
-              <CardTitle className="text-lg text-charcoal-900 dark:text-gray-100">
+              <CardTitle className="text-lg text-gray-900 dark:text-white">
                 Recent Activities
               </CardTitle>
-              <CardDescription className="text-charcoal-600 dark:text-gray-300">
+              <CardDescription className="text-gray-600 dark:text-gray-300">
                 Your latest learning milestones
               </CardDescription>
             </CardHeader>
@@ -400,11 +400,11 @@ export default function StudentDashboard() {
                 {recentActivities.map(activity => (
                   <div
                     key={activity.id}
-                    className="flex items-start space-x-3 rounded-lg p-2 transition-colors hover:bg-charcoal-50 dark:hover:bg-gray-800"
+                    className="flex items-start space-x-3 rounded-lg p-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
                   >
                     <div className="mt-1">{getStatusIcon(activity.status)}</div>
                     <div className="flex-1 space-y-1">
-                      <p className="text-sm font-medium leading-none text-charcoal-900 dark:text-gray-100">
+                      <p className="text-sm font-medium leading-none text-gray-900 dark:text-white">
                         {activity.message}
                       </p>
                       <p
@@ -422,12 +422,12 @@ export default function StudentDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <Card className="border-charcoal-200 dark:border-gray-800">
+      <Card className="border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className="text-xl text-charcoal-900 dark:text-gray-100">
+          <CardTitle className="text-xl text-gray-900 dark:text-white">
             Quick Actions
           </CardTitle>
-          <CardDescription className="text-charcoal-600 dark:text-gray-300">
+          <CardDescription className="text-gray-600 dark:text-gray-300">
             Common tasks and shortcuts
           </CardDescription>
         </CardHeader>
@@ -435,28 +435,28 @@ export default function StudentDashboard() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Button
               variant="outline"
-              className="h-16 flex-col space-y-2 border-charcoal-300 text-charcoal-700 hover:border-primary hover:bg-charcoal-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+              className="h-16 flex-col space-y-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-primary hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               <Play className="h-5 w-5" />
               <span className="text-sm">Continue Learning</span>
             </Button>
             <Button
               variant="outline"
-              className="h-16 flex-col space-y-2 border-charcoal-300 text-charcoal-700 hover:border-primary hover:bg-charcoal-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+              className="h-16 flex-col space-y-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-primary hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               <FileText className="h-5 w-5" />
               <span className="text-sm">View Resources</span>
             </Button>
             <Button
               variant="outline"
-              className="h-16 flex-col space-y-2 border-charcoal-300 text-charcoal-700 hover:border-primary hover:bg-charcoal-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+              className="h-16 flex-col space-y-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-primary hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               <Users className="h-5 w-5" />
               <span className="text-sm">Join Study Group</span>
             </Button>
             <Button
               variant="outline"
-              className="h-16 flex-col space-y-2 border-charcoal-300 text-charcoal-700 hover:border-primary hover:bg-charcoal-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+              className="h-16 flex-col space-y-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-primary hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               <Calendar className="h-5 w-5" />
               <span className="text-sm">Schedule Study</span>

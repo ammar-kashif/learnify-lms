@@ -13,7 +13,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -24,6 +23,19 @@ export default function DashboardPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace('/');
+    }
+  }, [loading, user, router]);
+
+  // Redirect superadmin to admin panel
+  useEffect(() => {
+    if (userRole === 'superadmin') {
+      router.replace('/admin');
+    }
+  }, [userRole, router]);
 
   // Show loading state while auth is loading
   if (loading || !mounted) {
@@ -46,43 +58,13 @@ export default function DashboardPage() {
 
   // Redirect to signin if not authenticated
   if (!user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Card className="w-96">
-          <CardHeader>
-            <CardTitle className="text-center">Access Denied</CardTitle>
-            <CardDescription className="text-center">
-              You must be signed in to access the dashboard.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            <Button asChild>
-              <a href="/auth/signin">Sign In</a>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    // Don't render anything to prevent flash
+    return null;
   }
 
-  // Redirect superadmin to admin panel
+  // Don't render anything for superadmin to prevent flash
   if (userRole === 'superadmin') {
-    router.push('/admin');
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Card className="w-96">
-          <CardHeader>
-            <CardTitle className="text-center">Redirecting...</CardTitle>
-            <CardDescription className="text-center">
-              Taking you to the admin panel...
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return null;
   }
 
   // Render dashboard based on user role

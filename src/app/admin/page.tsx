@@ -18,8 +18,12 @@ import {
   Trash2, 
   GraduationCap,
   Shield,
-  BarChart3
+  BarChart3,
+  LogOut,
+  Sun,
+  Moon
 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 
 interface User {
   id: string;
@@ -43,8 +47,10 @@ interface TeacherCourse {
 }
 
 export default function AdminDashboard() {
-  const { user, userRole, loading } = useAuth();
+  const { user, userRole, loading, signOut } = useAuth();
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [teacherCourses, setTeacherCourses] = useState<TeacherCourse[]>([]);
@@ -79,9 +85,14 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!loading && (!user || userRole !== 'superadmin')) {
-      router.push('/dashboard');
+      // Redirect to landing page instead of dashboard to prevent flash
+      router.push('/');
     }
   }, [user, userRole, loading, router]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (userRole === 'superadmin') {
@@ -405,6 +416,19 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      router.push('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
+
   const handleDeleteCourse = async (courseId: string) => {
     if (confirm('Are you sure you want to delete this course? This action cannot be undone.')) {
       try {
@@ -460,76 +484,49 @@ export default function AdminDashboard() {
   const students = users.filter(u => u.role === 'student');
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 dark:text-gray-100">
-      <div className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+              <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3">
               <Shield className="h-8 w-8 text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-900">Superadmin Dashboard</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Superadmin Dashboard</h1>
             </div>
             <div className="flex items-center space-x-4">
-              <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                 {user.user_metadata?.full_name || 'Superadmin'}
               </Badge>
               <Button 
                 variant="outline" 
+                onClick={toggleTheme}
+                size="sm"
+                disabled={!mounted}
+                className="bg-white border-gray-300 text-gray-900 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700"
+              >
+                {mounted && theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleSignOut}
+                size="sm"
+                className="bg-white border-gray-300 text-gray-900 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign Out
+              </Button>
+              <Button 
+                variant="outline" 
                 onClick={fetchData}
                 disabled={dataLoading}
-                className="flex items-center space-x-2"
+                className="flex items-center space-x-2 bg-white border-gray-300 text-gray-900 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
                 Refresh
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={async () => {
-                  console.log('🧪 Testing Supabase connection...');
-                  try {
-                    // Test direct connection
-                    const { data, error } = await supabase
-                      .from('users')
-                      .select('count')
-                      .limit(1);
-                    console.log('🧪 Direct count test:', { data, error });
-                    
-                    // Test with auth context
-                    const { data: authData, error: authError } = await supabase.auth.getUser();
-                    console.log('🧪 Auth user test:', { authData, authError });
-                    
-                    // Test users table access
-                    const { data: usersTest, error: usersTestError } = await supabase
-                      .from('users')
-                      .select('*');
-                    console.log('🧪 Users table test:', { usersTest, usersTestError });
-                    
-                    // Test JWT token decoding
-                    const { data: { session } } = await supabase.auth.getSession();
-                    if (session?.access_token) {
-                      console.log('🔐 Full JWT token:', session.access_token);
-                      // Decode JWT payload (base64 decode the middle part)
-                      try {
-                        const payload = session.access_token.split('.')[1];
-                        const decoded = JSON.parse(atob(payload));
-                        console.log('🔍 Decoded JWT payload:', decoded);
-                        console.log('🎭 Role in JWT:', decoded.role);
-                        console.log('👤 User ID in JWT:', decoded.sub);
-                      } catch (decodeError) {
-                        console.error('❌ Failed to decode JWT:', decodeError);
-                      }
-                    }
-                    
-                  } catch (testError) {
-                    console.error('🧪 Test failed:', testError);
-                  }
-                }}
-                className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
-              >
-                Test Connection
-              </Button>
-              <Button variant="outline" onClick={() => router.push('/dashboard')}>
+
+              <Button variant="outline" onClick={() => router.push('/dashboard')} className="bg-white border-gray-300 text-gray-900 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700">
                 Back to Dashboard
               </Button>
             </div>
@@ -577,56 +574,56 @@ export default function AdminDashboard() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-white text-gray-900 dark:bg-white dark:text-gray-900">
+          <Card className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-200 dark:border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-900">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-gray-500" />
+              <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">Total Users</CardTitle>
+              <Users className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{users.length}</div>
-              <p className="text-xs text-gray-600">
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">{users.length}</div>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
                 {students.length} students, {teachers.length} teachers
               </p>
             </CardContent>
           </Card>
 
-          <Card className="bg-white text-gray-900 dark:bg-white dark:text-gray-900">
+          <Card className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-200 dark:border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-900">Total Courses</CardTitle>
-              <BookOpen className="h-4 w-4 text-gray-500" />
+              <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">Total Courses</CardTitle>
+              <BookOpen className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{courses.length}</div>
-              <p className="text-xs text-gray-600">Active courses</p>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">{courses.length}</div>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Active courses</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-white text-gray-900 dark:bg-white dark:text-gray-900">
+          <Card className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-200 dark:border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-900">Assignments</CardTitle>
-              <GraduationCap className="h-4 w-4 text-gray-500" />
+              <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">Assignments</CardTitle>
+              <GraduationCap className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{teacherCourses.length}</div>
-              <p className="text-xs text-gray-600">Teacher-course pairs</p>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">{teacherCourses.length}</div>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Teacher-course pairs</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-white text-gray-900 dark:bg-white dark:text-gray-900">
+          <Card className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-200 dark:border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-900">System Status</CardTitle>
-              <BarChart3 className="h-4 w-4 text-gray-500" />
+              <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">System Status</CardTitle>
+              <BarChart3 className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">Active</div>
-              <p className="text-xs text-gray-600">All systems operational</p>
+              <div className="text-2xl font-bold text-green-600 dark:text-green-400">Active</div>
+              <p className="text-xs text-gray-600 dark:text-gray-400">All systems operational</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="border-b border-gray-200">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+          <div className="border-b border-gray-200 dark:border-gray-700">
             <nav className="-mb-px flex space-x-8 px-6">
               {[
                 { id: 'users', label: 'User Management', icon: Users },
@@ -636,10 +633,10 @@ export default function AdminDashboard() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
                     activeTab === tab.id
-                      ? 'border-blue-500 text-gray-900'
-                      : 'border-transparent text-gray-700 hover:text-gray-900 hover:border-gray-300'
+                      ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                      : 'border-transparent text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
                 >
                   <tab.icon className="h-5 w-5 inline mr-2" />
@@ -654,7 +651,7 @@ export default function AdminDashboard() {
             {activeTab === 'users' && (
               <div>
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900">User Management</h2>
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">User Management</h2>
                   <Button onClick={() => setShowAddUser(true)}>
                     <UserPlus className="h-4 w-4 mr-2" />
                     Add User
@@ -662,32 +659,32 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-700">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           User
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Role
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Created
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                       {users.map((user) => (
                         <tr key={user.id}>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div>
-                              <div className="text-sm font-medium text-gray-900">
+                              <div className="text-sm font-medium text-gray-900 dark:text-white">
                                 {user.full_name}
                               </div>
-                              <div className="text-sm text-gray-500">{user.email}</div>
+                              <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -705,7 +702,7 @@ export default function AdminDashboard() {
                               {user.role}
                             </Badge>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                             {new Date(user.created_at).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -713,7 +710,7 @@ export default function AdminDashboard() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleDeleteUser(user.id)}
-                              className="bg-white border-gray-300 text-red-600 hover:text-red-900 hover:bg-gray-50"
+                              className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -730,7 +727,7 @@ export default function AdminDashboard() {
             {activeTab === 'courses' && (
               <div>
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900">Course Management</h2>
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Course Management</h2>
                   <Button onClick={() => setShowAddCourse(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Add Course
@@ -739,21 +736,21 @@ export default function AdminDashboard() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {courses.map((course) => (
-                    <Card key={course.id} className="bg-white text-gray-900 dark:bg-white dark:text-gray-900">
+                    <Card key={course.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-200 dark:border-gray-700">
                       <CardHeader>
-                        <CardTitle className="text-lg text-gray-900">{course.title}</CardTitle>
-                        <CardDescription className="text-gray-700">{course.description}</CardDescription>
+                        <CardTitle className="text-lg text-gray-900 dark:text-white">{course.title}</CardTitle>
+                        <CardDescription className="text-gray-700 dark:text-gray-300">{course.description}</CardDescription>
                       </CardHeader>
                       <CardContent>
                         <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
                             Created: {new Date(course.created_at).toLocaleDateString()}
                           </span>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleDeleteCourse(course.id)}
-                            className="bg-white border-gray-300 text-red-600 hover:text-red-900 hover:bg-gray-50"
+                            className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -769,7 +766,7 @@ export default function AdminDashboard() {
             {activeTab === 'assignments' && (
               <div>
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900">Teacher Assignments</h2>
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Teacher Assignments</h2>
                   <Button onClick={() => setShowAssignCourse(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Assign Course
@@ -777,21 +774,21 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-700">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Teacher
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Course
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                       {teacherCourses.map((assignment) => {
                         const teacher = users.find(u => u.id === assignment.teacher_id);
                         const course = courses.find(c => c.id === assignment.course_id);
@@ -799,13 +796,13 @@ export default function AdminDashboard() {
                         return (
                           <tr key={`${assignment.teacher_id}-${assignment.course_id}`}>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-900">
+                              <div className="text-sm font-medium text-gray-900 dark:text-white">
                                 {teacher?.full_name || 'Unknown Teacher'}
                               </div>
-                              <div className="text-sm text-gray-500">{teacher?.email}</div>
+                              <div className="text-sm text-gray-500 dark:text-gray-400">{teacher?.email}</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-900">
+                              <div className="text-sm font-medium text-gray-900 dark:text-white">
                                 {course?.title || 'Unknown Course'}
                               </div>
                             </td>
@@ -814,7 +811,7 @@ export default function AdminDashboard() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleDeleteAssignment(assignment.teacher_id, assignment.course_id)}
-                                className="bg-white border-gray-300 text-red-600 hover:text-red-900 hover:bg-gray-50"
+                                className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -848,18 +845,7 @@ export default function AdminDashboard() {
               </ul>
             </div>
             
-            {/* Troubleshooting Section */}
-            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-              <p className="text-sm text-yellow-800">
-                <strong>⚠️ If you get &quot;User not allowed&quot; error:</strong>
-              </p>
-              <ul className="text-xs text-yellow-700 mt-1 list-disc list-inside space-y-1">
-                <li>Check that your account has superadmin role</li>
-                <li>Ensure RLS policies are set up correctly</li>
-                <li>Verify the service role key is in your .env file</li>
-                <li>Check the browser console for detailed error messages</li>
-              </ul>
-            </div>
+
             <form onSubmit={handleAddUser}>
               <div className="space-y-4">
                 <div>
