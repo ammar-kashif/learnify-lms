@@ -11,6 +11,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { useEffect, useState } from 'react';
 import {
   BookOpen,
   Clock,
@@ -25,37 +26,43 @@ import {
 
   Eye,
 } from 'lucide-react';
-import {
-
-  mockAssignments,
-  getCoursesByStudent,
-  getEnrollmentsByStudent,
-} from '@/data/mock-data';
+import { mockAssignments } from '@/data/mock-data';
 import { useAuth } from '@/contexts/auth-context';
 
 export default function StudentDashboard() {
   const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
+  const [availableCourses, setAvailableCourses] = useState<any[]>([]);
 
-
-  // Get student's enrolled courses and enrollments
-  const studentEnrollments = getEnrollmentsByStudent(user?.id || 'user-5');
-  const enrolledCourses = getCoursesByStudent(user?.id || 'user-5');
+  useEffect(() => {
+    const load = async () => {
+      if (!user) return;
+      setLoading(true);
+      try {
+        const [enrolledRes, availableRes] = await Promise.all([
+          fetch(`/api/dashboard/courses?userId=${user.id}&role=student`).then(r => r.json()),
+          fetch(`/api/courses/available?studentId=${user.id}`).then(r => r.json()),
+        ]);
+        setEnrolledCourses(enrolledRes?.courses || []);
+        setAvailableCourses(availableRes?.courses || []);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [user]);
 
   // Calculate dashboard stats
   const totalCourses = enrolledCourses.length;
   const averageProgress =
-    studentEnrollments.reduce(
-      (sum, enrollment) => sum + enrollment.progress_percentage,
+    enrolledCourses.reduce(
+      (sum, c) => sum + (c.enrollment?.progress_percentage ?? 0),
       0
-    ) / studentEnrollments.length || 0;
-  const completedChapters = studentEnrollments.reduce((sum, enrollment) => {
-    const course = enrolledCourses.find(c => c.id === enrollment.course_id);
-    return (
-      sum +
-      Math.floor(
-        (enrollment.progress_percentage / 100) * (course?.duration_weeks || 0)
-      )
-    );
+    ) / (enrolledCourses.length || 1);
+  const completedChapters = enrolledCourses.reduce((sum, c) => {
+    const progress = c.enrollment?.progress_percentage ?? 0;
+    return sum + Math.floor((progress / 100) * (c.duration_weeks || 0));
   }, 0);
 
   // Get upcoming assignments
@@ -141,13 +148,74 @@ export default function StudentDashboard() {
             Continue your learning journey.
           </p>
         </div>
-        <Button asChild className="bg-primary text-white hover:bg-primary-600">
-          <a href="/courses">
-            <BookOpen className="mr-2 h-4 w-4" />
-            Browse Courses
-          </a>
-        </Button>
+
       </div>
+
+      {/* Available O Levels Courses (Enroll) */}
+      <Card className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm" data-section="available-courses">
+        <CardHeader>
+          <CardTitle className="text-xl text-gray-900 dark:text-white">Available Cambridge O Levels Courses</CardTitle>
+          <CardDescription className="text-gray-600 dark:text-gray-300">Enroll into new courses.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {availableCourses.length === 0 ? (
+            <p className="text-sm text-gray-600 dark:text-gray-300">No available courses right now.</p>
+          ) : (
+            <div className="max-h-96 overflow-y-auto pr-2">
+              <div className="grid gap-4 md:grid-cols-2">
+                {availableCourses.map(course => (
+                  <Card key={course.id} className="border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                    <CardHeader className="pb-3">
+                      <div className="mb-2 flex items-center justify-between">
+                        <Badge variant="secondary" className="border-primary/20 bg-primary/10 text-xs text-primary-700 dark:text-primary-300">
+                          O Levels
+                        </Badge>
+                      </div>
+                      <CardTitle className="text-base leading-tight text-gray-900 dark:text-white">{course.title}</CardTitle>
+                      <CardDescription className="text-gray-600 dark:text-gray-300">{course.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3 pt-0">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="text-gray-700 dark:text-gray-300">Created: {new Date(course.created_at).toLocaleDateString()}</div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="font-semibold text-gray-900 dark:text-white">Course</div>
+                        <Button
+                          size="sm"
+                          disabled={loading || !user}
+                          onClick={async () => {
+                            if (!user) return;
+                            setLoading(true);
+                            try {
+                              const res = await fetch('/api/enrollments', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ studentId: user.id, courseId: course.id }),
+                              });
+                              if (res.ok) {
+                                const [enrolledRes, availableRes] = await Promise.all([
+                                  fetch(`/api/dashboard/courses?userId=${user.id}&role=student`).then(r => r.json()),
+                                  fetch(`/api/courses/available?studentId=${user.id}`).then(r => r.json()),
+                                ]);
+                                setEnrolledCourses(enrolledRes?.courses || []);
+                                setAvailableCourses(availableRes?.courses || []);
+                              }
+                            } finally {
+                              setLoading(false);
+                            }
+                          }}
+                        >
+                          Enroll
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Stats Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -160,7 +228,7 @@ export default function StudentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {totalCourses}
+              {loading ? '—' : totalCourses}
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400">
               Active courses
@@ -233,74 +301,72 @@ export default function StudentDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {studentEnrollments.length > 0 ? (
-              <div className="space-y-6">
-                {studentEnrollments.map(enrollment => {
-                  const course = enrolledCourses.find(
-                    c => c.id === enrollment.course_id
-                  );
-                  if (!course) return null;
-
-                  return (
-                    <div
-                      key={enrollment.id}
-                      className="space-y-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 p-4"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
-                            <BookOpen className="h-6 w-6 text-white" />
+            {enrolledCourses.length > 0 ? (
+              <div className="max-h-96 overflow-y-auto pr-2">
+                <div className="space-y-6">
+                  {enrolledCourses.map(course => {
+                    const progress = course.enrollment?.progress_percentage ?? 0;
+                    return (
+                      <div
+                        key={course.id}
+                        className="space-y-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 p-4"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
+                              <BookOpen className="h-6 w-6 text-white" />
+                            </div>
+                            <div>
+                              <h4 className="font-medium text-gray-900 dark:text-white">
+                                {course.title}
+                              </h4>
+                              <p className="text-sm text-gray-600 dark:text-gray-300">
+                                {course.subject}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <h4 className="font-medium text-gray-900 dark:text-white">
-                              {course.title}
-                            </h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-300">
-                              {course.subject}
-                            </p>
+                          <Badge
+                            variant="secondary"
+                            className="border-primary/20 bg-primary/10 text-primary-700 dark:text-primary-300"
+                          >
+                            {progress}%
+                          </Badge>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400">
+                              Progress
+                            </span>
+                            <span className="font-medium text-gray-900 dark:text-white">
+                              {progress}%
+                            </span>
                           </div>
+                          <Progress
+                            value={progress}
+                            className="h-2"
+                          />
                         </div>
-                        <Badge
-                          variant="secondary"
-                          className="border-primary/20 bg-primary/10 text-primary-700 dark:text-primary-300"
-                        >
-                          {enrollment.progress_percentage}%
-                        </Badge>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600 dark:text-gray-400">
-                            Progress
-                          </span>
-                          <span className="font-medium text-gray-900 dark:text-white">
-                            {enrollment.progress_percentage}%
-                          </span>
+                        <div className="flex space-x-2">
+                          <Button
+                            size="sm"
+                            className="flex-1 bg-primary text-white hover:bg-primary-600"
+                          >
+                            <Play className="mr-2 h-4 w-4" />
+                            Continue
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Course
+                          </Button>
                         </div>
-                        <Progress
-                          value={enrollment.progress_percentage}
-                          className="h-2"
-                        />
                       </div>
-                      <div className="flex space-x-2">
-                        <Button
-                          size="sm"
-                          className="flex-1 bg-primary text-white hover:bg-primary-600"
-                        >
-                          <Play className="mr-2 h-4 w-4" />
-                          Continue
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-                        >
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Course
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             ) : (
               <div className="py-12 text-center">
@@ -312,13 +378,15 @@ export default function StudentDashboard() {
                   Start your learning journey by enrolling in courses
                 </p>
                 <Button
-                  asChild
                   className="bg-primary text-white hover:bg-primary-600"
+                  onClick={() => {
+                    // Scroll to available courses section
+                    const availableSection = document.querySelector('[data-section="available-courses"]');
+                    availableSection?.scrollIntoView({ behavior: 'smooth' });
+                  }}
                 >
-                  <a href="/courses">
-                    <BookOpen className="mr-2 h-4 w-4" />
-                    Browse Courses
-                  </a>
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  Browse Available Courses
                 </Button>
               </div>
             )}
@@ -339,40 +407,42 @@ export default function StudentDashboard() {
             </CardHeader>
             <CardContent>
               {upcomingAssignments.length > 0 ? (
-                <div className="space-y-3">
-                  {upcomingAssignments.map(assignment => {
-                    const dueDate = new Date(assignment.due_date);
-                    const daysUntilDue = Math.ceil(
-                      (dueDate.getTime() - new Date().getTime()) /
-                        (1000 * 60 * 60 * 24)
-                    );
+                <div className="max-h-64 overflow-y-auto pr-2">
+                  <div className="space-y-3">
+                    {upcomingAssignments.map(assignment => {
+                      const dueDate = new Date(assignment.due_date);
+                      const daysUntilDue = Math.ceil(
+                        (dueDate.getTime() - new Date().getTime()) /
+                          (1000 * 60 * 60 * 24)
+                      );
 
-                    return (
-                      <div
-                        key={assignment.id}
-                        className="flex items-start space-x-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 p-3"
-                      >
-                        <div className="mt-1">
-                          <AlertCircle className="h-4 w-4 text-yellow-500" />
+                      return (
+                        <div
+                          key={assignment.id}
+                          className="flex items-start space-x-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 p-3"
+                        >
+                          <div className="mt-1">
+                            <AlertCircle className="h-4 w-4 text-yellow-500" />
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                              {assignment.title}
+                            </p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">
+                              Due in {daysUntilDue} day
+                              {daysUntilDue !== 1 ? 's' : ''}
+                            </p>
+                            <Badge
+                              variant="outline"
+                              className="border-primary/20 text-xs text-primary-700 dark:text-primary-300"
+                            >
+                              {assignment.total_points} points
+                            </Badge>
+                          </div>
                         </div>
-                        <div className="flex-1 space-y-1">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {assignment.title}
-                          </p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">
-                            Due in {daysUntilDue} day
-                            {daysUntilDue !== 1 ? 's' : ''}
-                          </p>
-                          <Badge
-                            variant="outline"
-                            className="border-primary/20 text-xs text-primary-700 dark:text-primary-300"
-                          >
-                            {assignment.total_points} points
-                          </Badge>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               ) : (
                 <div className="py-8 text-center">
@@ -396,25 +466,27 @@ export default function StudentDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {recentActivities.map(activity => (
-                  <div
-                    key={activity.id}
-                    className="flex items-start space-x-3 rounded-lg p-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
-                  >
-                    <div className="mt-1">{getStatusIcon(activity.status)}</div>
-                    <div className="flex-1 space-y-1">
-                      <p className="text-sm font-medium leading-none text-gray-900 dark:text-white">
-                        {activity.message}
-                      </p>
-                      <p
-                        className={`text-xs ${getStatusColor(activity.status)}`}
-                      >
-                        {activity.time}
-                      </p>
+              <div className="max-h-64 overflow-y-auto pr-2">
+                <div className="space-y-3">
+                  {recentActivities.map(activity => (
+                    <div
+                      key={activity.id}
+                      className="flex items-start space-x-3 rounded-lg p-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
+                    >
+                      <div className="mt-1">{getStatusIcon(activity.status)}</div>
+                      <div className="flex-1 space-y-1">
+                        <p className="text-sm font-medium leading-none text-gray-900 dark:text-white">
+                          {activity.message}
+                        </p>
+                        <p
+                          className={`text-xs ${getStatusColor(activity.status)}`}
+                        >
+                          {activity.time}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -13,6 +13,11 @@ export const teacherNavigation: NavigationItem[] = [
     badge: '6',
   },
   {
+    title: 'Browse Courses',
+    href: '/courses',
+    icon: 'Search',
+  },
+  {
     title: 'Students',
     href: '/dashboard/students',
     icon: 'Users',
@@ -119,6 +124,11 @@ export const studentNavigation: NavigationItem[] = [
     href: '/dashboard/courses',
     icon: 'BookOpen',
     badge: '3',
+  },
+  {
+    title: 'Browse Courses',
+    href: '/courses',
+    icon: 'Search',
   },
   {
     title: 'Learning',

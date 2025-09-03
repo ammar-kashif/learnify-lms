@@ -24,79 +24,33 @@ export async function GET(request: NextRequest) {
     let courses;
 
     if (role === 'teacher') {
-      // Get teacher's courses
+      // Get teacher's courses (schema has only teacher_id, course_id)
       const { data, error } = await supabase
         .from('teacher_courses')
         .select(
           `
-          *,
-          courses (
-            id,
-            title,
-            subject,
-            level,
-            description,
-            thumbnail_url,
-            duration_weeks,
-            price,
-            max_students,
-            current_students,
-            status,
-            created_at,
-            updated_at
-          )
+          courses (*)
         `
         )
         .eq('teacher_id', userId);
 
       if (error) throw error;
 
-      courses =
-        data?.map(tc => ({
-          ...tc.courses,
-          teacher_assignment: {
-            assigned_at: tc.assigned_at,
-            is_primary: tc.is_primary,
-          },
-        })) || [];
+      courses = (data || []).map(tc => tc.courses) || [];
     } else {
-      // Get student's enrolled courses
+      // Get student's enrolled courses (schema has only student_id, course_id)
       const { data, error } = await supabase
         .from('student_enrollments')
         .select(
           `
-          *,
-          courses (
-            id,
-            title,
-            subject,
-            level,
-            description,
-            thumbnail_url,
-            duration_weeks,
-            price,
-            max_students,
-            current_students,
-            status,
-            created_at,
-            updated_at
-          )
+          courses (*)
         `
         )
         .eq('student_id', userId);
 
       if (error) throw error;
 
-      courses =
-        data?.map(enrollment => ({
-          ...enrollment.courses,
-          enrollment: {
-            enrolled_at: enrollment.enrolled_at,
-            progress_percentage: enrollment.progress_percentage,
-            last_accessed: enrollment.last_accessed,
-            status: enrollment.status,
-          },
-        })) || [];
+      courses = (data || []).map(enrollment => enrollment.courses) || [];
     }
 
     return NextResponse.json({ courses });

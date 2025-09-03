@@ -57,6 +57,9 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'assignments'>('users');
   const [dataLoading, setDataLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userSearch, setUserSearch] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'student' | 'teacher' | 'superadmin'>('all');
+  const [courseSearch, setCourseSearch] = useState('');
   
   // Form states
   const [showAddUser, setShowAddUser] = useState(false);
@@ -483,6 +486,29 @@ export default function AdminDashboard() {
   const teachers = users.filter(u => u.role === 'teacher');
   const students = users.filter(u => u.role === 'student');
 
+  const filteredUsers = users
+    .filter(u => {
+      if (userRoleFilter === 'all') return true;
+      return u.role === userRoleFilter;
+    })
+    .filter(u => {
+      const q = userSearch.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        u.full_name.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q)
+      );
+    });
+
+  const filteredCourses = courses.filter(c => {
+    const q = courseSearch.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      c.title.toLowerCase().includes(q) ||
+      (c.description || '').toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
               <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
@@ -622,40 +648,67 @@ export default function AdminDashboard() {
         </div>
 
         {/* Tabs */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-          <div className="border-b border-gray-200 dark:border-gray-700">
-            <nav className="-mb-px flex space-x-8 px-6">
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
               {[
-                { id: 'users', label: 'User Management', icon: Users },
-                { id: 'courses', label: 'Course Management', icon: BookOpen },
-                { id: 'assignments', label: 'Teacher Assignments', icon: GraduationCap }
+                { id: 'users', label: 'Users', icon: Users },
+                { id: 'courses', label: 'Courses', icon: BookOpen },
+                { id: 'assignments', label: 'Assignments', icon: GraduationCap }
               ].map((tab) => (
-                <button
+                <Button
                   key={tab.id}
+                  variant={activeTab === (tab.id as any) ? 'default' : 'outline'}
+                  size="sm"
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
-                    activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400'
-                      : 'border-transparent text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600'
-                  }`}
+                  className={activeTab === (tab.id as any)
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200'}
                 >
-                  <tab.icon className="h-5 w-5 inline mr-2" />
+                  <tab.icon className="h-4 w-4 mr-2" />
                   {tab.label}
-                </button>
+                </Button>
               ))}
-            </nav>
-          </div>
+            </div>
+            <CardDescription className="mt-2 text-gray-600 dark:text-gray-400">
+              Manage users, courses, and teacher assignments.
+            </CardDescription>
+          </CardHeader>
 
-          <div className="p-6">
+          <CardContent className="pt-0">
             {/* Users Tab */}
             {activeTab === 'users' && (
               <div>
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white">User Management</h2>
-                  <Button onClick={() => setShowAddUser(true)}>
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Add User
-                  </Button>
+                  <div className="flex flex-1 gap-3 md:justify-end">
+                    <div className="w-full md:w-64">
+                      <Input
+                        placeholder="Search users..."
+                        value={userSearch}
+                        onChange={(e) => setUserSearch(e.target.value)}
+                        className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                      />
+                    </div>
+                    <Select
+                      value={userRoleFilter}
+                      onValueChange={(value: 'all' | 'student' | 'teacher' | 'superadmin') => setUserRoleFilter(value)}
+                    >
+                      <SelectTrigger className="w-36 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                        <SelectValue placeholder="Filter role" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-600">
+                        <SelectItem value="all">All roles</SelectItem>
+                        <SelectItem value="student">Student</SelectItem>
+                        <SelectItem value="teacher">Teacher</SelectItem>
+                        <SelectItem value="superadmin">Superadmin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button onClick={() => setShowAddUser(true)}>
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Add User
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -677,7 +730,7 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                      {users.map((user) => (
+                      {filteredUsers.map((user) => (
                         <tr key={user.id}>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div>
@@ -726,16 +779,26 @@ export default function AdminDashboard() {
             {/* Courses Tab */}
             {activeTab === 'courses' && (
               <div>
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Course Management</h2>
-                  <Button onClick={() => setShowAddCourse(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Course
-                  </Button>
+                  <div className="flex flex-1 gap-3 md:justify-end">
+                    <div className="w-full md:w-64">
+                      <Input
+                        placeholder="Search courses..."
+                        value={courseSearch}
+                        onChange={(e) => setCourseSearch(e.target.value)}
+                        className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                      />
+                    </div>
+                    <Button onClick={() => setShowAddCourse(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Course
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {courses.map((course) => (
+                  {filteredCourses.map((course) => (
                     <Card key={course.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-200 dark:border-gray-700">
                       <CardHeader>
                         <CardTitle className="text-lg text-gray-900 dark:text-white">{course.title}</CardTitle>
@@ -824,8 +887,8 @@ export default function AdminDashboard() {
                 </div>
               </div>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Add User Modal */}
