@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -97,13 +97,7 @@ export default function AdminDashboard() {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (userRole === 'superadmin') {
-      fetchData();
-    }
-  }, [userRole]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       console.log('🔄 Fetching admin dashboard data...');
       console.log('🔑 Current user ID:', user?.id);
@@ -180,7 +174,13 @@ export default function AdminDashboard() {
     } finally {
       setDataLoading(false);
     }
-  };
+  }, [user, userRole]);
+
+  useEffect(() => {
+    if (userRole === 'superadmin') {
+      fetchData();
+    }
+  }, [userRole, fetchData]);
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { PostgrestError } from '@supabase/postgrest-js';
 import { supabase } from '@/lib/supabase';
@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userRole, setUserRole] = useState<string | null>(null);
 
   // Function to fetch user role from profile
-  const fetchUserRole = async (userId: string) => {
+  const fetchUserRole = useCallback(async (userId: string) => {
     try {
       // Add timeout protection
       const timeoutPromise = new Promise((_, reject) => 
@@ -60,23 +60,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Return null to indicate we couldn't fetch the role
       return null;
     }
-  };
+  }, []);
 
   // Function to get role with fallback
-  const getRoleWithFallback = async (userId: string, userMetadata: any) => {
+  const getRoleWithFallback = useCallback(async (userId: string, userMetadata: any) => {
     try {
       const profileRole = await fetchUserRole(userId);
       if (profileRole) {
         return profileRole;
       }
-      // Fallback to metadata role
-      console.log('🔄 Using fallback role from metadata:', userMetadata?.role);
-      return userMetadata?.role || 'student';
     } catch (error) {
       console.error('Error getting role with fallback:', error);
       return null;
     }
-  };
+  }, [fetchUserRole]);
 
   useEffect(() => {
     // Get initial session
@@ -130,7 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [getRoleWithFallback]);
 
   const signIn = async (email: string, password: string) => {
     try {
