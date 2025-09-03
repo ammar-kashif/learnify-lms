@@ -24,7 +24,7 @@ interface Course {
 }
 
 export default function CoursesPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading, userRole } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,8 +52,36 @@ export default function CoursesPage() {
     fetchCourses();
   }, []);
 
+  // Debug auth state changes
+  useEffect(() => {
+    console.log('🔐 Auth state changed:', { 
+      authLoading, 
+      user: user ? { id: user.id, email: user.email } : null,
+      userRole 
+    });
+  }, [authLoading, user, userRole]);
+
   const handleEnroll = async (courseId: string) => {
+    // Debug logging for production
+    console.log('🔍 Enrollment attempt:', { 
+      authLoading, 
+      user: user ? { id: user.id, email: user.email } : null,
+      userRole,
+      courseId 
+    });
+
+    // Check if auth is still loading
+    if (authLoading) {
+      console.log('⏳ Auth still loading, showing wait message');
+      toast.info('Please wait...', {
+        description: 'Authentication is being verified.'
+      });
+      return;
+    }
+
+    // Check if user is not authenticated
     if (!user) {
+      console.log('❌ No user found, showing sign-in message');
       toast.error('Please sign in to register into the course', {
         description: 'You need to be logged in to enroll in courses.',
         action: {
@@ -63,6 +91,17 @@ export default function CoursesPage() {
       });
       return;
     }
+
+    // Check if user has a valid role (students can enroll)
+    if (userRole && userRole !== 'student') {
+      console.log('❌ User role not allowed for enrollment:', userRole);
+      toast.error('Access denied', {
+        description: 'Only students can enroll in courses.'
+      });
+      return;
+    }
+
+    console.log('✅ User authenticated, proceeding with enrollment');
 
     try {
       const response = await fetch('/api/enrollments', {
@@ -114,7 +153,14 @@ export default function CoursesPage() {
 
       {/* Courses Grid */}
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        {loading ? (
+        {authLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+              <p className="mt-2 text-gray-600">Verifying authentication...</p>
+            </div>
+          </div>
+        ) : loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
@@ -191,9 +237,10 @@ export default function CoursesPage() {
                     <Button 
                       className="w-full bg-primary text-white hover:bg-primary-600"
                       onClick={() => handleEnroll(course.id)}
+                      disabled={authLoading}
                     >
                       <BookOpen className="mr-2 h-4 w-4" />
-                      Enroll Now
+                      {authLoading ? 'Loading...' : 'Enroll Now'}
                     </Button>
                   </div>
                 </CardContent>

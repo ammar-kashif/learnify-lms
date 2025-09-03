@@ -31,7 +31,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { toast } from 'sonner';
 
 export default function StudentDashboard() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
   const [availableCourses, setAvailableCourses] = useState<any[]>([]);
@@ -183,8 +183,17 @@ export default function StudentDashboard() {
                         <div className="font-semibold text-gray-900 dark:text-white">Course</div>
                         <Button
                           size="sm"
-                          disabled={loading}
+                          disabled={loading || authLoading}
                           onClick={async () => {
+                            // Check if auth is still loading
+                            if (authLoading) {
+                              toast.info('Please wait...', {
+                                description: 'Authentication is being verified.'
+                              });
+                              return;
+                            }
+
+                            // Check if user is not authenticated
                             if (!user) {
                               toast.error('Please sign in to register into the course', {
                                 description: 'You need to be logged in to enroll in courses.',
@@ -229,7 +238,7 @@ export default function StudentDashboard() {
                             }
                           }}
                         >
-                          Enroll
+                          {authLoading ? 'Loading...' : 'Enroll'}
                         </Button>
                       </div>
                     </CardContent>
