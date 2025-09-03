@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { mockAssignments } from '@/data/mock-data';
 import { useAuth } from '@/contexts/auth-context';
+import { toast } from 'sonner';
 
 export default function StudentDashboard() {
   const { user } = useAuth();
@@ -182,9 +183,19 @@ export default function StudentDashboard() {
                         <div className="font-semibold text-gray-900 dark:text-white">Course</div>
                         <Button
                           size="sm"
-                          disabled={loading || !user}
+                          disabled={loading}
                           onClick={async () => {
-                            if (!user) return;
+                            if (!user) {
+                              toast.error('Please sign in to register into the course', {
+                                description: 'You need to be logged in to enroll in courses.',
+                                action: {
+                                  label: 'Sign In',
+                                  onClick: () => window.location.href = '/auth/signin'
+                                }
+                              });
+                              return;
+                            }
+                            
                             setLoading(true);
                             try {
                               const res = await fetch('/api/enrollments', {
@@ -193,13 +204,26 @@ export default function StudentDashboard() {
                                 body: JSON.stringify({ studentId: user.id, courseId: course.id }),
                               });
                               if (res.ok) {
+                                toast.success('Successfully enrolled in the course!', {
+                                  description: 'You can now access the course from your dashboard.'
+                                });
                                 const [enrolledRes, availableRes] = await Promise.all([
                                   fetch(`/api/dashboard/courses?userId=${user.id}&role=student`).then(r => r.json()),
                                   fetch(`/api/courses/available?studentId=${user.id}`).then(r => r.json()),
                                 ]);
                                 setEnrolledCourses(enrolledRes?.courses || []);
                                 setAvailableCourses(availableRes?.courses || []);
+                              } else {
+                                const data = await res.json();
+                                toast.error('Failed to enroll in course', {
+                                  description: data.error || 'Please try again later.'
+                                });
                               }
+                            } catch (error) {
+                              console.error('Error enrolling in course:', error);
+                              toast.error('Failed to enroll in course', {
+                                description: 'An unexpected error occurred. Please try again.'
+                              });
                             } finally {
                               setLoading(false);
                             }

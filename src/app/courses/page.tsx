@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { BookOpen, Clock, Users, Star, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Course {
   id: string;
@@ -53,7 +54,13 @@ export default function CoursesPage() {
 
   const handleEnroll = async (courseId: string) => {
     if (!user) {
-      alert('Please sign in to enroll in courses');
+      toast.error('Please sign in to register into the course', {
+        description: 'You need to be logged in to enroll in courses.',
+        action: {
+          label: 'Sign In',
+          onClick: () => window.location.href = '/auth/signin'
+        }
+      });
       return;
     }
 
@@ -70,16 +77,22 @@ export default function CoursesPage() {
       });
 
       if (response.ok) {
-        alert('Successfully enrolled in the course!');
+        toast.success('Successfully enrolled in the course!', {
+          description: 'You can now access the course from your dashboard.'
+        });
         // Optionally refresh the page or update state
         window.location.reload();
       } else {
         const data = await response.json();
-        alert(data.error || 'Failed to enroll in course');
+        toast.error('Failed to enroll in course', {
+          description: data.error || 'Please try again later.'
+        });
       }
     } catch (err) {
       console.error('Error enrolling in course:', err);
-      alert('Failed to enroll in course');
+      toast.error('Failed to enroll in course', {
+        description: 'An unexpected error occurred. Please try again.'
+      });
     }
   };
   return (
