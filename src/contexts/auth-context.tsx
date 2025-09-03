@@ -69,6 +69,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (profileRole) {
         return profileRole;
       }
+      // Fallback to metadata role
+      console.log('Using fallback role from metadata:', userMetadata?.role);
+      return userMetadata?.role || 'student';
     } catch (error) {
       console.error('Error getting role with fallback:', error);
       return null;
