@@ -31,7 +31,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { toast } from 'sonner';
 
 export default function StudentDashboard() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, session, loading: authLoading, userRole } = useAuth();
   const [loading, setLoading] = useState(false);
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
   const [availableCourses, setAvailableCourses] = useState<any[]>([]);
@@ -136,6 +136,22 @@ export default function StudentDashboard() {
     }
   };
 
+  // Show access denied if user is not a student
+  if (!authLoading && user && userRole && userRole !== 'student') {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Access Denied
+          </h1>
+          <p className="text-gray-600 dark:text-gray-300">
+            This dashboard is only available for students.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -204,13 +220,26 @@ export default function StudentDashboard() {
                               });
                               return;
                             }
+
+                            // Check if user has a valid student role (strict validation)
+                            if (!userRole || userRole !== 'student') {
+                              toast.error('Access denied', {
+                                description: userRole ? 
+                                  'Only students can enroll in courses.' : 
+                                  'Your account role is not verified. Please contact support.'
+                              });
+                              return;
+                            }
                             
                             setLoading(true);
                             try {
                               const res = await fetch('/api/enrollments', {
                                 method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ studentId: user.id, courseId: course.id }),
+                                headers: { 
+                                  'Content-Type': 'application/json',
+                                  Authorization: `Bearer ${session?.access_token || ''}`,
+                                },
+                                body: JSON.stringify({ courseId: course.id }),
                               });
                               if (res.ok) {
                                 toast.success('Successfully enrolled in the course!', {
@@ -224,9 +253,18 @@ export default function StudentDashboard() {
                                 setAvailableCourses(availableRes?.courses || []);
                               } else {
                                 const data = await res.json();
-                                toast.error('Failed to enroll in course', {
-                                  description: data.error || 'Please try again later.'
-                                });
+                                if (res.status === 401 && data?.action?.url) {
+                                  toast.error('You are not signed in. Please sign in to continue.', {
+                                    action: {
+                                      label: data.action.label || 'Sign In',
+                                      onClick: () => (window.location.href = data.action.url),
+                                    },
+                                  });
+                                } else {
+                                  toast.error('Failed to enroll in course', {
+                                    description: data.error || 'Please try again later.'
+                                  });
+                                }
                               }
                             } catch (error) {
                               console.error('Error enrolling in course:', error);
@@ -239,8 +277,8 @@ export default function StudentDashboard() {
                           }}
                         >
                           {authLoading ? 'Loading...' : 'Enroll'}
-                        </Button>
-                      </div>
+        </Button>
+      </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -336,69 +374,69 @@ export default function StudentDashboard() {
           <CardContent>
             {enrolledCourses.length > 0 ? (
               <div className="max-h-96 overflow-y-auto pr-2">
-                <div className="space-y-6">
+              <div className="space-y-6">
                   {enrolledCourses.map(course => {
                     const progress = course.enrollment?.progress_percentage ?? 0;
-                    return (
-                      <div
+                  return (
+                    <div
                         key={course.id}
                         className="space-y-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 p-4"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
-                              <BookOpen className="h-6 w-6 text-white" />
-                            </div>
-                            <div>
-                              <h4 className="font-medium text-gray-900 dark:text-white">
-                                {course.title}
-                              </h4>
-                              <p className="text-sm text-gray-600 dark:text-gray-300">
-                                {course.subject}
-                              </p>
-                            </div>
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
+                            <BookOpen className="h-6 w-6 text-white" />
                           </div>
-                          <Badge
-                            variant="secondary"
-                            className="border-primary/20 bg-primary/10 text-primary-700 dark:text-primary-300"
-                          >
-                            {progress}%
-                          </Badge>
+                          <div>
+                              <h4 className="font-medium text-gray-900 dark:text-white">
+                              {course.title}
+                            </h4>
+                              <p className="text-sm text-gray-600 dark:text-gray-300">
+                              {course.subject}
+                            </p>
+                          </div>
                         </div>
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
+                        <Badge
+                          variant="secondary"
+                            className="border-primary/20 bg-primary/10 text-primary-700 dark:text-primary-300"
+                        >
+                            {progress}%
+                        </Badge>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
                             <span className="text-gray-600 dark:text-gray-400">
-                              Progress
-                            </span>
+                            Progress
+                          </span>
                             <span className="font-medium text-gray-900 dark:text-white">
                               {progress}%
-                            </span>
-                          </div>
-                          <Progress
+                          </span>
+                        </div>
+                        <Progress
                             value={progress}
-                            className="h-2"
-                          />
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button
-                            size="sm"
-                            className="flex-1 bg-primary text-white hover:bg-primary-600"
-                          >
-                            <Play className="mr-2 h-4 w-4" />
-                            Continue
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Course
-                          </Button>
-                        </div>
+                          className="h-2"
+                        />
                       </div>
-                    );
-                  })}
+                      <div className="flex space-x-2">
+                        <Button
+                          size="sm"
+                          className="flex-1 bg-primary text-white hover:bg-primary-600"
+                        >
+                          <Play className="mr-2 h-4 w-4" />
+                          Continue
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                            className="flex-1 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Course
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
                 </div>
               </div>
             ) : (
@@ -418,7 +456,7 @@ export default function StudentDashboard() {
                     availableSection?.scrollIntoView({ behavior: 'smooth' });
                   }}
                 >
-                  <BookOpen className="mr-2 h-4 w-4" />
+                    <BookOpen className="mr-2 h-4 w-4" />
                   Browse Available Courses
                 </Button>
               </div>
@@ -441,40 +479,40 @@ export default function StudentDashboard() {
             <CardContent>
               {upcomingAssignments.length > 0 ? (
                 <div className="max-h-64 overflow-y-auto pr-2">
-                  <div className="space-y-3">
-                    {upcomingAssignments.map(assignment => {
-                      const dueDate = new Date(assignment.due_date);
-                      const daysUntilDue = Math.ceil(
-                        (dueDate.getTime() - new Date().getTime()) /
-                          (1000 * 60 * 60 * 24)
-                      );
+                <div className="space-y-3">
+                  {upcomingAssignments.map(assignment => {
+                    const dueDate = new Date(assignment.due_date);
+                    const daysUntilDue = Math.ceil(
+                      (dueDate.getTime() - new Date().getTime()) /
+                        (1000 * 60 * 60 * 24)
+                    );
 
-                      return (
-                        <div
-                          key={assignment.id}
+                    return (
+                      <div
+                        key={assignment.id}
                           className="flex items-start space-x-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 p-3"
-                        >
-                          <div className="mt-1">
-                            <AlertCircle className="h-4 w-4 text-yellow-500" />
-                          </div>
-                          <div className="flex-1 space-y-1">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">
-                              {assignment.title}
-                            </p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">
-                              Due in {daysUntilDue} day
-                              {daysUntilDue !== 1 ? 's' : ''}
-                            </p>
-                            <Badge
-                              variant="outline"
-                              className="border-primary/20 text-xs text-primary-700 dark:text-primary-300"
-                            >
-                              {assignment.total_points} points
-                            </Badge>
-                          </div>
+                      >
+                        <div className="mt-1">
+                          <AlertCircle className="h-4 w-4 text-yellow-500" />
                         </div>
-                      );
-                    })}
+                        <div className="flex-1 space-y-1">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {assignment.title}
+                          </p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">
+                            Due in {daysUntilDue} day
+                            {daysUntilDue !== 1 ? 's' : ''}
+                          </p>
+                          <Badge
+                            variant="outline"
+                              className="border-primary/20 text-xs text-primary-700 dark:text-primary-300"
+                          >
+                            {assignment.total_points} points
+                          </Badge>
+                        </div>
+                      </div>
+                    );
+                  })}
                   </div>
                 </div>
               ) : (
@@ -500,25 +538,25 @@ export default function StudentDashboard() {
             </CardHeader>
             <CardContent>
               <div className="max-h-64 overflow-y-auto pr-2">
-                <div className="space-y-3">
-                  {recentActivities.map(activity => (
-                    <div
-                      key={activity.id}
+              <div className="space-y-3">
+                {recentActivities.map(activity => (
+                  <div
+                    key={activity.id}
                       className="flex items-start space-x-3 rounded-lg p-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
-                    >
-                      <div className="mt-1">{getStatusIcon(activity.status)}</div>
-                      <div className="flex-1 space-y-1">
+                  >
+                    <div className="mt-1">{getStatusIcon(activity.status)}</div>
+                    <div className="flex-1 space-y-1">
                         <p className="text-sm font-medium leading-none text-gray-900 dark:text-white">
-                          {activity.message}
-                        </p>
-                        <p
-                          className={`text-xs ${getStatusColor(activity.status)}`}
-                        >
-                          {activity.time}
-                        </p>
-                      </div>
+                        {activity.message}
+                      </p>
+                      <p
+                        className={`text-xs ${getStatusColor(activity.status)}`}
+                      >
+                        {activity.time}
+                      </p>
                     </div>
-                  ))}
+                  </div>
+                ))}
                 </div>
               </div>
             </CardContent>

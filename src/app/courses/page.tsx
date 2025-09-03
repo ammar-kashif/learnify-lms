@@ -24,7 +24,7 @@ interface Course {
 }
 
 export default function CoursesPage() {
-  const { user, loading: authLoading, userRole } = useAuth();
+  const { user, session, loading: authLoading, userRole } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -92,14 +92,7 @@ export default function CoursesPage() {
       return;
     }
 
-    // Check if user has a valid role (students can enroll)
-    if (userRole && userRole !== 'student') {
-      console.log('❌ User role not allowed for enrollment:', userRole);
-      toast.error('Access denied', {
-        description: 'Only students can enroll in courses.'
-      });
-      return;
-    }
+    // Let the server enforce role authorization strictly
 
     console.log('✅ User authenticated, proceeding with enrollment');
 
@@ -108,9 +101,9 @@ export default function CoursesPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token || ''}`,
         },
         body: JSON.stringify({
-          studentId: user.id,
           courseId: courseId,
         }),
       });
@@ -123,9 +116,18 @@ export default function CoursesPage() {
         window.location.reload();
       } else {
         const data = await response.json();
-        toast.error('Failed to enroll in course', {
-          description: data.error || 'Please try again later.'
-        });
+        if (response.status === 401 && data?.action?.url) {
+          toast.error('You are not signed in. Please sign in to continue.', {
+            action: {
+              label: data.action.label || 'Sign In',
+              onClick: () => (window.location.href = data.action.url),
+            },
+          });
+        } else {
+          toast.error('Failed to enroll in course', {
+            description: data.error || 'Please try again later.'
+          });
+        }
       }
     } catch (err) {
       console.error('Error enrolling in course:', err);
@@ -147,6 +149,14 @@ export default function CoursesPage() {
               Discover a wide range of Cambridge O Levels courses designed to
               help you excel in your academic journey.
             </p>
+            {!authLoading && user && userRole && userRole !== 'student' && (
+              <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-yellow-800">
+                  <strong>Note:</strong> Course enrollment is only available for students. 
+                  Your current role is: <span className="font-semibold">{userRole}</span>
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -237,7 +247,7 @@ export default function CoursesPage() {
                     <Button 
                       className="w-full bg-primary text-white hover:bg-primary-600"
                       onClick={() => handleEnroll(course.id)}
-                      disabled={authLoading}
+                      disabled={authLoading || false}
                     >
                       <BookOpen className="mr-2 h-4 w-4" />
                       {authLoading ? 'Loading...' : 'Enroll Now'}

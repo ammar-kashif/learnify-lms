@@ -53,7 +53,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return null;
       }
       
-      console.log('🔍 Fetched user role from profile:', profile.role);
       return profile.role;
     } catch (error) {
       console.error('Error fetching user role:', error);
@@ -62,16 +61,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Function to get role with fallback
-  const getRoleWithFallback = useCallback(async (userId: string, userMetadata: any) => {
+  // Function to get role - NO FALLBACKS, only from database
+  const getRoleWithFallback = useCallback(async (userId: string, _userMetadata: any) => {
     try {
       const profileRole = await fetchUserRole(userId);
       if (profileRole) {
+        console.log('🔍 Fetched user role from profile:', profileRole);
         return profileRole;
       }
-      // Fallback to metadata role
-      console.log('Using fallback role from metadata:', userMetadata?.role);
-      return userMetadata?.role || 'student';
+      // NO FALLBACK - only return role if found in database
+      console.log('❌ No role found in database for user:', userId);
+      return null;
     } catch (error) {
       console.error('Error getting role with fallback:', error);
       return null;
@@ -101,7 +101,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error('Error getting initial session:', error);
-        // Set loading to false even if there's an error
         setLoading(false);
       } finally {
         setLoading(false);
