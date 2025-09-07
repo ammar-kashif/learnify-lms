@@ -29,30 +29,44 @@ import {
 import { mockAssignments } from '@/data/mock-data';
 import { useAuth } from '@/contexts/auth-context';
 import { toast } from 'sonner';
+import PaymentPopup from '@/components/payment-popup';
 
 export default function StudentDashboard() {
   const { user, session, loading: authLoading, userRole } = useAuth();
   const [loading, setLoading] = useState(false);
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
   const [availableCourses, setAvailableCourses] = useState<any[]>([]);
+  const [paymentPopupOpen, setPaymentPopupOpen] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentVerifications, setPaymentVerifications] = useState<any[]>([]);
 
   useEffect(() => {
     const load = async () => {
       if (!user) return;
       setLoading(true);
       try {
-        const [enrolledRes, availableRes] = await Promise.all([
+        const [enrolledRes, availableRes, paymentsRes] = await Promise.all([
           fetch(`/api/dashboard/courses?userId=${user.id}&role=student`).then(r => r.json()),
           fetch(`/api/courses/available?studentId=${user.id}`).then(r => r.json()),
+          fetch('/api/payment-verifications', {
+            headers: {
+              'Authorization': `Bearer ${session?.access_token || ''}`,
+            },
+          }).then(r => r.json()),
         ]);
         setEnrolledCourses(enrolledRes?.courses || []);
         setAvailableCourses(availableRes?.courses || []);
+        setPaymentVerifications(paymentsRes?.paymentVerifications || []);
+        
+        console.log('🔍 Available courses loaded:', availableRes?.courses);
+        console.log('🔍 Payment verifications loaded:', paymentsRes?.paymentVerifications);
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, [user]);
+  }, [user, session?.access_token]);
 
   // Calculate dashboard stats
   const totalCourses = enrolledCourses.length;
@@ -136,6 +150,87 @@ export default function StudentDashboard() {
     }
   };
 
+  const handleEnrollClick = (course: any) => {
+    // Check if auth is still loading
+    if (authLoading) {
+      toast.info('Please wait...', {
+        description: 'Authentication is being verified.'
+      });
+      return;
+    }
+
+    // Check if user is not authenticated
+    if (!user) {
+      toast.error('Please sign in to register into the course', {
+        description: 'You need to be logged in to enroll in courses.',
+        action: {
+          label: 'Sign In',
+          onClick: () => window.location.href = '/auth/signin'
+        }
+      });
+      return;
+    }
+
+    // Check if user has a valid student role (strict validation)
+    if (!userRole || userRole !== 'student') {
+      toast.error('Access denied', {
+        description: userRole ? 
+          'Only students can enroll in courses.' : 
+          'Your account role is not verified. Please contact support.'
+      });
+      return;
+    }
+
+    // Open payment popup
+    console.log('🔍 Opening payment popup for course:', course);
+    setSelectedCourse(course);
+    setPaymentPopupOpen(true);
+  };
+
+  const handleCompletePayment = async (courseId: string, amount: number) => {
+    setPaymentLoading(true);
+    try {
+      console.log('🔍 Submitting payment for course:', { courseId, amount });
+      const res = await fetch('/api/payment-verifications', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token || ''}`,
+        },
+        body: JSON.stringify({ courseId, amount }),
+      });
+
+      if (res.ok) {
+        toast.success('Payment verification request submitted!', {
+          description: 'Your payment request has been sent for verification. You will be enrolled once approved.'
+        });
+        setPaymentPopupOpen(false);
+        setSelectedCourse(null);
+      } else {
+        const data = await res.json();
+        if (res.status === 401 && data?.action?.url) {
+          toast.error('You are not signed in. Please sign in to continue.', {
+            action: {
+              label: data.action.label || 'Sign In',
+              onClick: () => (window.location.href = data.action.url),
+            },
+          });
+        } else {
+          toast.error('Failed to submit payment request', {
+            description: data.error || 'Please try again later.'
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error submitting payment request:', error);
+      toast.error('Failed to submit payment request', {
+        description: 'An unexpected error occurred. Please try again.'
+      });
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
   // Show access denied if user is not a student
   if (!authLoading && user && userRole && userRole !== 'student') {
     return (
@@ -200,84 +295,10 @@ export default function StudentDashboard() {
                         <Button
                           size="sm"
                           disabled={loading || authLoading}
-                          onClick={async () => {
-                            // Check if auth is still loading
-                            if (authLoading) {
-                              toast.info('Please wait...', {
-                                description: 'Authentication is being verified.'
-                              });
-                              return;
-                            }
-
-                            // Check if user is not authenticated
-                            if (!user) {
-                              toast.error('Please sign in to register into the course', {
-                                description: 'You need to be logged in to enroll in courses.',
-                                action: {
-                                  label: 'Sign In',
-                                  onClick: () => window.location.href = '/auth/signin'
-                                }
-                              });
-                              return;
-                            }
-
-                            // Check if user has a valid student role (strict validation)
-                            if (!userRole || userRole !== 'student') {
-                              toast.error('Access denied', {
-                                description: userRole ? 
-                                  'Only students can enroll in courses.' : 
-                                  'Your account role is not verified. Please contact support.'
-                              });
-                              return;
-                            }
-                            
-                            setLoading(true);
-                            try {
-                              const res = await fetch('/api/enrollments', {
-                                method: 'POST',
-                                headers: { 
-                                  'Content-Type': 'application/json',
-                                  Authorization: `Bearer ${session?.access_token || ''}`,
-                                },
-                                body: JSON.stringify({ courseId: course.id }),
-                              });
-                              if (res.ok) {
-                                toast.success('Successfully enrolled in the course!', {
-                                  description: 'You can now access the course from your dashboard.'
-                                });
-                                const [enrolledRes, availableRes] = await Promise.all([
-                                  fetch(`/api/dashboard/courses?userId=${user.id}&role=student`).then(r => r.json()),
-                                  fetch(`/api/courses/available?studentId=${user.id}`).then(r => r.json()),
-                                ]);
-                                setEnrolledCourses(enrolledRes?.courses || []);
-                                setAvailableCourses(availableRes?.courses || []);
-                              } else {
-                                const data = await res.json();
-                                if (res.status === 401 && data?.action?.url) {
-                                  toast.error('You are not signed in. Please sign in to continue.', {
-                                    action: {
-                                      label: data.action.label || 'Sign In',
-                                      onClick: () => (window.location.href = data.action.url),
-                                    },
-                                  });
-                                } else {
-                                  toast.error('Failed to enroll in course', {
-                                    description: data.error || 'Please try again later.'
-                                  });
-                                }
-                              }
-                            } catch (error) {
-                              console.error('Error enrolling in course:', error);
-                              toast.error('Failed to enroll in course', {
-                                description: 'An unexpected error occurred. Please try again.'
-                              });
-                            } finally {
-                              setLoading(false);
-                            }
-                          }}
+                          onClick={() => handleEnrollClick(course)}
                         >
                           {authLoading ? 'Loading...' : 'Enroll'}
-        </Button>
+                        </Button>
       </div>
                     </CardContent>
                   </Card>
@@ -287,6 +308,55 @@ export default function StudentDashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Payment Status */}
+      {paymentVerifications.length > 0 && (
+        <Card className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-xl text-gray-900 dark:text-white">Payment Status</CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-300">Track your payment verification requests.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {paymentVerifications.map((payment) => (
+                <div
+                  key={payment.id}
+                  className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 p-4"
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
+                      <BookOpen className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900 dark:text-white">
+                        {payment.courses?.title || 'Unknown Course'}
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                        Amount: PKR {payment.amount} • Requested: {new Date(payment.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge
+                    variant={
+                      payment.status === 'approved' ? 'default' :
+                      payment.status === 'rejected' ? 'destructive' : 'secondary'
+                    }
+                    className={
+                      payment.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                      payment.status === 'approved' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                      'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                    }
+                  >
+                    {payment.status === 'pending' && 'Pending Review'}
+                    {payment.status === 'approved' && 'Approved'}
+                    {payment.status === 'rejected' && 'Rejected'}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -373,7 +443,7 @@ export default function StudentDashboard() {
           </CardHeader>
           <CardContent>
             {enrolledCourses.length > 0 ? (
-              <div className="max-h-96 overflow-y-auto pr-2">
+              <div className="max-h-[600px] overflow-y-auto pr-2">
               <div className="space-y-6">
                   {enrolledCourses.map(course => {
                     const progress = course.enrollment?.progress_percentage ?? 0;
@@ -396,20 +466,11 @@ export default function StudentDashboard() {
                             </p>
                           </div>
                         </div>
-                        <Badge
-                          variant="secondary"
-                            className="border-primary/20 bg-primary/10 text-primary-700 dark:text-primary-300"
-                        >
-                            {progress}%
-                        </Badge>
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                             <span className="text-gray-600 dark:text-gray-400">
                             Progress
-                          </span>
-                            <span className="font-medium text-gray-900 dark:text-white">
-                              {progress}%
                           </span>
                         </div>
                         <Progress
@@ -607,6 +668,20 @@ export default function StudentDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Payment Popup */}
+      {selectedCourse && (
+        <PaymentPopup
+          isOpen={paymentPopupOpen}
+          onClose={() => {
+            setPaymentPopupOpen(false);
+            setSelectedCourse(null);
+          }}
+          course={selectedCourse}
+          onCompletePayment={handleCompletePayment}
+          loading={paymentLoading}
+        />
+      )}
     </div>
   );
 }

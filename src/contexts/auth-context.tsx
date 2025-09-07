@@ -35,9 +35,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Function to fetch user role from profile
   const fetchUserRole = useCallback(async (userId: string) => {
     try {
-      // Add timeout protection
+      console.log('🔍 Fetching user role for ID:', userId);
+      
+      // Add timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout')), 5000)
+        setTimeout(() => reject(new Error('Role fetch timeout')), 10000)
       );
       
       const fetchPromise = supabase
@@ -49,14 +51,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: profile, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
       
       if (error) {
-        console.error('Error fetching user role:', error);
+        console.error('❌ Error fetching user role:', error);
         return null;
       }
       
-      return profile.role;
+      console.log('✅ Successfully fetched user role:', profile?.role);
+      return profile?.role;
     } catch (error) {
-      console.error('Error fetching user role:', error);
-      // Return null to indicate we couldn't fetch the role
+      console.error('❌ Error fetching user role:', error);
       return null;
     }
   }, []);
@@ -82,26 +84,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Get initial session
     const getInitialSession = async () => {
       try {
-        // Add timeout protection
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout')), 10000)
-        );
-        
-        const sessionPromise = supabase.auth.getSession();
-        
-        const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+        const { data: { session } } = await supabase.auth.getSession();
         
         setSession(session);
         setUser(session?.user ?? null);
         
         // Fetch user role if we have a user
         if (session?.user) {
-          const role = await getRoleWithFallback(session.user.id, session.user.user_metadata);
+          const role = await fetchUserRole(session.user.id);
           setUserRole(role);
         }
       } catch (error) {
         console.error('Error getting initial session:', error);
-        setLoading(false);
       } finally {
         setLoading(false);
       }
@@ -119,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Fetch user role if we have a user
       if (session?.user) {
-        const role = await getRoleWithFallback(session.user.id, session.user.user_metadata);
+        const role = await fetchUserRole(session.user.id);
         setUserRole(role);
       } else {
         setUserRole(null);
@@ -129,94 +123,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [getRoleWithFallback]);
+  }, [fetchUserRole]);
 
   const signIn = async (email: string, password: string) => {
     try {
-      // Add timeout protection for the entire signin process
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Sign in timeout')), 15000)
-      );
-      
-      const signInPromise = (async () => {
-        const { error, data } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+      const { error, data } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-        if (error) {
-          console.error('Sign in error:', error);
-          return { error };
-        }
+      if (error) {
+        console.error('Sign in error:', error);
+        return { error };
+      }
 
-        // If signin is successful, check if user profile exists
-        if (data.user) {
-          console.log('🔍 Checking if user profile exists for:', data.user.id);
-          console.log('🔍 User metadata:', data.user.user_metadata);
+      // If signin is successful, check if user profile exists
+      if (data.user) {
+        console.log('🔍 Checking if user profile exists for:', data.user.id);
+        console.log('🔍 User metadata:', data.user.user_metadata);
 
-          try {
-            const { data: profile, error: profileError } = await supabase
-              .from('users')
-              .select('*')
-              .eq('id', data.user.id)
-              .single();
+        try {
+          const { data: profile, error: profileError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
 
-            if (profileError && profileError.code === 'PGRST116') {
-              // Profile doesn't exist, create it
-              console.log('📝 User profile not found, creating one...');
-
-              const userProfile = {
-                id: data.user.id,
-                email: data.user.email!,
-                full_name: data.user.user_metadata?.full_name || 'Unknown User',
-                role: data.user.user_metadata?.role || 'student',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              };
-
-              const { error: createError } = await supabase
-                .from('users')
-                .insert([userProfile]);
-
-              if (createError) {
-                console.error(
-                  '❌ Failed to create user profile during signin:',
-                  createError
-                );
-              } else {
-                console.log('✅ User profile created during signin');
-              }
-            } else if (profile) {
-              console.log('✅ User profile found:', profile);
-              console.log('🔍 Profile role:', profile.role);
-              
-              // Update user metadata with the role from the profile if it's different
-              if (profile.role !== data.user.user_metadata?.role) {
-                console.log('🔄 Updating user metadata role from profile:', profile.role);
-                try {
-                  const { error: updateError } = await supabase.auth.updateUser({
-                    data: { role: profile.role }
-                  });
-                  if (updateError) {
-                    console.error('❌ Failed to update user metadata:', updateError);
-                  } else {
-                    console.log('✅ User metadata updated with role:', profile.role);
-                  }
-                } catch (updateError) {
-                  console.error('❌ Error updating user metadata:', updateError);
+          if (profileError && profileError.code === 'PGRST116') {
+            // Profile doesn't exist - user needs to be created by superadmin
+            console.log('❌ User profile not found - user must be created by superadmin');
+            console.log('🔍 User ID:', data.user.id);
+            console.log('🔍 User email:', data.user.email);
+            
+            // Don't create profile automatically - return null role
+            return { error: null };
+          } else if (profile) {
+            console.log('✅ User profile found:', profile);
+            console.log('🔍 Profile role:', profile.role);
+            
+            // Update user metadata with the role from the profile if it's different
+            if (profile.role !== data.user.user_metadata?.role) {
+              console.log('🔄 Updating user metadata role from profile:', profile.role);
+              try {
+                const { error: updateError } = await supabase.auth.updateUser({
+                  data: { role: profile.role }
+                });
+                if (updateError) {
+                  console.error('❌ Failed to update user metadata:', updateError);
+                } else {
+                  console.log('✅ User metadata updated with role:', profile.role);
                 }
+              } catch (updateError) {
+                console.error('❌ Error updating user metadata:', updateError);
               }
             }
-          } catch (profileError) {
-            console.error('❌ Error checking/creating user profile:', profileError);
-            // Don't fail the signin if profile operations fail
           }
+        } catch (profileError) {
+          console.error('❌ Error checking/creating user profile:', profileError);
+          // Don't fail the signin if profile operations fail
         }
+      }
 
-        return { error: null };
-      })();
-
-      return await Promise.race([signInPromise, timeoutPromise]) as any;
+      return { error: null };
     } catch (error) {
       console.error('Sign in error:', error);
       return { error: error as AuthError };
@@ -251,79 +219,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log('✅ Auth signup successful, user data:', data);
 
-      // If signup is successful and we have a user, create the user profile
-      if (data.user) {
-        console.log('📝 Creating user profile for ID:', data.user.id);
-
-        // Wait a moment to ensure the auth session is established
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Get the current session to ensure we're authenticated
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        console.log('🔐 Current session:', session);
-
-        if (!session) {
-          console.warn(
-            '⚠️ No active session found, user may need to confirm email'
-          );
-          // For email confirmation flow, we'll create the profile later
-          return { error: null };
-        }
-
-        const userProfile = {
-          id: session.user.id, // Use session.user.id to match auth.uid() for RLS
-          email: data.user.email!,
-          full_name: fullName,
-          role: role,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-
-        console.log('📋 User profile data to insert:', userProfile);
-        console.log('🔑 Current auth.uid():', session.user.id);
-        console.log(
-          '🔍 Profile ID matches auth.uid():',
-          userProfile.id === session.user.id
-        );
-
-        console.log('🚀 Attempting to insert profile into users table...');
-        console.log('📊 Profile data:', JSON.stringify(userProfile, null, 2));
-
-        const { error: profileError, data: profileData } = await supabase
-          .from('users')
-          .insert([userProfile])
-          .select();
-
-        if (profileError) {
-          console.error('❌ Profile creation error:', profileError);
-          console.error('🔍 Error details:', {
-            message: profileError.message,
-            details: profileError.details,
-            hint: profileError.hint,
-            code: profileError.code,
-          });
-
-          // If it's an RLS policy violation, provide specific guidance
-          if (profileError.code === '42501') {
-            console.error(
-              '🚫 RLS Policy Violation - User might not be properly authenticated'
-            );
-            console.error(
-              '💡 Try signing in first, then the profile will be created automatically'
-            );
-          }
-
-          // Return the profile creation error so user knows something went wrong
-          return { error: profileError };
-        }
-
-        console.log('✅ User profile created successfully:', profileData);
-        console.log('📋 Inserted data:', JSON.stringify(profileData, null, 2));
-      } else {
-        console.warn('⚠️ No user data returned from signup');
-      }
+      // Note: User profile creation is now handled by superadmin only
+      // The auth user is created but profile must be created separately by superadmin
+      console.log('✅ Auth signup successful - profile must be created by superadmin');
 
       return { error: null };
     } catch (error) {

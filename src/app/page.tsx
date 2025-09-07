@@ -9,7 +9,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   BookOpen,
   Users,
@@ -232,12 +231,6 @@ export default function HomePage() {
       <section className="relative overflow-hidden px-4 py-20 text-center">
         <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-gray-100/50 dark:from-primary/10 dark:to-gray-800/50"></div>
         <div className="relative mx-auto max-w-4xl">
-          <Badge
-            variant="secondary"
-            className="mb-6 border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary-700"
-          >
-            🚀 Now with AI-powered learning
-          </Badge>
           <h1 className="mb-6 text-5xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-6xl lg:text-7xl">
             Welcome to{' '}
             <span className="bg-gradient-to-r from-primary via-primary-600 to-gray-600 bg-clip-text text-transparent">
@@ -293,12 +286,6 @@ export default function HomePage() {
       <section id="features" className="px-4 py-20">
         <div className="mx-auto max-w-6xl">
           <div className="mb-16 text-center">
-            <Badge
-              variant="outline"
-              className="mb-4 border-primary/20 px-4 py-2 text-sm font-medium text-primary-700"
-            >
-              ✨ Features
-            </Badge>
             <h2 className="mb-4 text-4xl font-bold text-gray-900 dark:text-gray-100">
               Why Choose Learnify LMS?
             </h2>

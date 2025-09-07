@@ -46,15 +46,18 @@ interface TeacherCourse {
   course_id: string;
 }
 
+// Note: Service role client should only be used in API routes, not client components
+
 export default function AdminDashboard() {
-  const { user, userRole, loading, signOut } = useAuth();
+  const { user, userRole, loading, signOut, session } = useAuth();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [teacherCourses, setTeacherCourses] = useState<TeacherCourse[]>([]);
-  const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'assignments'>('users');
+  const [paymentVerifications, setPaymentVerifications] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'assignments' | 'payments'>('users');
   const [dataLoading, setDataLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userSearch, setUserSearch] = useState('');
@@ -165,6 +168,27 @@ export default function AdminDashboard() {
       } else {
         console.log('✅ Assignments fetched successfully:', assignmentsData?.length || 0, 'assignments');
         setTeacherCourses(assignmentsData || []);
+      }
+
+      // Fetch payment verifications via API route
+      console.log('💳 Fetching payment verifications...');
+      try {
+        const paymentsResponse = await fetch('/api/payment-verifications', {
+          headers: {
+            'Authorization': `Bearer ${session?.access_token || ''}`,
+          },
+        });
+        
+        if (paymentsResponse.ok) {
+          const paymentsData = await paymentsResponse.json();
+          console.log('✅ Payment verifications fetched successfully:', paymentsData?.paymentVerifications?.length || 0, 'payments');
+          console.log('🔍 Payment data sample:', paymentsData?.paymentVerifications?.[0]);
+          setPaymentVerifications(paymentsData?.paymentVerifications || []);
+        } else {
+          console.error('❌ Error fetching payment verifications:', paymentsResponse.status);
+        }
+      } catch (error) {
+        console.error('❌ Error fetching payment verifications:', error);
       }
 
       console.log('✅ Admin dashboard data fetch completed');
@@ -419,6 +443,117 @@ export default function AdminDashboard() {
     }
   };
 
+  const handlePaymentAction = async (paymentId: string, status: 'approved' | 'rejected') => {
+    const action = status === 'approved' ? 'approve' : 'reject';
+    if (confirm(`Are you sure you want to ${action} this payment verification?`)) {
+      try {
+        console.log(`🔄 ${action.charAt(0).toUpperCase() + action.slice(1)}ing payment verification:`, paymentId);
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error('No authentication token found');
+        }
+
+        console.log('🔍 Making API request to:', `/api/payment-verifications/${paymentId}`);
+        
+        // Add timeout to prevent hanging
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        
+        const response = await fetch(`/api/payment-verifications/${paymentId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ status }),
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+
+        console.log('🔍 API response status:', response.status);
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('❌ API error response:', errorData);
+          throw new Error(errorData.error || `Failed to ${action} payment verification`);
+        }
+
+        const responseData = await response.json();
+        console.log('✅ API response data:', responseData);
+        console.log(`✅ Payment verification ${action}ed successfully`);
+        alert(`Payment verification ${action}ed successfully!`);
+        
+        // Refresh the data
+        console.log('🔄 Refreshing data...');
+        await fetchData();
+        console.log('✅ Data refreshed');
+      } catch (error) {
+        console.error(`💥 Error ${action}ing payment verification:`, error);
+        if (error instanceof Error && error.name === 'AbortError') {
+          alert(`Request timed out. Please try again.`);
+        } else {
+          alert(`Failed to ${action} payment verification: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+    }
+  };
+
+  const handleDeletePayment = async (paymentId: string) => {
+    if (confirm('Are you sure you want to delete this payment verification entry? This action cannot be undone.')) {
+      try {
+        console.log('🗑️ Deleting payment verification:', paymentId);
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error('No authentication token found');
+        }
+
+        console.log('🔍 Making DELETE request to:', `/api/payment-verifications/${paymentId}`);
+        
+        // Add timeout to prevent hanging
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        
+        const response = await fetch(`/api/payment-verifications/${paymentId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+
+        console.log('🔍 DELETE response status:', response.status);
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('❌ DELETE error response:', errorData);
+          throw new Error(errorData.error || 'Failed to delete payment verification');
+        }
+
+        const responseData = await response.json();
+        console.log('✅ DELETE response data:', responseData);
+        console.log('✅ Payment verification deleted successfully');
+        alert('Payment verification deleted successfully!');
+        
+        // Refresh the data
+        console.log('🔄 Refreshing data after delete...');
+        await fetchData();
+        console.log('✅ Data refreshed after delete');
+      } catch (error) {
+        console.error('💥 Error deleting payment verification:', error);
+        if (error instanceof Error && error.name === 'AbortError') {
+          alert(`Request timed out. Please try again.`);
+        } else {
+          alert(`Failed to delete payment verification: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+    }
+  };
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -654,7 +789,8 @@ export default function AdminDashboard() {
               {[
                 { id: 'users', label: 'Users', icon: Users },
                 { id: 'courses', label: 'Courses', icon: BookOpen },
-                { id: 'assignments', label: 'Assignments', icon: GraduationCap }
+                { id: 'assignments', label: 'Assignments', icon: GraduationCap },
+                { id: 'payments', label: 'Payment Verification', icon: Shield }
               ].map((tab) => (
                 <Button
                   key={tab.id}
@@ -882,6 +1018,127 @@ export default function AdminDashboard() {
                           </tr>
                         );
                       })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Payment Verification Tab */}
+            {activeTab === 'payments' && (
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Payment Verification</h2>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-700">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Student
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Course
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Amount
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Requested
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      {paymentVerifications.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                            No payment verification requests found
+                          </td>
+                        </tr>
+                      ) : (
+                        paymentVerifications.map((payment) => (
+                          <tr key={payment.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div>
+                                <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {payment.users?.full_name || 'Unknown'}
+                                </div>
+                                <div className="text-sm text-gray-500 dark:text-gray-400">
+                                  {payment.users?.email || 'Unknown'}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                {payment.courses?.title || 'Unknown'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                              PKR {payment.amount}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <Badge
+                                variant={
+                                  payment.status === 'approved' ? 'default' :
+                                  payment.status === 'rejected' ? 'destructive' : 'secondary'
+                                }
+                                className={
+                                  payment.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                                  payment.status === 'approved' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                                  'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                }
+                              >
+                                {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                              </Badge>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                              {new Date(payment.created_at).toLocaleDateString()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex items-center space-x-2">
+                                {payment.status === 'pending' && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handlePaymentAction(payment.id, 'approved')}
+                                      className="bg-green-600 hover:bg-green-700 text-white"
+                                    >
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => handlePaymentAction(payment.id, 'rejected')}
+                                    >
+                                      Reject
+                                    </Button>
+                                  </>
+                                )}
+                                {payment.status !== 'pending' && (
+                                  <span className="text-gray-400 dark:text-gray-500 mr-2">
+                                    {payment.verified_at ? new Date(payment.verified_at).toLocaleDateString() : 'N/A'}
+                                  </span>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleDeletePayment(payment.id)}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>

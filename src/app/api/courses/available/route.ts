@@ -26,7 +26,12 @@ export async function GET(request: NextRequest) {
       .from('courses')
       .select('*');
 
-    if (coursesError) throw coursesError;
+    if (coursesError) {
+      console.error('❌ Error fetching courses:', coursesError);
+      throw coursesError;
+    }
+
+    console.log('🔍 Available courses query result:', { allCourses, count: allCourses?.length || 0 });
 
     // Fetch student's enrollments
     const { data: enrollments, error: enrollError } = await supabase
@@ -38,6 +43,8 @@ export async function GET(request: NextRequest) {
 
     const enrolledSet = new Set((enrollments || []).map(e => e.course_id));
     const available = (allCourses || []).filter(c => !enrolledSet.has(c.id));
+
+    console.log('🔍 Final available courses:', { available, count: available.length });
 
     return NextResponse.json({ courses: available });
   } catch (error) {
