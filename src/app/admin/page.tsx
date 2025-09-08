@@ -49,7 +49,7 @@ interface TeacherCourse {
 // Note: Service role client should only be used in API routes, not client components
 
 export default function AdminDashboard() {
-  const { user, userRole, loading, signOut, session } = useAuth();
+  const { user, userRole, loading, signOut } = useAuth();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -102,96 +102,50 @@ export default function AdminDashboard() {
 
   const fetchData = useCallback(async () => {
     try {
-      console.log('🔄 Fetching admin dashboard data...');
-      console.log('🔑 Current user ID:', user?.id);
-      console.log('🔑 Current user role:', userRole);
-      
-      // Debug JWT token
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('🔐 Current session:', session);
-      console.log('🎫 JWT token:', session?.access_token);
-      console.log('📋 User metadata from session:', session?.user?.user_metadata);
-      
+      console.log('🔄 Fetching admin dashboard data (core: users, courses, assignments)...');
       setDataLoading(true);
       setError(null);
       
-      // Fetch users
-      console.log('👥 Fetching users...');
-      const { data: usersData, error: usersError } = await supabase
+      const usersPromise = supabase
         .from('users')
-        .select('*')
+        .select('id,email,full_name,role,created_at')
         .order('created_at', { ascending: false });
-      
-      console.log('📊 Raw users response:', { usersData, usersError });
-      console.log('🔍 Response status:', usersError ? 'ERROR' : 'SUCCESS');
-      console.log('🔍 Response data length:', usersData?.length || 0);
-      
-      if (usersError) {
-        console.error('❌ Error fetching users:', usersError);
-        console.error('❌ Error details:', {
-          message: usersError.message,
-          details: usersError.details,
-          hint: usersError.hint,
-          code: usersError.code
-        });
+
+      const coursesPromise = supabase
+        .from('courses')
+        .select('id,title,description,created_at,created_by')
+        .order('created_at', { ascending: false });
+
+      const assignmentsPromise = supabase
+        .from('teacher_courses')
+        .select('teacher_id,course_id');
+
+      const [usersRes, coursesRes, assignmentsRes] = await Promise.all([
+        usersPromise, coursesPromise, assignmentsPromise
+      ]);
+
+      if (usersRes.error) {
+        console.error('❌ Error fetching users:', usersRes.error);
         setError('Failed to fetch users.');
       } else {
-        console.log('✅ Users fetched successfully:', usersData?.length || 0, 'users');
-        console.log('👥 All users data:', usersData);
-        setUsers(usersData || []);
+        setUsers(usersRes.data || []);
       }
 
-      // Fetch courses
-      console.log('📚 Fetching courses...');
-      const { data: coursesData, error: coursesError } = await supabase
-        .from('courses')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (coursesError) {
-        console.error('❌ Error fetching courses:', coursesError);
-        setError('Failed to fetch courses.');
+      if (coursesRes.error) {
+        console.error('❌ Error fetching courses:', coursesRes.error);
+        setError((prev) => prev || 'Failed to fetch courses.');
       } else {
-        console.log('✅ Courses fetched successfully:', coursesData?.length || 0, 'courses');
-        setCourses(coursesData || []);
+        setCourses(coursesRes.data || []);
       }
 
-      // Fetch teacher-course assignments
-      console.log('🎓 Fetching teacher-course assignments...');
-      const { data: assignmentsData, error: assignmentsError } = await supabase
-        .from('teacher_courses')
-        .select('*');
-      
-      if (assignmentsError) {
-        console.error('❌ Error fetching assignments:', assignmentsError);
-        setError('Failed to fetch assignments.');
+      if (assignmentsRes.error) {
+        console.error('❌ Error fetching assignments:', assignmentsRes.error);
+        setError((prev) => prev || 'Failed to fetch assignments.');
       } else {
-        console.log('✅ Assignments fetched successfully:', assignmentsData?.length || 0, 'assignments');
-        setTeacherCourses(assignmentsData || []);
+        setTeacherCourses(assignmentsRes.data || []);
       }
 
-      // Fetch payment verifications via API route
-      console.log('💳 Fetching payment verifications...');
-      try {
-        const paymentsResponse = await fetch('/api/payment-verifications', {
-          headers: {
-            'Authorization': `Bearer ${session?.access_token || ''}`,
-          },
-        });
-        
-        if (paymentsResponse.ok) {
-          const paymentsData = await paymentsResponse.json();
-          console.log('✅ Payment verifications fetched successfully:', paymentsData?.paymentVerifications?.length || 0, 'payments');
-          console.log('🔍 Payment data sample:', paymentsData?.paymentVerifications?.[0]);
-          setPaymentVerifications(paymentsData?.paymentVerifications || []);
-        } else {
-          console.error('❌ Error fetching payment verifications:', paymentsResponse.status);
-        }
-      } catch (error) {
-        console.error('❌ Error fetching payment verifications:', error);
-      }
-
-      console.log('✅ Admin dashboard data fetch completed');
+      console.log('✅ Core admin data fetch completed');
     } catch (error) {
       console.error('💥 Unexpected error fetching admin data:', error);
       setError('An unexpected error occurred.');
@@ -200,11 +154,38 @@ export default function AdminDashboard() {
     }
   }, [user, userRole]);
 
+  const fetchPayments = useCallback(async () => {
+    try {
+      console.log('💳 Fetching payment verifications (on-demand)...');
+      const { data: { session } } = await supabase.auth.getSession();
+      const paymentsResponse = await fetch('/api/payment-verifications', {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token || ''}`,
+        },
+      });
+      if (paymentsResponse.ok) {
+        const paymentsData = await paymentsResponse.json();
+        setPaymentVerifications(paymentsData?.paymentVerifications || []);
+      } else {
+        console.error('❌ Error fetching payment verifications:', paymentsResponse.status);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching payment verifications:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (userRole === 'superadmin') {
       fetchData();
     }
   }, [userRole, fetchData]);
+
+  // Lazy-load payments only when tab is opened and not already loaded
+  useEffect(() => {
+    if (activeTab === 'payments' && paymentVerifications.length === 0) {
+      fetchPayments();
+    }
+  }, [activeTab, paymentVerifications.length, fetchPayments]);
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();

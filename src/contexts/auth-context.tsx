@@ -63,22 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Function to get role - NO FALLBACKS, only from database
-  const getRoleWithFallback = useCallback(async (userId: string, _userMetadata: any) => {
-    try {
-      const profileRole = await fetchUserRole(userId);
-      if (profileRole) {
-        console.log('🔍 Fetched user role from profile:', profileRole);
-        return profileRole;
-      }
-      // NO FALLBACK - only return role if found in database
-      console.log('❌ No role found in database for user:', userId);
-      return null;
-    } catch (error) {
-      console.error('Error getting role with fallback:', error);
-      return null;
-    }
-  }, [fetchUserRole]);
+  // Removed unused getRoleWithFallback to satisfy linter
 
   useEffect(() => {
     // Get initial session

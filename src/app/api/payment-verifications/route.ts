@@ -264,13 +264,13 @@ export async function GET(request: NextRequest) {
       const studentIds = Array.from(new Set(paymentVerifications.map(p => p.student_id)));
 
       // Fetch courses
-      const { data: courses, error: coursesError } = await supabaseAdmin
+      const { data: courses } = await supabaseAdmin
         .from('courses')
         .select('id, title, description')
         .in('id', courseIds);
 
       // Fetch users
-      const { data: users, error: usersError } = await supabaseAdmin
+      const { data: users } = await supabaseAdmin
         .from('users')
         .select('id, email, full_name')
         .in('id', studentIds);
