@@ -90,13 +90,13 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-white to-primary-50 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-950 dark:to-black p-4">
       <div className="w-full max-w-md">
         {/* Back to home link */}
         <div className="mb-6">
           <Link
             href="/"
-            className="inline-flex items-center text-charcoal-600 transition-colors hover:text-charcoal-800"
+            className="inline-flex items-center text-charcoal-600 dark:text-gray-300 transition-colors hover:text-charcoal-800 dark:hover:text-white"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Home
@@ -112,35 +112,35 @@ export default function SignUpPage() {
               className="h-12 w-12"
             />
           </div>
-          <h1 className="text-2xl font-bold text-charcoal-900">
+          <h1 className="text-2xl font-bold text-charcoal-900 dark:text-white">
             Create your account
           </h1>
-          <p className="mt-2 text-charcoal-600">
+          <p className="mt-2 text-charcoal-600 dark:text-gray-400">
             Join Learnify and start your learning journey
           </p>
         </div>
 
-        <Card className="border-charcoal-200 shadow-lg">
+        <Card className="border-charcoal-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg">
           <CardHeader className="text-center">
-            <CardTitle className="text-xl text-charcoal-900">Sign Up</CardTitle>
-            <CardDescription className="text-charcoal-600">
+            <CardTitle className="text-xl text-charcoal-900 dark:text-white">Sign Up</CardTitle>
+            <CardDescription className="text-charcoal-600 dark:text-gray-400">
               Fill in your details to create your account
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="rounded-md border border-red-200 bg-red-50 p-3">
-                  <p className="text-sm text-red-600">{error}</p>
+                <div className="rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 p-3">
+                  <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="fullName" className="text-charcoal-700">
+                <Label htmlFor="fullName" className="text-charcoal-700 dark:text-gray-300">
                   Full Name
                 </Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-charcoal-400" />
+                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-charcoal-400 dark:text-gray-400" />
                   <Input
                     id="fullName"
                     type="text"
@@ -149,55 +149,55 @@ export default function SignUpPage() {
                     onChange={e =>
                       handleInputChange('fullName', e.target.value)
                     }
-                    className="border-charcoal-300 pl-10 focus:border-primary focus:ring-primary"
+                    className="border-charcoal-300 dark:border-gray-600 pl-10 focus:border-primary focus:ring-primary bg-white dark:bg-gray-800 text-charcoal-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-400"
                     required
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-charcoal-700">
+                <Label htmlFor="email" className="text-charcoal-700 dark:text-gray-300">
                   Email
                 </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-charcoal-400" />
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-charcoal-400 dark:text-gray-400" />
                   <Input
                     id="email"
                     type="email"
                     placeholder="Enter your email"
                     value={formData.email}
                     onChange={e => handleInputChange('email', e.target.value)}
-                    className="border-charcoal-300 pl-10 focus:border-primary focus:ring-primary"
+                    className="border-charcoal-300 dark:border-gray-600 pl-10 focus:border-primary focus:ring-primary bg-white dark:bg-gray-800 text-charcoal-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-400"
                     required
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="role" className="text-charcoal-700">
+                <Label htmlFor="role" className="text-charcoal-700 dark:text-gray-300">
                   Role
                 </Label>
                 <div className="relative">
-                  <BookOpen className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-charcoal-400" />
+                  <BookOpen className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-charcoal-400 dark:text-gray-400" />
                   <Select
                     value={formData.role}
                     onValueChange={(value: 'student' | 'teacher') =>
                       handleInputChange('role', value)
                     }
                   >
-                    <SelectTrigger className="border-charcoal-300 bg-white pl-10 transition-colors hover:border-charcoal-400 hover:bg-charcoal-50 focus:border-primary focus:ring-primary">
+                    <SelectTrigger className="border-charcoal-300 dark:border-gray-600 bg-white dark:bg-gray-800 pl-10 transition-colors hover:border-charcoal-400 dark:hover:border-gray-500 hover:bg-charcoal-50 dark:hover:bg-gray-700 focus:border-primary focus:ring-primary text-charcoal-900 dark:text-gray-100">
                       <SelectValue placeholder="Select your role" />
                     </SelectTrigger>
-                    <SelectContent className="border-charcoal-200 bg-white">
+                    <SelectContent className="border-charcoal-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-charcoal-900 dark:text-gray-100">
                       <SelectItem
                         value="student"
-                        className="cursor-pointer text-charcoal-900 transition-colors hover:bg-primary/10 hover:text-primary"
+                        className="cursor-pointer text-charcoal-900 dark:text-gray-100 transition-colors hover:bg-primary/10 dark:hover:bg-primary/20 hover:text-primary"
                       >
                         Student
                       </SelectItem>
                       <SelectItem
                         value="teacher"
-                        className="cursor-pointer text-charcoal-900 transition-colors hover:bg-primary/10 hover:text-primary"
+                        className="cursor-pointer text-charcoal-900 dark:text-gray-100 transition-colors hover:bg-primary/10 dark:hover:bg-primary/20 hover:text-primary"
                       >
                         Teacher
                       </SelectItem>
@@ -207,11 +207,11 @@ export default function SignUpPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-charcoal-700">
+                <Label htmlFor="password" className="text-charcoal-700 dark:text-gray-300">
                   Password
                 </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-charcoal-400" />
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-charcoal-400 dark:text-gray-400" />
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
@@ -220,14 +220,14 @@ export default function SignUpPage() {
                     onChange={e =>
                       handleInputChange('password', e.target.value)
                     }
-                    className="border-charcoal-300 pl-10 pr-10 focus:border-primary focus:ring-primary"
+                    className="border-charcoal-300 dark:border-gray-600 pl-10 pr-10 focus:border-primary focus:ring-primary bg-white dark:bg-gray-800 text-charcoal-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-400"
                     required
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3 text-charcoal-400 hover:text-charcoal-600"
+                    className="absolute right-0 top-0 h-full px-3 text-charcoal-400 dark:text-gray-400 hover:text-charcoal-600 dark:hover:text-gray-200"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
@@ -240,11 +240,11 @@ export default function SignUpPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-charcoal-700">
+                <Label htmlFor="confirmPassword" className="text-charcoal-700 dark:text-gray-300">
                   Confirm Password
                 </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-charcoal-400" />
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-charcoal-400 dark:text-gray-400" />
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
@@ -253,14 +253,14 @@ export default function SignUpPage() {
                     onChange={e =>
                       handleInputChange('confirmPassword', e.target.value)
                     }
-                    className="border-charcoal-300 pl-10 pr-10 focus:border-primary focus:ring-primary"
+                    className="border-charcoal-300 dark:border-gray-600 pl-10 pr-10 focus:border-primary focus:ring-primary bg-white dark:bg-gray-800 text-charcoal-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-400"
                     required
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3 text-charcoal-400 hover:text-charcoal-600"
+                    className="absolute right-0 top-0 h-full px-3 text-charcoal-400 dark:text-gray-400 hover:text-charcoal-600 dark:hover:text-gray-200"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
                     {showConfirmPassword ? (
@@ -282,7 +282,7 @@ export default function SignUpPage() {
             </form>
 
             <div className="mt-6 text-center">
-              <p className="text-sm text-charcoal-600">
+              <p className="text-sm text-charcoal-600 dark:text-gray-400">
                 Already have an account?{' '}
                 <Link
                   href="/auth/signin"
