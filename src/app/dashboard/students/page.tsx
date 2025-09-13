@@ -4,15 +4,12 @@ import { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Users,
   Mail,
-  Calendar,
   ArrowLeft,
   Loader2,
   Search,
@@ -33,7 +30,7 @@ interface Student {
 }
 
 export default function TeacherStudentsPage() {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,7 +97,7 @@ export default function TeacherStudentsPage() {
                 Manage and track your student progress
               </p>
             </div>
-            <Link href="/dashboard">
+            <Link href={userRole === 'teacher' ? '/dashboard/courses' : '/dashboard'}>
               <Button 
                 variant="outline" 
                 size="sm"
@@ -177,7 +174,7 @@ export default function TeacherStudentsPage() {
           </Card>
         ) : filteredStudents.length > 0 ? (
           <div className="grid gap-6">
-            {filteredStudents.map((student, index) => (
+            {filteredStudents.map((student) => (
               <Card
                 key={student.id}
                 className="group bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200 dark:border-slate-700 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
