@@ -146,6 +146,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.log('✅ User profile found:', profile);
             console.log('🔍 Profile role:', profile.role);
             
+            // Set the user role immediately
+            setUserRole(profile.role);
+            
             // Update user metadata with the role from the profile if it's different
             if (profile.role !== data.user.user_metadata?.role) {
               console.log('🔄 Updating user metadata role from profile:', profile.role);
@@ -185,28 +188,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('🚀 Starting signup process for:', email);
 
-      // Sign up the user
-      const { error: signUpError, data } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-            role: role,
-          },
+      // Use our server-side API endpoint instead of client-side signup
+      console.log('🔐 Creating user via server API...');
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          email: email,
+          password: password,
+          fullName: fullName,
+          role: role
+        })
       });
 
-      if (signUpError) {
-        console.error('❌ Sign up error:', signUpError);
-        return { error: signUpError };
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error('❌ User creation failed:', result.error);
+        return { error: { message: result.error } as AuthError };
       }
 
-      console.log('✅ Auth signup successful, user data:', data);
-
-      // Note: User profile creation is now handled by superadmin only
-      // The auth user is created but profile must be created separately by superadmin
-      console.log('✅ Auth signup successful - profile must be created by superadmin');
+      console.log('✅ User created successfully:', result.user);
+      
+      // Set the user role immediately
+      setUserRole(role);
 
       return { error: null };
     } catch (error) {

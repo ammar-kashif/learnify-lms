@@ -21,7 +21,12 @@ import {
   BarChart3,
   LogOut,
   Sun,
-  Moon
+  Moon,
+  Menu,
+  Home,
+  CreditCard,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 
@@ -53,6 +58,7 @@ export default function AdminDashboard() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [teacherCourses, setTeacherCourses] = useState<TeacherCourse[]>([]);
@@ -591,14 +597,6 @@ export default function AdminDashboard() {
     }
   };
 
-  if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
-  }
-
-  if (!user || userRole !== 'superadmin') {
-    return <div className="flex items-center justify-center min-h-screen">Access Denied</div>;
-  }
-
   const teachers = users.filter(u => u.role === 'teacher');
   const students = users.filter(u => u.role === 'student');
 
@@ -625,176 +623,270 @@ export default function AdminDashboard() {
     );
   });
 
+  const navigationItems = [
+    { id: 'users', label: 'Users', icon: Users, count: users.length },
+    { id: 'courses', label: 'Courses', icon: BookOpen, count: courses.length },
+    { id: 'assignments', label: 'Assignments', icon: GraduationCap, count: teacherCourses.length },
+    { id: 'payments', label: 'Payments', icon: CreditCard, count: paymentVerifications.length },
+  ];
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
+  if (!user || userRole !== 'superadmin') {
+    return <div className="flex items-center justify-center min-h-screen">Access Denied</div>;
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-              <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
-              <Shield className="h-8 w-8 text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Superadmin Dashboard</h1>
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+          onKeyDown={(e) => e.key === 'Escape' && setSidebarOpen(false)}
+          role="button"
+          tabIndex={0}
+          aria-label="Close sidebar"
+        />
+      )}
+      
+      {/* Sidebar */}
+      <div className={`${sidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col fixed lg:relative h-full z-50 ${!sidebarOpen ? 'lg:w-16' : 'lg:w-64'}`}>
+        {/* Sidebar Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          {sidebarOpen && (
+            <div className="flex items-center space-x-2">
+              <Shield className="h-8 w-8 text-orange-600" />
+              <span className="text-xl font-bold text-gray-900 dark:text-white">Admin</span>
             </div>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
+            {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </Button>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-2">
+          {navigationItems.map((item) => (
+            <Button
+              key={item.id}
+              variant={activeTab === item.id ? 'default' : 'ghost'}
+              className={`w-full justify-start ${activeTab === item.id 
+                ? 'bg-orange-600 text-white hover:bg-orange-700' 
+                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+              onClick={() => setActiveTab(item.id as any)}
+            >
+              <item.icon className="h-4 w-4 mr-3" />
+              {sidebarOpen && (
+                <div className="flex items-center justify-between w-full">
+                  <span>{item.label}</span>
+                  <Badge variant="secondary" className="ml-2 text-xs bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                    {item.count}
+                  </Badge>
+                </div>
+              )}
+            </Button>
+          ))}
+        </nav>
+
+        {/* Sidebar Footer */}
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            onClick={() => router.push('/dashboard')}
+          >
+            <Home className="h-4 w-4 mr-3" />
+            {sidebarOpen && <span>Dashboard</span>}
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            onClick={toggleTheme}
+            disabled={!mounted}
+          >
+            {mounted && theme === 'dark' ? <Sun className="h-4 w-4 mr-3" /> : <Moon className="h-4 w-4 mr-3" />}
+            {sidebarOpen && <span>Theme</span>}
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+            onClick={handleSignOut}
+          >
+            <LogOut className="h-4 w-4 mr-3" />
+            {sidebarOpen && <span>Sign Out</span>}
+          </Button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Header */}
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                {user.user_metadata?.full_name || 'Superadmin'}
+              {/* Mobile menu button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="lg:hidden p-2"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {activeTab === 'users' && 'User Management'}
+                  {activeTab === 'courses' && 'Course Management'}
+                  {activeTab === 'assignments' && 'Teacher Assignments'}
+                  {activeTab === 'payments' && 'Payment Verification'}
+                </h1>
+                <p className="text-gray-600 dark:text-gray-300">
+                  Welcome back, {user?.user_metadata?.full_name || user?.email}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                {user?.user_metadata?.full_name || 'Superadmin'}
               </Badge>
-              <Button 
-                variant="outline" 
-                onClick={toggleTheme}
-                size="sm"
-                disabled={!mounted}
-                className="bg-white border-gray-300 text-gray-900 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700"
-              >
-                {mounted && theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={handleSignOut}
-                size="sm"
-                className="bg-white border-gray-300 text-gray-900 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700"
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Sign Out
-              </Button>
               <Button 
                 variant="outline" 
                 onClick={fetchData}
                 disabled={dataLoading}
-                className="flex items-center space-x-2 bg-white border-gray-300 text-gray-900 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700"
+                size="sm"
+                className="border-gray-300 dark:border-gray-600"
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
                 Refresh
               </Button>
-
-              <Button variant="outline" onClick={() => router.push('/dashboard')} className="bg-white border-gray-300 text-gray-900 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700">
-                Back to Dashboard
-              </Button>
             </div>
           </div>
         </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+          {/* Error Display */}
+          {error && (
+            <div className="rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+                </div>
+                <div className="ml-auto pl-3">
+                  <button
+                    onClick={() => setError(null)}
+                    className="inline-flex rounded-md p-1.5 text-red-500 hover:bg-red-100 dark:hover:bg-red-800"
+                  >
+                    <span className="sr-only">Dismiss</span>
+                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Loading Indicator */}
+          {dataLoading && (
+            <div className="rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 p-4">
+              <div className="flex items-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-3"></div>
+                <p className="text-sm text-blue-800 dark:text-blue-200">Loading data...</p>
+              </div>
+            </div>
+          )}
+
+          {/* Stats Cards */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="border-0 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-800 dark:to-gray-700 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-blue-600 dark:text-blue-400">
+              Total Users
+            </CardTitle>
+            <Users className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-900 dark:text-white">
+              {users.length}
+            </div>
+            <p className="text-xs text-blue-600 dark:text-blue-400">
+              {students.length} students, {teachers.length} teachers
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 bg-gradient-to-br from-green-50 to-green-100 dark:from-gray-800 dark:to-gray-700 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-green-600 dark:text-green-400">
+              Total Courses
+            </CardTitle>
+            <BookOpen className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-900 dark:text-white">
+              {courses.length}
+            </div>
+            <p className="text-xs text-green-600 dark:text-green-400">
+              Active courses
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-gray-800 dark:to-gray-700 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-purple-600 dark:text-purple-400">
+              Assignments
+            </CardTitle>
+            <GraduationCap className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-900 dark:text-white">
+              {teacherCourses.length}
+            </div>
+            <p className="text-xs text-purple-600 dark:text-purple-400">
+              Teacher-course pairs
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-gray-800 dark:to-gray-700 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">
+              System Status
+            </CardTitle>
+            <BarChart3 className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-900 dark:text-white">
+              Active
+            </div>
+            <p className="text-xs text-orange-600 dark:text-orange-400">
+              All systems operational
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Error Display */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-red-800">{error}</p>
-              </div>
-              <div className="ml-auto pl-3">
-                <button
-                  onClick={() => setError(null)}
-                  className="inline-flex bg-red-50 rounded-md p-1.5 text-red-500 hover:bg-red-100"
-                >
-                  <span className="sr-only">Dismiss</span>
-                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Loading Indicator */}
-        {dataLoading && (
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-            <div className="flex items-center">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-3"></div>
-              <p className="text-sm text-blue-800">Loading data...</p>
-            </div>
-          </div>
-        )}
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-200 dark:border-gray-700">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{users.length}</div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
-                {students.length} students, {teachers.length} teachers
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-200 dark:border-gray-700">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">Total Courses</CardTitle>
-              <BookOpen className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{courses.length}</div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Active courses</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-200 dark:border-gray-700">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">Assignments</CardTitle>
-              <GraduationCap className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{teacherCourses.length}</div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Teacher-course pairs</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-200 dark:border-gray-700">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">System Status</CardTitle>
-              <BarChart3 className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">Active</div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">All systems operational</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Tabs */}
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              {[
-                { id: 'users', label: 'Users', icon: Users },
-                { id: 'courses', label: 'Courses', icon: BookOpen },
-                { id: 'assignments', label: 'Assignments', icon: GraduationCap },
-                { id: 'payments', label: 'Payment Verification', icon: Shield }
-              ].map((tab) => (
-                <Button
-                  key={tab.id}
-                  variant={activeTab === (tab.id as any) ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={activeTab === (tab.id as any)
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200'}
-                >
-                  <tab.icon className="h-4 w-4 mr-2" />
-                  {tab.label}
-                </Button>
-              ))}
-            </div>
-            <CardDescription className="mt-2 text-gray-600 dark:text-gray-400">
-              Manage users, courses, and teacher assignments.
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent className="pt-0">
-            {/* Users Tab */}
-            {activeTab === 'users' && (
+          {/* Content based on active tab */}
+          {/* Users Tab */}
+          {activeTab === 'users' && (
               <div>
                 <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white">User Management</h2>
@@ -1125,20 +1217,20 @@ export default function AdminDashboard() {
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Add User Modal */}
+          </div>
+        </div>
+
+        {/* Add User Modal */}
       {showAddUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-medium mb-4 text-gray-900">Add New User</h3>
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-sm text-blue-800">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md border border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">Add New User</h3>
+            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
                 <strong>What happens when you create a user:</strong>
               </p>
-              <ul className="text-xs text-blue-700 mt-1 list-disc list-inside space-y-1">
+              <ul className="text-xs text-blue-700 dark:text-blue-300 mt-1 list-disc list-inside space-y-1">
                 <li>User account is created in the authentication system</li>
                 <li>User profile is added to the database</li>
                 <li>User can immediately sign in with their email and password</li>
@@ -1150,7 +1242,7 @@ export default function AdminDashboard() {
             <form onSubmit={handleAddUser}>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="email" className="text-gray-900">Email *</Label>
+                  <Label htmlFor="email" className="text-gray-900 dark:text-white">Email *</Label>
                   <Input
                     id="email"
                     type="email"
@@ -1158,14 +1250,14 @@ export default function AdminDashboard() {
                     onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
                     required
                     placeholder="user@example.com"
-                    className={`bg-white border-gray-300 text-gray-900 ${userForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email) ? 'border-red-300' : ''}`}
+                    className={`bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white ${userForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email) ? 'border-red-300 dark:border-red-500' : ''}`}
                   />
                   {userForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email) && (
-                    <p className="text-xs text-red-500 mt-1">Please enter a valid email address</p>
+                    <p className="text-xs text-red-500 dark:text-red-400 mt-1">Please enter a valid email address</p>
                   )}
                 </div>
                 <div>
-                  <Label htmlFor="password" className="text-gray-900">Password *</Label>
+                  <Label htmlFor="password" className="text-gray-900 dark:text-white">Password *</Label>
                   <Input
                     id="password"
                     type="password"
@@ -1173,38 +1265,38 @@ export default function AdminDashboard() {
                     onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
                     required
                     placeholder="Minimum 6 characters"
-                    className={`bg-white border-gray-300 text-gray-900 ${userForm.password && userForm.password.length < 6 ? 'border-red-300' : ''}`}
+                    className={`bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white ${userForm.password && userForm.password.length < 6 ? 'border-red-300 dark:border-red-500' : ''}`}
                   />
                   {userForm.password && userForm.password.length < 6 && (
-                    <p className="text-xs text-red-500 mt-1">Password must be at least 6 characters long</p>
+                    <p className="text-xs text-red-500 dark:text-red-400 mt-1">Password must be at least 6 characters long</p>
                   )}
                 </div>
                 <div>
-                  <Label htmlFor="fullName" className="text-gray-900">Full Name *</Label>
+                  <Label htmlFor="fullName" className="text-gray-900 dark:text-white">Full Name *</Label>
                   <Input
                     id="fullName"
                     value={userForm.fullName}
                     onChange={(e) => setUserForm({ ...userForm, fullName: e.target.value })}
                     required
                     placeholder="John Doe"
-                    className="bg-white border-gray-300 text-gray-900"
+                    className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="role" className="text-gray-900">Role *</Label>
+                  <Label htmlFor="role" className="text-gray-900 dark:text-white">Role *</Label>
                   <Select
                     value={userForm.role}
                     onValueChange={(value: 'student' | 'teacher' | 'superadmin') => 
                       setUserForm({ ...userForm, role: value })
                     }
                   >
-                    <SelectTrigger className="bg-white border-gray-300 text-gray-900">
+                    <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
                       <SelectValue placeholder="Select a role" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white border border-gray-300">
-                      <SelectItem value="student" className="text-gray-900 hover:bg-gray-100">Student</SelectItem>
-                      <SelectItem value="teacher" className="text-gray-900 hover:bg-gray-100">Teacher</SelectItem>
-                      <SelectItem value="superadmin" className="text-gray-900 hover:bg-gray-100">Superadmin</SelectItem>
+                    <SelectContent className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600">
+                      <SelectItem value="student" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600">Student</SelectItem>
+                      <SelectItem value="teacher" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600">Teacher</SelectItem>
+                      <SelectItem value="superadmin" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600">Superadmin</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1215,7 +1307,7 @@ export default function AdminDashboard() {
                   variant="outline"
                   onClick={() => setShowAddUser(false)}
                   disabled={dataLoading}
-                  className="bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
+                  className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   Cancel
                 </Button>
@@ -1242,28 +1334,28 @@ export default function AdminDashboard() {
       {/* Add Course Modal */}
       {showAddCourse && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-medium mb-4 text-gray-900">Add New Course</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md border border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">Add New Course</h3>
             <form onSubmit={handleAddCourse}>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="title" className="text-gray-900">Course Title</Label>
+                  <Label htmlFor="title" className="text-gray-900 dark:text-white">Course Title</Label>
                   <Input
                     id="title"
                     value={courseForm.title}
                     onChange={(e) => setCourseForm({ ...courseForm, title: e.target.value })}
                     required
-                    className="bg-white border-gray-300 text-gray-900"
+                    className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="description" className="text-gray-900">Description</Label>
+                  <Label htmlFor="description" className="text-gray-900 dark:text-white">Description</Label>
                   <Input
                     id="description"
                     value={courseForm.description}
                     onChange={(e) => setCourseForm({ ...courseForm, description: e.target.value })}
                     required
-                    className="bg-white border-gray-300 text-gray-900"
+                    className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
                   />
                 </div>
               </div>
@@ -1272,11 +1364,13 @@ export default function AdminDashboard() {
                   type="button"
                   variant="outline"
                   onClick={() => setShowAddCourse(false)}
-                  className="bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
+                  className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   Cancel
                 </Button>
-                <Button type="submit">Add Course</Button>
+                <Button type="submit" className="bg-orange-600 text-white hover:bg-orange-700">
+                  Add Course
+                </Button>
               </div>
             </form>
           </div>
@@ -1286,22 +1380,22 @@ export default function AdminDashboard() {
       {/* Assign Course Modal */}
       {showAssignCourse && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-medium mb-4 text-gray-900">Assign Course to Teacher</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md border border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">Assign Course to Teacher</h3>
             <form onSubmit={handleAssignCourse}>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="teacherId" className="text-gray-900">Teacher</Label>
+                  <Label htmlFor="teacherId" className="text-gray-900 dark:text-white">Teacher</Label>
                   <Select
                     value={assignmentForm.teacherId}
                     onValueChange={(value) => setAssignmentForm({ ...assignmentForm, teacherId: value })}
                   >
-                    <SelectTrigger className="bg-white border-gray-300 text-gray-900">
+                    <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
                       <SelectValue placeholder="Select a teacher" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white border border-gray-300">
+                    <SelectContent className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600">
                       {teachers.map((teacher) => (
-                        <SelectItem key={teacher.id} value={teacher.id} className="text-gray-900 hover:bg-gray-100">
+                        <SelectItem key={teacher.id} value={teacher.id} className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600">
                           {teacher.full_name} ({teacher.email})
                         </SelectItem>
                       ))}
@@ -1309,17 +1403,17 @@ export default function AdminDashboard() {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="courseId" className="text-gray-900">Course</Label>
+                  <Label htmlFor="courseId" className="text-gray-900 dark:text-white">Course</Label>
                   <Select
                     value={assignmentForm.courseId}
                     onValueChange={(value) => setAssignmentForm({ ...assignmentForm, courseId: value })}
                   >
-                    <SelectTrigger className="bg-white border-gray-300 text-gray-900">
+                    <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
                       <SelectValue placeholder="Select a course" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white border border-gray-300">
+                    <SelectContent className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600">
                       {courses.map((course) => (
-                        <SelectItem key={course.id} value={course.id} className="text-gray-900 hover:bg-gray-100">
+                        <SelectItem key={course.id} value={course.id} className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600">
                           {course.title}
                         </SelectItem>
                       ))}
@@ -1332,16 +1426,17 @@ export default function AdminDashboard() {
                   type="button"
                   variant="outline"
                   onClick={() => setShowAssignCourse(false)}
-                  className="bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
+                  className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   Cancel
                 </Button>
-                <Button type="submit">Assign Course</Button>
+                <Button type="submit" className="bg-orange-600 text-white hover:bg-orange-700">
+                  Assign Course
+                </Button>
               </div>
             </form>
           </div>
         </div>
       )}
-    </div>
-  );
-}
+        </div>
+)}

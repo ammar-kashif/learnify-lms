@@ -10,106 +10,16 @@ export const teacherNavigation: NavigationItem[] = [
     title: 'My Courses',
     href: '/dashboard/courses',
     icon: 'BookOpen',
-    badge: '6',
-  },
-  {
-    title: 'Browse Courses',
-    href: '/courses',
-    icon: 'Search',
   },
   {
     title: 'Students',
     href: '/dashboard/students',
     icon: 'Users',
-    badge: '45',
-  },
-  {
-    title: 'Content',
-    href: '/dashboard/content',
-    icon: 'FileText',
-    children: [
-      {
-        title: 'Chapters',
-        href: '/dashboard/content/chapters',
-        icon: 'List',
-      },
-      {
-        title: 'Resources',
-        href: '/dashboard/content/resources',
-        icon: 'Paperclip',
-      },
-      {
-        title: 'Assignments',
-        href: '/dashboard/content/assignments',
-        icon: 'ClipboardList',
-      },
-    ],
-  },
-  {
-    title: 'Analytics',
-    href: '/dashboard/analytics',
-    icon: 'BarChart3',
-    children: [
-      {
-        title: 'Student Progress',
-        href: '/dashboard/analytics/progress',
-        icon: 'TrendingUp',
-      },
-      {
-        title: 'Course Performance',
-        href: '/dashboard/analytics/courses',
-        icon: 'PieChart',
-      },
-      {
-        title: 'Engagement Metrics',
-        href: '/dashboard/analytics/engagement',
-        icon: 'Activity',
-      },
-    ],
-  },
-  {
-    title: 'Communications',
-    href: '/dashboard/communications',
-    icon: 'MessageSquare',
-    children: [
-      {
-        title: 'Announcements',
-        href: '/dashboard/communications/announcements',
-        icon: 'Megaphone',
-      },
-      {
-        title: 'Messages',
-        href: '/dashboard/communications/messages',
-        icon: 'Mail',
-      },
-      {
-        title: 'Forums',
-        href: '/dashboard/communications/forums',
-        icon: 'MessageCircle',
-      },
-    ],
   },
   {
     title: 'Settings',
     href: '/dashboard/settings',
     icon: 'Settings',
-    children: [
-      {
-        title: 'Profile',
-        href: '/dashboard/settings/profile',
-        icon: 'User',
-      },
-      {
-        title: 'Preferences',
-        href: '/dashboard/settings/preferences',
-        icon: 'Sliders',
-      },
-      {
-        title: 'Notifications',
-        href: '/dashboard/settings/notifications',
-        icon: 'Bell',
-      },
-    ],
   },
 ];
 
@@ -121,7 +31,7 @@ export const studentNavigation: NavigationItem[] = [
   },
   {
     title: 'My Courses',
-    href: '/dashboard/courses',
+    href: '/dashboard/student-courses',
     icon: 'BookOpen',
     badge: '3',
   },

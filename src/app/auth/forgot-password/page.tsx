@@ -45,13 +45,13 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-white to-primary-50 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-950 dark:to-black p-4">
       <div className="w-full max-w-md">
         {/* Back to home link */}
         <div className="mb-6">
           <Link
             href="/"
-            className="inline-flex items-center text-charcoal-600 transition-colors hover:text-charcoal-800"
+            className="inline-flex items-center text-charcoal-600 dark:text-gray-300 transition-colors hover:text-charcoal-800 dark:hover:text-white"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Home
@@ -67,50 +67,50 @@ export default function ForgotPasswordPage() {
               className="h-12 w-12"
             />
           </div>
-          <h1 className="text-2xl font-bold text-charcoal-900">
+          <h1 className="text-2xl font-bold text-charcoal-900 dark:text-white">
             Reset your password
           </h1>
-          <p className="mt-2 text-charcoal-600">
+          <p className="mt-2 text-charcoal-600 dark:text-gray-300">
             Enter your email to receive a reset link
           </p>
         </div>
 
-        <Card className="border-charcoal-200 shadow-lg">
+        <Card className="border-charcoal-200 dark:border-gray-700 shadow-lg bg-white dark:bg-gray-800">
           <CardHeader className="text-center">
-            <CardTitle className="text-xl text-charcoal-900">
+            <CardTitle className="text-xl text-charcoal-900 dark:text-white">
               Forgot Password
             </CardTitle>
-            <CardDescription className="text-charcoal-600">
+            <CardDescription className="text-charcoal-600 dark:text-gray-300">
                               We&apos;ll send you a link to reset your password
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="rounded-md border border-red-200 bg-red-50 p-3">
-                  <p className="text-sm text-red-600">{error}</p>
+                <div className="rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 p-3">
+                  <p className="text-sm text-red-600 dark:text-red-200">{error}</p>
                 </div>
               )}
 
               {success && (
-                <div className="rounded-md border border-green-200 bg-green-50 p-3">
-                  <p className="text-sm text-green-600">{success}</p>
+                <div className="rounded-md border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/30 p-3">
+                  <p className="text-sm text-green-600 dark:text-green-200">{success}</p>
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-charcoal-700">
+                <Label htmlFor="email" className="text-charcoal-700 dark:text-gray-300">
                   Email
                 </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-charcoal-400" />
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-charcoal-400 dark:text-gray-400" />
                   <Input
                     id="email"
                     type="email"
                     placeholder="Enter your email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    className="border-charcoal-300 pl-10 focus:border-primary focus:ring-primary"
+                    className="border-charcoal-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white pl-10 focus:border-primary focus:ring-primary"
                     required
                   />
                 </div>
@@ -126,7 +126,7 @@ export default function ForgotPasswordPage() {
             </form>
 
             <div className="mt-6 text-center">
-              <p className="text-sm text-charcoal-600">
+              <p className="text-sm text-charcoal-600 dark:text-gray-300">
                 Remember your password?{' '}
                 <Link
                   href="/auth/signin"

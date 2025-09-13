@@ -20,7 +20,7 @@ export default function ThemeToggle() {
         variant="ghost"
         size="sm"
         aria-label="Toggle theme"
-        className="text-charcoal-700 hover:bg-primary/10 hover:text-primary"
+        className="text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
         onClick={() => {
           const prefersDark = document.documentElement.classList.contains('dark');
           setTheme(prefersDark ? 'light' : 'dark');
@@ -40,7 +40,7 @@ export default function ThemeToggle() {
       size="sm"
       aria-label="Toggle theme"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      className="text-charcoal-700 hover:bg-primary/10 hover:text-primary"
+      className="text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
     >
       {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
     </Button>

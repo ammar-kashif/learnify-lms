@@ -136,6 +136,102 @@ export interface Database {
           course_id?: string;
         };
       };
+      payment_verifications: {
+        Row: {
+          id: string;
+          student_id: string;
+          course_id: string;
+          amount: number;
+          status: 'pending' | 'approved' | 'rejected';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          student_id: string;
+          course_id: string;
+          amount: number;
+          status?: 'pending' | 'approved' | 'rejected';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          student_id?: string;
+          course_id?: string;
+          amount?: number;
+          status?: 'pending' | 'approved' | 'rejected';
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      quizzes: {
+        Row: {
+          id: string;
+          course_id: string;
+          title: string;
+          description: string | null;
+          questions: any; // JSONB array of questions
+          settings: any; // JSONB object with quiz settings
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          course_id: string;
+          title: string;
+          description?: string | null;
+          questions: any;
+          settings?: any;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          course_id?: string;
+          title?: string;
+          description?: string | null;
+          questions?: any;
+          settings?: any;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      quiz_attempts: {
+        Row: {
+          id: string;
+          quiz_id: string;
+          student_id: string;
+          answers: any; // JSONB array of student answers
+          score: number;
+          max_score: number;
+          completed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          quiz_id: string;
+          student_id: string;
+          answers?: any;
+          score?: number;
+          max_score?: number;
+          completed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          quiz_id?: string;
+          student_id?: string;
+          answers?: any;
+          score?: number;
+          max_score?: number;
+          completed_at?: string | null;
+          created_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;

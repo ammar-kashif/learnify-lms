@@ -44,22 +44,46 @@ export default function StudentDashboard() {
   useEffect(() => {
     const load = async () => {
       if (!user) return;
+      // Try cache first for faster paint
+      const cached = sessionStorage.getItem(`dash:${user.id}:courses`);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          setEnrolledCourses(parsed.enrolled || []);
+          setAvailableCourses(parsed.available || []);
+        } catch {
+          // Ignore cache errors
+        }
+      }
+
       setLoading(true);
       try {
         const [enrolledRes, availableRes, paymentsRes] = await Promise.all([
-          fetch(`/api/dashboard/courses?userId=${user.id}&role=student`).then(r => r.json()),
-          fetch(`/api/courses/available?studentId=${user.id}`).then(r => r.json()),
+          fetch(`/api/dashboard/courses?userId=${user.id}&role=student`, { next: { revalidate: 60 } } as any).then(r => r.json()),
+          fetch(`/api/courses/available?studentId=${user.id}`, { next: { revalidate: 60 } } as any).then(r => r.json()),
           fetch('/api/payment-verifications', {
-            headers: {
-              'Authorization': `Bearer ${session?.access_token || ''}`,
-            },
+            headers: { 'Authorization': `Bearer ${session?.access_token || ''}` },
           }).then(r => r.json()),
         ]);
-        setEnrolledCourses(enrolledRes?.courses || []);
-        setAvailableCourses(availableRes?.courses || []);
+
+        const enrolled = enrolledRes?.courses || [];
+        const available = availableRes?.courses || [];
+        setEnrolledCourses(enrolled);
+        setAvailableCourses(available);
         setPaymentVerifications(paymentsRes?.paymentVerifications || []);
-        
-        console.log('🔍 Available courses loaded:', availableRes?.courses);
+
+        // Cache for next mounts
+        try {
+          sessionStorage.setItem(`dash:${user.id}:courses`, JSON.stringify({
+            enrolled,
+            available,
+            ts: Date.now(),
+          }));
+        } catch {
+          // Ignore cache errors
+        }
+
+        console.log('🔍 Available courses loaded:', available);
         console.log('🔍 Payment verifications loaded:', paymentsRes?.paymentVerifications);
       } finally {
         setLoading(false);
@@ -482,6 +506,9 @@ export default function StudentDashboard() {
                         <Button
                           size="sm"
                           className="flex-1 bg-primary text-white hover:bg-primary-600"
+                          onClick={() => {
+                            window.location.href = `/courses/${course.id}`;
+                          }}
                         >
                           <Play className="mr-2 h-4 w-4" />
                           Continue
@@ -490,6 +517,9 @@ export default function StudentDashboard() {
                           size="sm"
                           variant="outline"
                             className="flex-1 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                          onClick={() => {
+                            window.location.href = `/courses/${course.id}`;
+                          }}
                         >
                           <Eye className="mr-2 h-4 w-4" />
                           View Course

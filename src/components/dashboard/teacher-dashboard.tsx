@@ -1,6 +1,6 @@
 'use client';
 
-
+import { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -15,19 +15,55 @@ import {
   Users,
   TrendingUp,
   Award,
-  Plus,
   Eye,
-  Edit,
   MoreHorizontal,
+  Loader2,
 } from 'lucide-react';
-import { getCoursesByTeacher } from '@/data/mock-data';
 import { useAuth } from '@/contexts/auth-context';
+
+interface Course {
+  id: string;
+  title: string;
+  description: string;
+  subject: string;
+  created_at: string;
+  updated_at: string;
+  current_students: number;
+  max_students: number;
+  price: number;
+}
 
 export default function TeacherDashboard() {
   const { user } = useAuth();
+  const [teacherCourses, setTeacherCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Get teacher's courses
-  const teacherCourses = getCoursesByTeacher(user?.id || 'user-1');
+  // Fetch teacher's assigned courses
+  useEffect(() => {
+    const fetchTeacherCourses = async () => {
+      if (!user?.id) return;
+
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/teacher/courses?teacherId=${user.id}`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch courses');
+        }
+
+        const data = await response.json();
+        setTeacherCourses(data.courses || []);
+      } catch (err) {
+        console.error('Error fetching teacher courses:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch courses');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTeacherCourses();
+  }, [user?.id]);
 
   // Calculate dashboard stats
   const totalStudents = teacherCourses.reduce(
@@ -83,13 +119,6 @@ export default function TeacherDashboard() {
             Welcome back, {user?.user_metadata?.full_name || user?.email}
           </p>
         </div>
-        <Button
-          size="lg"
-          className="bg-primary text-white hover:bg-primary-600"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Create Course
-        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -202,7 +231,26 @@ export default function TeacherDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            {teacherCourses.length > 0 ? (
+            {loading ? (
+              <div className="py-12 text-center">
+                <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-gray-400 dark:text-gray-500" />
+                <p className="text-gray-600 dark:text-gray-300">Loading your courses...</p>
+              </div>
+            ) : error ? (
+              <div className="py-12 text-center">
+                <BookOpen className="mx-auto mb-4 h-12 w-12 text-red-400 dark:text-red-500" />
+                <h3 className="mb-2 text-lg font-medium text-gray-900 dark:text-white">
+                  Error loading courses
+                </h3>
+                <p className="mb-4 text-gray-600 dark:text-gray-300">{error}</p>
+                <Button 
+                  onClick={() => window.location.reload()}
+                  className="bg-primary text-white hover:bg-primary-600"
+                >
+                  Try Again
+                </Button>
+              </div>
+            ) : teacherCourses.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2">
                 {teacherCourses.slice(0, 4).map(course => (
                   <Card
@@ -233,32 +281,17 @@ export default function TeacherDashboard() {
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600 dark:text-gray-400">Students</span>
                         <span className="font-medium text-gray-900 dark:text-white">
-                          {course.current_students}/{course.max_students}
+                          {course.current_students}
                         </span>
-                      </div>
-                      <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-600">
-                        <div
-                          className="h-2 rounded-full bg-primary transition-all duration-300"
-                          style={{
-                            width: `${(course.current_students / course.max_students) * 100}%`,
-                          }}
-                        />
                       </div>
                       <div className="flex space-x-2">
                         <Button
                           size="sm"
                           className="flex-1 bg-primary text-xs text-white hover:bg-primary-600"
+                          onClick={() => window.location.href = `/dashboard/courses/${course.id}`}
                         >
                           <Eye className="mr-1 h-3 w-3" />
                           View
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1 border-gray-300 dark:border-gray-600 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-                        >
-                          <Edit className="mr-1 h-3 w-3" />
-                          Edit
                         </Button>
                       </div>
                     </CardContent>
@@ -269,15 +302,11 @@ export default function TeacherDashboard() {
               <div className="py-12 text-center">
                 <BookOpen className="mx-auto mb-4 h-12 w-12 text-gray-400 dark:text-gray-500" />
                 <h3 className="mb-2 text-lg font-medium text-gray-900 dark:text-white">
-                  No courses yet
+                  No courses assigned
                 </h3>
                 <p className="mb-4 text-gray-600 dark:text-gray-300">
-                  Get started by creating your first course
+                  You haven&apos;t been assigned any courses yet. Contact your administrator.
                 </p>
-                <Button className="bg-primary text-white hover:bg-primary-600">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Course
-                </Button>
               </div>
             )}
           </CardContent>
@@ -295,34 +324,27 @@ export default function TeacherDashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
-            <Button
-              variant="outline"
-              className="h-16 flex-col space-y-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-primary hover:bg-gray-50 dark:hover:bg-gray-800"
-            >
-              <Plus className="h-5 w-5" />
-              <span className="text-sm">New Course</span>
-            </Button>
+          <div className="grid gap-4 md:grid-cols-3">
             <Button
               variant="outline"
               className="h-16 flex-col space-y-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-primary hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               <Users className="h-5 w-5" />
-              <span className="text-sm">Add Students</span>
+              <span className="text-sm">View Students</span>
             </Button>
             <Button
               variant="outline"
               className="h-16 flex-col space-y-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-primary hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               <BookOpen className="h-5 w-5" />
-              <span className="text-sm">Create Content</span>
+              <span className="text-sm">Manage Content</span>
             </Button>
             <Button
               variant="outline"
               className="h-16 flex-col space-y-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-primary hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               <Award className="h-5 w-5" />
-              <span className="text-sm">New Assignment</span>
+              <span className="text-sm">Create Assignment</span>
             </Button>
           </div>
         </CardContent>
