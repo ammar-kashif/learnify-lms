@@ -23,7 +23,7 @@ import AvatarUpload from '@/components/ui/avatar-upload';
 import Avatar from '@/components/ui/avatar';
 
 export default function SettingsPage() {
-  const { user, userProfile, signOut } = useAuth();
+  const { user, userProfile, signOut, updateUserProfile } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Navigation items based on user role
@@ -69,9 +69,9 @@ export default function SettingsPage() {
     }
   }, [userProfile]);
 
-  const handleAvatarChange = (_avatarUrl: string | null) => {
-    // This will be handled by the auth context automatically
-    // The userProfile will be updated when the avatar is uploaded
+  const handleAvatarChange = (avatarUrl: string | null) => {
+    // Update the user profile in the auth context
+    updateUserProfile({ avatar_url: avatarUrl });
   };
 
   if (!userProfile) {

@@ -33,6 +33,7 @@ export interface AuthContextType {
   ) => Promise<{ error: AuthError | PostgrestError | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
+  updateUserProfile: (updates: Partial<UserProfile>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -56,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       const fetchPromise = supabase
         .from('users')
-        .select('role, avatar_url, full_name, email, created_at, updated_at')
+        .select('id, role, avatar_url, full_name, email, created_at, updated_at')
         .eq('id', userId)
         .single();
       
@@ -74,6 +75,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('❌ Error fetching user role:', error);
       return null;
     }
+  }, []);
+
+  // Function to update user profile
+  const updateUserProfile = useCallback((updates: Partial<UserProfile>) => {
+    setUserProfile(prev => prev ? { ...prev, ...updates } : null);
   }, []);
 
   // Removed unused getRoleWithFallback to satisfy linter
@@ -285,6 +291,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUp,
     signOut,
     resetPassword,
+    updateUserProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
