@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,12 +17,20 @@ import {
   LayoutDashboard,
   Menu,
   X,
-  LogOut
+  LogOut,
+  Image,
+  Video,
+  Download,
+  Trash2
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import QuizSection from '@/components/quiz/quiz-section';
 import ThemeToggle from '@/components/theme-toggle';
+import FileUpload from '@/components/ui/file-upload';
+import { uploadToS3, deleteFromS3, formatFileSize } from '@/lib/s3';
+import { getChapters, createChapterFromFile, deleteChapter, type Chapter } from '@/lib/chapters';
+import Avatar from '@/components/ui/avatar';
 
 interface Course {
   id: string;
@@ -36,7 +44,7 @@ interface Course {
 }
 
 export default function CourseDetailPage({ params }: { params: { id: string } }) {
-  const { user, signOut } = useAuth();
+  const { user, userProfile, signOut } = useAuth();
   const [course, setCourse] = useState<Course | null>(null);
   const [students, setStudents] = useState<any[]>([]);
   const [quizCount, setQuizCount] = useState(0);
@@ -44,30 +52,47 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'quizzes' | 'content' | 'students'>('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Content management state
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [contentLoading, setContentLoading] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
-  // Navigation items
-  const navigationItems = [
-    {
-      title: 'Dashboard',
-      href: '/dashboard',
-      icon: LayoutDashboard,
-    },
-    {
-      title: 'My Courses',
-      href: '/dashboard/courses',
-      icon: BookOpen,
-    },
-    {
-      title: 'Students',
-      href: '/dashboard/students',
-      icon: Users,
-    },
-    {
-      title: 'Settings',
-      href: '/dashboard/settings',
-      icon: Settings,
-    },
-  ];
+  // Navigation items based on user role
+  const getNavigationItems = (userRole: string) => {
+    const baseItems = [
+      {
+        title: 'Dashboard',
+        href: '/dashboard',
+        icon: LayoutDashboard,
+      },
+      {
+        title: 'Settings',
+        href: '/dashboard/settings',
+        icon: Settings,
+      },
+    ];
+
+    // Add teacher-specific items
+    if (userRole === 'teacher' || userRole === 'superadmin') {
+      baseItems.splice(1, 0, 
+        {
+          title: 'My Courses',
+          href: '/dashboard/courses',
+          icon: BookOpen,
+        },
+        {
+          title: 'Students',
+          href: '/dashboard/students',
+          icon: Users,
+        }
+      );
+    }
+
+    return baseItems;
+  };
+
+  const navigationItems = getNavigationItems(user?.role || 'student');
 
   // Fetch course details and students
   useEffect(() => {
@@ -121,6 +146,138 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
 
     fetchCourseAndStudents();
   }, [user?.id, params.id]);
+
+  // Fetch chapters from Supabase
+  const fetchChapters = useCallback(async () => {
+    try {
+      setContentLoading(true);
+      console.log('Fetching chapters for course:', params.id);
+      const chaptersData = await getChapters(params.id);
+      console.log('Fetched chapters data:', chaptersData);
+      console.log('Number of chapters:', chaptersData.length);
+      if (chaptersData.length > 0) {
+        console.log('First chapter details:', chaptersData[0]);
+      }
+      setChapters(chaptersData);
+      
+    } catch (error) {
+      console.error('Error fetching chapters:', error);
+    } finally {
+      setContentLoading(false);
+    }
+  }, [params.id]);
+
+  // Fetch chapters when content tab is active
+  useEffect(() => {
+    if (activeTab === 'content') {
+      fetchChapters();
+    }
+  }, [activeTab, params.id, fetchChapters]);
+
+  // Handle file upload with optimistic UI
+  const handleFileUpload = async (files: File[]) => {
+    try {
+      // Create optimistic chapter entries immediately
+      const optimisticChapters = files.map(file => ({
+        id: `temp-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        course_id: params.id,
+        title: file.name.replace(/\.[^/.]+$/, ""),
+        file_url: null,
+        file_type: file.type,
+        file_size: file.size,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        isUploading: true
+      }));
+      
+      // Add optimistic chapters to UI immediately
+      setChapters(prev => [...prev, ...optimisticChapters]);
+      setShowUploadModal(false);
+      
+      // Process uploads in parallel
+      const uploadPromises = files.map(async (file, index) => {
+        try {
+          // Upload to S3
+          const uploadResult = await uploadToS3(file, 'course-assets', `courses/${params.id}/chapters/`);
+          
+          if (uploadResult.success && uploadResult.url && uploadResult.key) {
+            // Create chapter in Supabase
+            const chapterResult = await createChapterFromFile(
+              params.id,
+              file.name.replace(/\.[^/.]+$/, ""),
+              uploadResult.url,
+              file.type,
+              file.size
+            );
+            
+            if (chapterResult.success && chapterResult.chapter) {
+              // Update the optimistic chapter with real data
+              setChapters(prev => prev.map(chapter => 
+                chapter.id === optimisticChapters[index].id 
+                  ? { ...chapter, ...chapterResult.chapter, isUploading: false }
+                  : chapter
+              ));
+            }
+            
+            return { uploadResult, chapterResult };
+          }
+          
+          return { uploadResult, chapterResult: { success: false, error: 'Upload failed' } };
+        } catch (error) {
+          console.error(`Error uploading file ${file.name}:`, error);
+          // Remove failed optimistic chapter
+          setChapters(prev => prev.filter(chapter => chapter.id !== optimisticChapters[index].id));
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          return { uploadResult: { success: false, error: errorMessage }, chapterResult: { success: false, error: errorMessage } };
+        }
+      });
+      
+      // Wait for all uploads to complete
+      await Promise.all(uploadPromises);
+      
+      // Final refresh to ensure consistency
+      await fetchChapters();
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      // Refresh to get actual state on error
+      await fetchChapters();
+    }
+  };
+
+  // Handle chapter deletion with optimistic UI
+  const handleChapterDelete = async (chapterId: string, fileUrl: string) => {
+    console.log('handleChapterDelete called with:', { chapterId, fileUrl });
+    
+    // Optimistic UI update - remove from UI immediately
+    setChapters(prev => prev.filter(chapter => chapter.id !== chapterId));
+    
+    try {
+      // Extract the S3 key from the full URL
+      const urlParts = fileUrl.split('/');
+      const bucketIndex = urlParts.findIndex(part => part.includes('s3.amazonaws.com'));
+      const s3Key = urlParts.slice(bucketIndex + 1).join('/');
+      
+      // Run S3 and Supabase deletions in parallel
+      const [s3Result, chapterResult] = await Promise.all([
+        deleteFromS3(s3Key, 'course-assets'),
+        deleteChapter(chapterId)
+      ]);
+      
+      console.log('S3 delete result:', s3Result);
+      console.log('Chapter delete result:', chapterResult);
+      
+      // If either operation failed, revert the optimistic update
+      if (!s3Result.success || !chapterResult.success) {
+        console.error('Deletion failed, reverting UI update');
+        await fetchChapters(); // Refresh to get actual state
+      }
+    } catch (error) {
+      console.error('Error deleting chapter:', error);
+      // Revert optimistic update on error
+      await fetchChapters();
+    }
+  };
+
 
 
   const tabs = [
@@ -221,14 +378,18 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
           {/* Sidebar Footer */}
           <div className="border-t border-gray-200 dark:border-gray-700 p-4">
             <div className="flex items-center space-x-3 mb-4">
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <Users className="h-4 w-4 text-primary" />
-              </div>
+              <Avatar
+                src={userProfile?.avatar_url}
+                name={userProfile?.full_name || user?.email || 'Teacher'}
+                size="sm"
+              />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                  {user?.email || 'Teacher'}
+                  {userProfile?.full_name || user?.email || 'Teacher'}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Teacher</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                  {userProfile?.role || 'Teacher'}
+                </p>
               </div>
             </div>
             <div className="flex items-center justify-between">
@@ -344,9 +505,9 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
                       <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
                         Content Items
                       </p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                        0
-                      </p>
+                       <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                         {chapters.length}
+                       </p>
                     </div>
                     <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
                       <FileText className="h-6 w-6 text-primary" />
@@ -433,26 +594,135 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
 
                 {activeTab === 'content' && (
                   <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        Course Content
-                      </h3>
-                      <Button className="bg-primary text-white hover:bg-primary-600">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Content
-                      </Button>
+                     <div className="flex items-center justify-between">
+                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                         Course Content ({chapters.length} chapters)
+                       </h3>
                     </div>
-                    <div className="py-12 text-center">
-                      <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                        <FileText className="h-8 w-8 text-primary" />
+
+                    {/* Upload Modal */}
+                    {showUploadModal && (
+                      <Card className="border-primary/20 bg-primary/5">
+                        <CardContent className="p-6">
+                          <div className="flex items-center justify-between mb-4">
+                             <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                               Upload Chapter Files
+                             </h4>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setShowUploadModal(false)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <FileUpload
+                            onUpload={handleFileUpload}
+                            accept=".pdf,.doc,.docx,image/*,video/*"
+                            maxFiles={10}
+                            maxSize={50} // 50MB
+                          />
+                        </CardContent>
+                      </Card>
+                    )}
+
+                     {/* Chapters List */}
+                     {contentLoading ? (
+                       <div className="flex items-center justify-center py-12">
+                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                       </div>
+                     ) : chapters.length > 0 ? (
+                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                         {chapters.map((chapter) => {
+                           const fileSize = chapter.file_size ? formatFileSize(chapter.file_size) : 'Unknown size';
+                           const fileExtension = chapter.file_type?.split('/').pop()?.toLowerCase() || '';
+                           
+                           // Determine icon based on file type
+                           const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension);
+                           const isVideo = ['mp4', 'webm', 'mov', 'avi'].includes(fileExtension);
+                           const isDocument = ['pdf', 'doc', 'docx', 'txt'].includes(fileExtension);
+                           
+                           return (
+                             <Card key={chapter.id} className={`border-gray-200 dark:border-gray-700 ${(chapter as any).isUploading ? 'opacity-60' : ''}`}>
+                               <CardContent className="p-4">
+                                 <div className="flex items-start space-x-3">
+                                   <div className="flex-shrink-0">
+                                     <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                       {(chapter as any).isUploading ? (
+                                         <Loader2 className="h-5 w-5 text-primary animate-spin" />
+                                       ) : isImage ? (
+                                         // eslint-disable-next-line jsx-a11y/alt-text
+                                         <Image className="h-5 w-5 text-primary" />
+                                       ) : isVideo ? (
+                                         <Video className="h-5 w-5 text-primary" />
+                                       ) : isDocument ? (
+                                         <FileText className="h-5 w-5 text-primary" />
+                                       ) : (
+                                         <FileText className="h-5 w-5 text-primary" />
+                                       )}
+                                     </div>
+                                   </div>
+                                   <div className="flex-1 min-w-0">
+                                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                       {chapter.title}
+                                       {(chapter as any).isUploading && (
+                                         <span className="ml-2 text-xs text-blue-600">Uploading...</span>
+                                       )}
+                                     </p>
+                                     <p className="text-xs text-gray-500 dark:text-gray-400">
+                                       {fileSize}
+                                     </p>
+                                     <p className="text-xs text-gray-500 dark:text-gray-400">
+                                       {new Date(chapter.created_at).toLocaleDateString()}
+                                     </p>
+                                   </div>
+                                   <div className="flex items-center space-x-1">
+                                     {chapter.file_url && !(chapter as any).isUploading && (
+                                       <Button
+                                         variant="ghost"
+                                         size="sm"
+                                         onClick={() => window.open(chapter.file_url!, '_blank')}
+                                       >
+                                         <Download className="h-4 w-4" />
+                                       </Button>
+                                     )}
+                                     {!(chapter as any).isUploading && (
+                                       <Button
+                                         variant="ghost"
+                                         size="sm"
+                                         onClick={() => handleChapterDelete(chapter.id, chapter.file_url!)}
+                                         className="text-red-600 hover:text-red-700"
+                                       >
+                                         <Trash2 className="h-4 w-4" />
+                                       </Button>
+                                     )}
+                                   </div>
+                                 </div>
+                               </CardContent>
+                             </Card>
+                           );
+                         })}
+                       </div>
+                    ) : (
+                      <div className="py-12 text-center">
+                        <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                          <FileText className="h-8 w-8 text-primary" />
+                        </div>
+                         <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                           No chapters yet
+                         </h3>
+                         <p className="text-gray-600 dark:text-gray-300 mb-4">
+                           Upload files to create chapters for your course.
+                         </p>
+                        <Button 
+                          onClick={() => setShowUploadModal(true)}
+                          className="bg-primary text-white hover:bg-primary-600"
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Upload Content
+                        </Button>
                       </div>
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                        No content yet
-                      </h3>
-                      <p className="text-gray-600 dark:text-gray-300 mb-4">
-                        Add lessons, videos, and materials to your course.
-                      </p>
-                    </div>
+                    )}
                   </div>
                 )}
 
@@ -472,9 +742,11 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
                             className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
                           >
                             <div className="flex items-center space-x-3">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                <Users className="h-5 w-5" />
-                              </div>
+                              <Avatar
+                                src={student.avatar_url}
+                                name={student.full_name}
+                                size="md"
+                              />
                               <div>
                                 <p className="font-medium text-gray-900 dark:text-white">
                                   {student.full_name}

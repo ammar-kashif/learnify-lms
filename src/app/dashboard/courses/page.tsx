@@ -27,6 +27,7 @@ import {
 import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import ThemeToggle from '@/components/theme-toggle';
+import Avatar from '@/components/ui/avatar';
 
 interface Course {
   id: string;
@@ -40,35 +41,47 @@ interface Course {
 }
 
 export default function TeacherCoursesPage() {
-  const { user, signOut } = useAuth();
+  const { user, userProfile, signOut } = useAuth();
   const [teacherCourses, setTeacherCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Navigation items
-  const navigationItems = [
-    {
-      title: 'Dashboard',
-      href: '/dashboard',
-      icon: LayoutDashboard,
-    },
-    {
-      title: 'My Courses',
-      href: '/dashboard/courses',
-      icon: BookOpen,
-    },
-    {
-      title: 'Students',
-      href: '/dashboard/students',
-      icon: Users,
-    },
-    {
-      title: 'Settings',
-      href: '/dashboard/settings',
-      icon: Settings,
-    },
-  ];
+  // Navigation items based on user role
+  const getNavigationItems = (userRole: string) => {
+    const baseItems = [
+      {
+        title: 'Dashboard',
+        href: '/dashboard',
+        icon: LayoutDashboard,
+      },
+      {
+        title: 'Settings',
+        href: '/dashboard/settings',
+        icon: Settings,
+      },
+    ];
+
+    // Add teacher-specific items
+    if (userRole === 'teacher' || userRole === 'superadmin') {
+      baseItems.splice(1, 0, 
+        {
+          title: 'My Courses',
+          href: '/dashboard/courses',
+          icon: BookOpen,
+        },
+        {
+          title: 'Students',
+          href: '/dashboard/students',
+          icon: Users,
+        }
+      );
+    }
+
+    return baseItems;
+  };
+
+  const navigationItems = getNavigationItems(user?.role || 'student');
 
   // Fetch teacher's assigned courses
   useEffect(() => {
@@ -168,14 +181,18 @@ export default function TeacherCoursesPage() {
           {/* Sidebar Footer */}
           <div className="border-t border-gray-200 dark:border-gray-700 p-4">
             <div className="flex items-center space-x-3 mb-4">
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <Users className="h-4 w-4 text-primary" />
-              </div>
+              <Avatar
+                src={userProfile?.avatar_url}
+                name={userProfile?.full_name || user?.email || 'Teacher'}
+                size="sm"
+              />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                  {user?.email || 'Teacher'}
+                  {userProfile?.full_name || user?.email || 'Teacher'}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Teacher</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                  {userProfile?.role || 'Teacher'}
+                </p>
               </div>
             </div>
             <div className="flex items-center justify-between">

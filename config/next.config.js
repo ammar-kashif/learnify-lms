@@ -19,7 +19,13 @@ const nextConfig = {
     return config;
   },
   images: {
-    domains: ['localhost', 'your-supabase-project.supabase.co'],
+    domains: [
+      'localhost', 
+      'your-supabase-project.supabase.co',
+      'lms-course-assets.s3.amazonaws.com',
+      'lms-lesson-hls.s3.amazonaws.com',
+      'lms-avatars.s3.amazonaws.com'
+    ],
     remotePatterns: [
       {
         protocol: 'https',

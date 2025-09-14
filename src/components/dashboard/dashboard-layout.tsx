@@ -7,7 +7,6 @@ import {
   Menu,
   X,
   LogOut,
-  User,
   ChevronDown,
   LayoutDashboard,
   BookOpen,
@@ -41,6 +40,7 @@ import {
 import { useAuth } from '@/contexts/auth-context';
 import { getNavigationByRole } from '@/config/navigation';
 import ThemeToggle from '@/components/theme-toggle';
+import Avatar from '@/components/ui/avatar';
 
 // Icon mapping for navigation items
 const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } =
@@ -90,7 +90,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, userRole, signOut } = useAuth();
+  const { user, userProfile, userRole, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
@@ -164,12 +164,14 @@ export default function DashboardLayout({
           <Card className="border-charcoal-200 bg-charcoal-50 dark:border-gray-800 dark:bg-gray-800">
             <CardContent className="p-4">
               <div className="flex items-center space-x-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
-                  <User className="h-5 w-5 text-white" />
-                </div>
+                <Avatar
+                  src={userProfile?.avatar_url}
+                  name={userProfile?.full_name || user?.email || 'User'}
+                  size="md"
+                />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-charcoal-800 dark:text-gray-100">
-                    {user?.user_metadata?.full_name || user?.email}
+                    {userProfile?.full_name || user?.email}
                   </p>
                   <p className="text-xs capitalize text-charcoal-600 dark:text-gray-400">
                     {userRole || 'student'}
@@ -211,11 +213,13 @@ export default function DashboardLayout({
                 className="flex items-center space-x-2 text-charcoal-700 hover:bg-primary/10 hover:text-primary dark:text-gray-300"
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary">
-                  <User className="h-4 w-4 text-white" />
-                </div>
+                <Avatar
+                  src={userProfile?.avatar_url}
+                  name={userProfile?.full_name || user?.email || 'User'}
+                  size="sm"
+                />
                 <span className="hidden text-sm font-medium sm:block">
-                  {user?.user_metadata?.full_name || user?.email}
+                  {userProfile?.full_name || user?.email}
                 </span>
                 <ChevronDown className="h-4 w-4" />
               </Button>

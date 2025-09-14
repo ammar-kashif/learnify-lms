@@ -33,6 +33,7 @@ export interface Database {
           email: string;
           full_name: string;
           role: 'student' | 'teacher' | 'superadmin';
+          avatar_url: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -41,6 +42,7 @@ export interface Database {
           email: string;
           full_name: string;
           role: 'student' | 'teacher' | 'superadmin';
+          avatar_url?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -49,6 +51,7 @@ export interface Database {
           email?: string;
           full_name?: string;
           role?: 'student' | 'teacher' | 'superadmin';
+          avatar_url?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -84,8 +87,9 @@ export interface Database {
           id: string;
           course_id: string;
           title: string;
-          content: string | null;
           file_url: string | null;
+          file_type: string | null;
+          file_size: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -93,8 +97,9 @@ export interface Database {
           id?: string;
           course_id: string;
           title: string;
-          content?: string | null;
           file_url?: string | null;
+          file_type?: string | null;
+          file_size?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -102,8 +107,9 @@ export interface Database {
           id?: string;
           course_id?: string;
           title?: string;
-          content?: string | null;
           file_url?: string | null;
+          file_type?: string | null;
+          file_size?: number | null;
           created_at?: string;
           updated_at?: string;
         };

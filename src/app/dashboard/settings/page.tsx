@@ -1,209 +1,303 @@
 'use client';
 
-import { useState } from 'react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-} from '@/components/ui/card';
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  User,
-  Sliders,
-  Bell,
-  ArrowLeft,
-  Save,
+import { Separator } from '@/components/ui/separator';
+import { 
+  Settings, 
+  User, 
+  Mail, 
+  Shield,
+  LayoutDashboard,
+  Menu,
+  X,
+  LogOut,
+  Users,
+  BookOpen
 } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
+import ThemeToggle from '@/components/theme-toggle';
+import AvatarUpload from '@/components/ui/avatar-upload';
+import Avatar from '@/components/ui/avatar';
 
-export default function TeacherSettingsPage() {
-  const [activeTab, setActiveTab] = useState<'profile' | 'preferences' | 'notifications'>('profile');
+export default function SettingsPage() {
+  const { user, userProfile, signOut } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const tabs = [
-    { id: 'profile', label: 'Profile', icon: User, description: 'Manage your personal information' },
-    { id: 'preferences', label: 'Preferences', icon: Sliders, description: 'Customize your dashboard and experience' },
-    { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Configure notification settings' },
-  ];
+  // Navigation items based on user role
+  const getNavigationItems = (userRole: string) => {
+    const baseItems = [
+      {
+        title: 'Dashboard',
+        href: '/dashboard',
+        icon: LayoutDashboard,
+      },
+      {
+        title: 'Settings',
+        href: '/dashboard/settings',
+        icon: Settings,
+      },
+    ];
+
+    // Add teacher-specific items
+    if (userRole === 'teacher' || userRole === 'superadmin') {
+      baseItems.splice(1, 0, 
+        {
+          title: 'My Courses',
+          href: '/dashboard/courses',
+          icon: BookOpen,
+        },
+        {
+          title: 'Students',
+          href: '/dashboard/students',
+          icon: Users,
+        }
+      );
+    }
+
+    return baseItems;
+  };
+
+  const navigationItems = getNavigationItems(userProfile?.role || 'student');
+
+  // Debug: Log userProfile data
+  useEffect(() => {
+    if (userProfile) {
+      console.log('UserProfile data:', userProfile);
+    }
+  }, [userProfile]);
+
+  const handleAvatarChange = (_avatarUrl: string | null) => {
+    // This will be handled by the auth context automatically
+    // The userProfile will be updated when the avatar is uploaded
+  };
+
+  if (!userProfile) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-300">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Link href="/dashboard">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+          onKeyDown={(e) => e.key === 'Escape' && setSidebarOpen(false)}
+          role="button"
+          tabIndex={0}
+        />
+      )}
+
+      {/* Left Sidebar */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
+        <div className="flex h-full flex-col">
+          {/* Sidebar Header */}
+          <div className="flex h-16 items-center justify-between px-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center space-x-2">
+              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+                <BookOpen className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-lg font-semibold text-gray-900 dark:text-white">Learnify</span>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="lg:hidden"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <X className="h-5 w-5" />
             </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-              Settings
-            </h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-300">
-              Manage your account settings and preferences
-            </p>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 px-4 py-6 space-y-2">
+            {navigationItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = item.href === '/dashboard/settings';
+              return (
+                <Link
+                  key={item.title}
+                  href={item.href}
+                  className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-primary/10 text-primary border-r-2 border-primary'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span>{item.title}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Sidebar Footer */}
+          <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+             <div className="flex items-center space-x-3 mb-4">
+               <Avatar
+                 src={userProfile.avatar_url}
+                 name={userProfile.full_name}
+                 size="sm"
+               />
+               <div className="flex-1 min-w-0">
+                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                   {userProfile.full_name}
+                 </p>
+                 <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                   {userProfile.role}
+                 </p>
+               </div>
+             </div>
+            <div className="flex items-center justify-between">
+              <ThemeToggle />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={signOut}
+                className="text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <Card className="border-gray-200 dark:border-gray-700">
-        <CardHeader>
-          <div className="flex space-x-1">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <Button
-                  key={tab.id}
-                  variant={activeTab === tab.id ? 'default' : 'ghost'}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center space-x-2 ${
-                    activeTab === tab.id
-                      ? 'bg-primary text-white hover:bg-primary-600'
-                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{tab.label}</span>
-                </Button>
-              );
-            })}
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Header */}
+        <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+          <div className="flex h-16 items-center justify-between px-6">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="lg:hidden"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+
+            </div>
+            <div className="flex items-center space-x-4">
+              <ThemeToggle />
+            </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                {tabs.find(tab => tab.id === activeTab)?.label}
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300">
-                {tabs.find(tab => tab.id === activeTab)?.description}
+        </div>
+
+        {/* Page Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-4xl mx-auto space-y-6">
+            {/* Page Header */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                Account Settings
+              </h1>
+              <p className="text-gray-600 dark:text-gray-300">
+                Manage your account information and preferences.
               </p>
             </div>
 
-            {/* Content based on active tab */}
-            {activeTab === 'profile' && (
-              <div className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name</Label>
-                    <Input
-                      id="fullName"
-                      placeholder="Enter your full name"
-                      className="border-gray-300 dark:border-gray-600"
+            {/* Profile Settings */}
+            <Card className="border-gray-200 dark:border-gray-700">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <User className="h-5 w-5" />
+                  <span>Profile Information</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Avatar Section */}
+                <div className="flex items-start space-x-6">
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                      Profile Picture
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                      Upload a profile picture to personalize your account.
+                    </p>
+                    <AvatarUpload
+                      userId={userProfile.id}
+                      currentAvatarUrl={userProfile.avatar_url}
+                      userName={userProfile.full_name}
+                      onAvatarChange={handleAvatarChange}
+                      size="lg"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="Enter your email"
-                      className="border-gray-300 dark:border-gray-600"
-                    />
-                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bio">Bio</Label>
-                  <textarea
-                    id="bio"
-                    rows={4}
-                    placeholder="Tell us about yourself"
-                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  />
-                </div>
-                <Button className="bg-primary text-white hover:bg-primary-600">
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Changes
-                </Button>
-              </div>
-            )}
 
-            {activeTab === 'preferences' && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Theme</Label>
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm">Light</Button>
-                    <Button variant="outline" size="sm">Dark</Button>
-                    <Button variant="outline" size="sm">System</Button>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Language</Label>
-                  <select className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                    <option>English</option>
-                    <option>Spanish</option>
-                    <option>French</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Time Zone</Label>
-                  <select className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                    <option>UTC-5 (EST)</option>
-                    <option>UTC-8 (PST)</option>
-                    <option>UTC+0 (GMT)</option>
-                  </select>
-                </div>
-                <Button className="bg-primary text-white hover:bg-primary-600">
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Preferences
-                </Button>
-              </div>
-            )}
+                <Separator />
 
-            {activeTab === 'notifications' && (
-              <div className="space-y-4">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Email Notifications</Label>
-                      <p className="text-sm text-gray-600 dark:text-gray-300">
-                        Receive email updates about your courses
-                      </p>
-                    </div>
-                    <input type="checkbox" className="h-4 w-4 text-primary" defaultChecked />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Student Enrollments</Label>
-                      <p className="text-sm text-gray-600 dark:text-gray-300">
-                        Get notified when students enroll in your courses
-                      </p>
-                    </div>
-                    <input type="checkbox" className="h-4 w-4 text-primary" defaultChecked />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Assignment Submissions</Label>
-                      <p className="text-sm text-gray-600 dark:text-gray-300">
-                        Receive notifications when students submit assignments
-                      </p>
-                    </div>
-                    <input type="checkbox" className="h-4 w-4 text-primary" defaultChecked />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>System Updates</Label>
-                      <p className="text-sm text-gray-600 dark:text-gray-300">
-                        Get notified about platform updates and maintenance
-                      </p>
-                    </div>
-                    <input type="checkbox" className="h-4 w-4 text-primary" />
-                  </div>
+                {/* Profile Details */}
+                <div className="grid gap-6 md:grid-cols-2">
+                   <div>
+                     <div className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                       Full Name
+                     </div>
+                     <div className="flex items-center space-x-2">
+                       <User className="h-4 w-4 text-gray-400" />
+                       <span className="text-sm text-gray-900 dark:text-white">
+                         {userProfile.full_name}
+                       </span>
+                     </div>
+                   </div>
+
+                   <div>
+                     <div className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                       Email Address
+                     </div>
+                     <div className="flex items-center space-x-2">
+                       <Mail className="h-4 w-4 text-gray-400" />
+                       <span className="text-sm text-gray-900 dark:text-white">
+                         {userProfile.email || user?.email || 'No email available'}
+                       </span>
+                     </div>
+                   </div>
+
+                   <div>
+                     <div className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                       Role
+                     </div>
+                     <div className="flex items-center space-x-2">
+                       <Shield className="h-4 w-4 text-gray-400" />
+                       <span className="text-sm text-gray-900 dark:text-white capitalize">
+                         {userProfile.role}
+                       </span>
+                     </div>
+                   </div>
+
+                   <div>
+                     <div className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                       Member Since
+                     </div>
+                     <div className="flex items-center space-x-2">
+                       <User className="h-4 w-4 text-gray-400" />
+                       <span className="text-sm text-gray-900 dark:text-white">
+                         {userProfile.created_at 
+                           ? new Date(userProfile.created_at).toLocaleDateString()
+                           : 'Date not available'
+                         }
+                       </span>
+                     </div>
+                   </div>
                 </div>
-                <Button className="bg-primary text-white hover:bg-primary-600">
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Notification Settings
-                </Button>
-              </div>
-            )}
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

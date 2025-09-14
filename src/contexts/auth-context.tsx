@@ -5,8 +5,19 @@ import { User, Session, AuthError } from '@supabase/supabase-js';
 import { PostgrestError } from '@supabase/postgrest-js';
 import { supabase } from '@/lib/supabase';
 
+export interface UserProfile {
+  id: string;
+  email: string;
+  full_name: string;
+  role: 'student' | 'teacher' | 'superadmin';
+  avatar_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface AuthContextType {
   user: User | null;
+  userProfile: UserProfile | null;
   session: Session | null;
   loading: boolean;
   userRole: string | null;
@@ -28,6 +39,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -44,18 +56,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       const fetchPromise = supabase
         .from('users')
-        .select('role')
+        .select('role, avatar_url, full_name, email, created_at, updated_at')
         .eq('id', userId)
         .single();
       
       const { data: profile, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
       
       if (error) {
-        console.error('❌ Error fetching user role:', error);
+        console.error('❌ Error fetching user profile:', error);
         return null;
       }
       
-      console.log('✅ Successfully fetched user role:', profile?.role);
+      console.log('✅ Successfully fetched user profile:', profile);
+      setUserProfile(profile);
       return profile?.role;
     } catch (error) {
       console.error('❌ Error fetching user role:', error);
@@ -264,6 +277,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value: AuthContextType = {
     user,
+    userProfile,
     session,
     loading,
     userRole,
