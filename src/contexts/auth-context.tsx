@@ -9,7 +9,7 @@ export interface UserProfile {
   id: string;
   email: string;
   full_name: string;
-  role: 'student' | 'teacher' | 'superadmin';
+  role: 'student' | 'teacher' | 'admin' | 'superadmin';
   avatar_url: string | null;
   created_at: string;
   updated_at: string;
@@ -29,7 +29,7 @@ export interface AuthContextType {
     email: string,
     password: string,
     fullName: string,
-    role: 'student' | 'teacher' | 'superadmin'
+    role: 'student' | 'teacher' | 'admin' | 'superadmin'
   ) => Promise<{ error: AuthError | PostgrestError | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
@@ -202,7 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     email: string,
     password: string,
     fullName: string,
-    role: 'student' | 'teacher' | 'superadmin'
+    role: 'student' | 'teacher' | 'admin' | 'superadmin'
   ) => {
     try {
       console.log('🚀 Starting signup process for:', email);

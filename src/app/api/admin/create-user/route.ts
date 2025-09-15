@@ -27,10 +27,38 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate role
-    if (!['student', 'teacher', 'superadmin'].includes(role)) {
+    if (!['student', 'teacher', 'admin', 'superadmin'].includes(role)) {
       return NextResponse.json(
         { error: 'Invalid role' },
         { status: 400 }
+      );
+    }
+
+    // AuthN: identify caller (admin vs superadmin) using a bearer token if provided
+    const authHeader = request.headers.get('authorization');
+    let callerRole: string | null = null;
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const { data: { user }, error } = await supabase.auth.getUser(token);
+      if (!error && user) {
+        const { data: profile } = await supabaseAdmin
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        callerRole = profile?.role ?? null;
+      }
+    }
+
+    // Enforce: only superadmin may create an admin user
+    if (role === 'admin' && callerRole === 'admin') {
+      return NextResponse.json(
+        { error: 'Only superadmins can create admin users' },
+        { status: 403 }
       );
     }
 

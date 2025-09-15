@@ -31,8 +31,8 @@ export default function AdminOverview() {
   });
 
   useEffect(() => {
-    if (!loading && (!user || userRole !== 'superadmin')) {
-      router.push('/dashboard');
+    if (!loading && (!user || (userRole !== 'superadmin' && userRole !== 'admin'))) {
+      router.push('/');
     }
   }, [user, userRole, loading, router]);
 
@@ -66,8 +66,8 @@ export default function AdminOverview() {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
-  if (!user || userRole !== 'superadmin') {
-    return <div className="flex items-center justify-center min-h-screen">Access Denied</div>;
+  if (!user || (userRole !== 'superadmin' && userRole !== 'admin')) {
+    return null;
   }
 
   return (

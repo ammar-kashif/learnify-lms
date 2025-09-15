@@ -209,6 +209,39 @@ export const superadminNavigation: NavigationItem[] = [
   },
 ];
 
+export const adminNavigation: NavigationItem[] = [
+  {
+    title: 'Dashboard',
+    href: '/dashboard',
+    icon: 'LayoutDashboard',
+  },
+  {
+    title: 'Admin Panel',
+    href: '/admin',
+    icon: 'Shield',
+  },
+  {
+    title: 'System Overview',
+    href: '/admin/overview',
+    icon: 'BarChart3',
+  },
+  {
+    title: 'User Management',
+    href: '/admin/users',
+    icon: 'Users',
+  },
+  {
+    title: 'Course Management',
+    href: '/admin/courses',
+    icon: 'BookOpen',
+  },
+  {
+    title: 'Settings',
+    href: '/dashboard/settings',
+    icon: 'Settings',
+  },
+];
+
 export const getNavigationByRole = (role: string): NavigationItem[] => {
   switch (role) {
     case 'teacher':
@@ -217,6 +250,8 @@ export const getNavigationByRole = (role: string): NavigationItem[] => {
       return studentNavigation;
     case 'superadmin':
       return superadminNavigation;
+    case 'admin':
+      return adminNavigation;
     default:
       return [];
   }

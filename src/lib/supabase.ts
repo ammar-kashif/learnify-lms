@@ -32,7 +32,7 @@ export interface Database {
           id: string;
           email: string;
           full_name: string;
-          role: 'student' | 'teacher' | 'superadmin';
+          role: 'student' | 'teacher' | 'admin' | 'superadmin';
           avatar_url: string | null;
           created_at: string;
           updated_at: string;
@@ -41,7 +41,7 @@ export interface Database {
           id?: string;
           email: string;
           full_name: string;
-          role: 'student' | 'teacher' | 'superadmin';
+          role: 'student' | 'teacher' | 'admin' | 'superadmin';
           avatar_url?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -50,7 +50,7 @@ export interface Database {
           id?: string;
           email?: string;
           full_name?: string;
-          role?: 'student' | 'teacher' | 'superadmin';
+          role?: 'student' | 'teacher' | 'admin' | 'superadmin';
           avatar_url?: string | null;
           created_at?: string;
           updated_at?: string;

@@ -32,7 +32,7 @@ export default function DashboardPage() {
 
   // Redirect superadmin to admin panel
   useEffect(() => {
-    if (userRole === 'superadmin') {
+    if (userRole === 'superadmin' || userRole === 'admin') {
       router.replace('/admin');
     }
   }, [userRole, router]);
@@ -62,8 +62,8 @@ export default function DashboardPage() {
     return null;
   }
 
-  // Don't render anything for superadmin to prevent flash
-  if (userRole === 'superadmin') {
+  // Don't render anything for admin/superadmin to prevent flash
+  if (userRole === 'superadmin' || userRole === 'admin') {
     return null;
   }
 

@@ -67,7 +67,7 @@ export default function AdminDashboard() {
   const [dataLoading, setDataLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userSearch, setUserSearch] = useState('');
-  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'student' | 'teacher' | 'superadmin'>('all');
+  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'student' | 'teacher' | 'admin' | 'superadmin'>('all');
   const [courseSearch, setCourseSearch] = useState('');
   
   // Form states
@@ -80,7 +80,7 @@ export default function AdminDashboard() {
     email: '',
     password: '',
     fullName: '',
-    role: 'student' as 'student' | 'teacher' | 'superadmin'
+    role: 'student' as 'student' | 'teacher' | 'admin' | 'superadmin'
   });
   
   // Course form
@@ -96,7 +96,8 @@ export default function AdminDashboard() {
   });
 
   useEffect(() => {
-    if (!loading && (!user || userRole !== 'superadmin')) {
+    // Allow both superadmin and admin to access admin dashboard
+    if (!loading && (!user || (userRole !== 'superadmin' && userRole !== 'admin'))) {
       // Redirect to landing page instead of dashboard to prevent flash
       router.push('/');
     }
@@ -219,6 +220,13 @@ export default function AdminDashboard() {
 
       setDataLoading(true);
       
+      // Enforce: only superadmin can create an admin user
+      if (userRole === 'admin' && userForm.role === 'admin') {
+        alert('Only superadmins can create admin users.');
+        setDataLoading(false);
+        return;
+      }
+
       // Use our server-side API endpoint instead of client-side admin method
       console.log('🔐 Creating user via server API...');
       const response = await fetch('/api/admin/create-user', {
@@ -362,6 +370,14 @@ export default function AdminDashboard() {
     if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
       try {
         console.log('🗑️ Deleting user:', userId);
+        // Prevent admin from deleting a superadmin
+        if (userRole === 'admin') {
+          const target = users.find(u => u.id === userId);
+          if (target?.role === 'superadmin') {
+            alert('Admins are not allowed to delete a superadmin.');
+            return;
+          }
+        }
         
         // Delete from users table first
         const { error: profileError } = await supabase
@@ -634,7 +650,7 @@ export default function AdminDashboard() {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
-  if (!user || userRole !== 'superadmin') {
+  if (!user || (userRole !== 'superadmin' && userRole !== 'admin')) {
     return <div className="flex items-center justify-center min-h-screen">Access Denied</div>;
   }
 
@@ -901,7 +917,7 @@ export default function AdminDashboard() {
                     </div>
                     <Select
                       value={userRoleFilter}
-                      onValueChange={(value: 'all' | 'student' | 'teacher' | 'superadmin') => setUserRoleFilter(value)}
+                      onValueChange={(value: 'all' | 'student' | 'teacher' | 'admin' | 'superadmin') => setUserRoleFilter(value)}
                     >
                       <SelectTrigger className="w-36 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
                         <SelectValue placeholder="Filter role" />
@@ -910,6 +926,7 @@ export default function AdminDashboard() {
                         <SelectItem value="all">All roles</SelectItem>
                         <SelectItem value="student">Student</SelectItem>
                         <SelectItem value="teacher">Teacher</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="superadmin">Superadmin</SelectItem>
                       </SelectContent>
                     </Select>
@@ -1286,7 +1303,7 @@ export default function AdminDashboard() {
                   <Label htmlFor="role" className="text-gray-900 dark:text-white">Role *</Label>
                   <Select
                     value={userForm.role}
-                    onValueChange={(value: 'student' | 'teacher' | 'superadmin') => 
+                    onValueChange={(value: 'student' | 'teacher' | 'admin' | 'superadmin') => 
                       setUserForm({ ...userForm, role: value })
                     }
                   >
@@ -1296,6 +1313,9 @@ export default function AdminDashboard() {
                     <SelectContent className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600">
                       <SelectItem value="student" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600">Student</SelectItem>
                       <SelectItem value="teacher" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600">Teacher</SelectItem>
+                      {userRole === 'superadmin' && (
+                        <SelectItem value="admin" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600">Admin</SelectItem>
+                      )}
                       <SelectItem value="superadmin" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600">Superadmin</SelectItem>
                     </SelectContent>
                   </Select>
