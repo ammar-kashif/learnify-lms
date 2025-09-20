@@ -30,6 +30,7 @@ import ThemeToggle from '@/components/theme-toggle';
 import FileUpload from '@/components/ui/file-upload';
 import { uploadToS3, deleteFromS3, formatFileSize } from '@/lib/s3';
 import { getChapters, createChapterFromFile, deleteChapter, type Chapter } from '@/lib/chapters';
+import { supabase } from '@/lib/supabase';
 import Avatar from '@/components/ui/avatar';
 
 interface Course {
@@ -102,30 +103,42 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
       try {
         setLoading(true);
         
-        // Fetch course details
-        const courseResponse = await fetch(`/api/teacher/courses?teacherId=${user.id}`);
-        if (!courseResponse.ok) {
-          throw new Error('Failed to fetch courses');
-        }
-        const courseData = await courseResponse.json();
-        const courseInfo = courseData.courses?.find((c: Course) => c.id === params.id);
-        
-        if (!courseInfo) {
-          throw new Error('Course not found');
-        }
-        setCourse(courseInfo);
+        if (userProfile?.role === 'student') {
+          // Students: fetch course directly by ID
+          const { data: courseData, error: courseErr } = await supabase
+            .from('courses')
+            .select('id,title,description,subject,created_at,updated_at,current_students,price')
+            .eq('id', params.id)
+            .single();
+          if (courseErr || !courseData) {
+            throw new Error('Course not found');
+          }
+          setCourse(courseData as unknown as Course);
+        } else {
+          // Teachers/Admins: use teacher-scoped APIs
+          const courseResponse = await fetch(`/api/teacher/courses?teacherId=${user.id}`);
+          if (!courseResponse.ok) {
+            throw new Error('Failed to fetch courses');
+          }
+          const courseData = await courseResponse.json();
+          const courseInfo = courseData.courses?.find((c: Course) => c.id === params.id);
+          if (!courseInfo) {
+            throw new Error('Course not found');
+          }
+          setCourse(courseInfo);
 
-        // Fetch students for this course
-        const studentsResponse = await fetch(`/api/teacher/students?teacherId=${user.id}`);
-        if (studentsResponse.ok) {
-          const studentsData = await studentsResponse.json();
-          const courseStudents = studentsData.students?.filter((s: any) => s.course_id === params.id) || [];
-          setStudents(courseStudents);
+          // Fetch students for this course (teacher/admin views)
+          const studentsResponse = await fetch(`/api/teacher/students?teacherId=${user.id}`);
+          if (studentsResponse.ok) {
+            const studentsData = await studentsResponse.json();
+            const courseStudents = studentsData.students?.filter((s: any) => s.course_id === params.id) || [];
+            setStudents(courseStudents);
+          }
         }
 
         // Fetch quiz count for this course
         const { data: { session } } = await import('@/lib/supabase').then(m => m.supabase.auth.getSession());
-        if (session) {
+        if (session && userProfile?.role !== 'student') {
           const quizResponse = await fetch(`/api/quizzes?courseId=${params.id}&userId=${user.id}`, {
             headers: {
               'Authorization': `Bearer ${session.access_token}`,
@@ -145,7 +158,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
     };
 
     fetchCourseAndStudents();
-  }, [user?.id, params.id]);
+  }, [user?.id, params.id, userProfile?.role]);
 
   // Fetch chapters from Supabase
   const fetchChapters = useCallback(async () => {
@@ -594,10 +607,19 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
 
                 {activeTab === 'content' && (
                   <div className="space-y-6">
-                     <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between">
                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                          Course Content ({chapters.length} chapters)
                        </h3>
+                      {(userProfile?.role === 'teacher' || userProfile?.role === 'superadmin' || userProfile?.role === 'admin') && (
+                        <Button 
+                          onClick={() => setShowUploadModal(true)}
+                          className="bg-primary text-white hover:bg-primary-600"
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Upload Content
+                        </Button>
+                      )}
                     </div>
 
                     {/* Upload Modal */}
@@ -686,7 +708,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
                                          <Download className="h-4 w-4" />
                                        </Button>
                                      )}
-                                     {!(chapter as any).isUploading && (
+                                    {!(chapter as any).isUploading && (userProfile?.role === 'teacher' || userProfile?.role === 'superadmin' || userProfile?.role === 'admin') && (
                                        <Button
                                          variant="ghost"
                                          size="sm"
@@ -714,13 +736,15 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
                          <p className="text-gray-600 dark:text-gray-300 mb-4">
                            Upload files to create chapters for your course.
                          </p>
-                        <Button 
-                          onClick={() => setShowUploadModal(true)}
-                          className="bg-primary text-white hover:bg-primary-600"
-                        >
-                          <Plus className="mr-2 h-4 w-4" />
-                          Upload Content
-                        </Button>
+                        {(userProfile?.role === 'teacher' || userProfile?.role === 'superadmin' || userProfile?.role === 'admin') && (
+                          <Button 
+                            onClick={() => setShowUploadModal(true)}
+                            className="bg-primary text-white hover:bg-primary-600"
+                          >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Upload Content
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>

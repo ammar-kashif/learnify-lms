@@ -13,6 +13,16 @@ import {
 
 export const dynamic = 'force-dynamic';
 
+type ChapterItem = {
+  id: string;
+  title: string;
+  file_url: string | null;
+  file_type?: string | null;
+  file_size?: number | null;
+  created_at?: string;
+  content?: string | null;
+};
+
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -24,61 +34,42 @@ const supabase = createClient(
 );
 
 async function getCourse(courseId: string) {
+  console.log('🔍 Fetching course:', courseId);
   const { data: course, error } = await supabaseAdmin
     .from('courses')
     .select('id, title, description, created_at')
     .eq('id', courseId)
     .single();
 
-  if (error || !course) return null;
+  if (error || !course) {
+    console.log('❌ Course not found:', error?.message);
+    return null;
+  }
+  console.log('✅ Course found:', course.title);
   return course;
 }
 
-async function getChapters(courseId: string) {
-  const { data: chapters, error } = await supabaseAdmin
-    .from('chapters')
-    .select('id, title, content, file_url, created_at')
-    .eq('course_id', courseId)
-    .order('created_at', { ascending: true });
-
-  if (error) return [];
-  return chapters || [];
-}
-
-async function getUser() {
-  const cookieStore = cookies();
-  const token = cookieStore.get('sb-access-token')?.value;
-  
-  if (!token) return null;
-
-  try {
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return null;
-
-    // Get user role
-    const { data: profile } = await supabaseAdmin
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    return {
-      id: user.id,
-      role: profile?.role || 'student'
-    };
-  } catch (error) {
-    return null;
-  }
-}
 
 export default async function CoursePage({ params, searchParams }: { params: { id: string }, searchParams: { [key: string]: string | string[] | undefined } }) {
   const courseId = params.id;
+  console.log('🚀 CoursePage started for courseId:', courseId);
 
-  const [course, chapters, user] = await Promise.all([
-    getCourse(courseId),
-    getChapters(courseId),
-    getUser(),
-  ]);
+  const course = await getCourse(courseId);
+  console.log('📚 Course found:', !!course);
+
+  // Fetch chapters directly - this is a public course page
+  const { data: chaptersData, error: chaptersError } = await supabaseAdmin
+    .from('chapters')
+    .select('*')
+    .eq('course_id', courseId)
+    .order('created_at', { ascending: true });
+  
+  if (chaptersError) {
+    console.log('❌ Chapters fetch error:', chaptersError.message);
+  }
+  
+  const chapters = (chaptersData || []) as ChapterItem[];
+  console.log('📖 Chapters result:', chapters.length, 'chapters');
 
   if (!course) {
     notFound();
@@ -198,8 +189,8 @@ export default async function CoursePage({ params, searchParams }: { params: { i
         {activeTab === 'quizzes' && (
           <QuizSection 
             courseId={courseId} 
-            userRole={user?.role || 'student'} 
-            userId={user?.id || ''} 
+            userRole="student" 
+            userId="" 
           />
         )}
       </main>
@@ -207,5 +198,3 @@ export default async function CoursePage({ params, searchParams }: { params: { i
     </div>
   );
 }
-
-

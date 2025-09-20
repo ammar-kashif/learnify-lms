@@ -14,18 +14,24 @@ export interface Chapter {
 // Get all chapters for a course
 export async function getChapters(courseId: string): Promise<Chapter[]> {
   try {
-    const { data, error } = await supabase
-      .from('chapters')
-      .select('*')
-      .eq('course_id', courseId)
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching chapters:', error);
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) {
       return [];
     }
-
-    return data || [];
+    const response = await fetch('/api/chapters/list', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ courseId })
+    });
+    if (!response.ok) {
+      return [];
+    }
+    const result = await response.json();
+    return result.chapters || [];
   } catch (error) {
     console.error('Error fetching chapters:', error);
     return [];

@@ -54,10 +54,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Enforce: only superadmin may create an admin user
-    if (role === 'admin' && callerRole === 'admin') {
+    // Enforce: only superadmin may create a superadmin user
+    if (role === 'superadmin' && callerRole !== 'superadmin') {
       return NextResponse.json(
-        { error: 'Only superadmins can create admin users' },
+        { error: 'Only superadmins can create superadmin users' },
         { status: 403 }
       );
     }
