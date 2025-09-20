@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user role
+    // Get user role and permissions in a single query
     const { data: userProfile } = await supabaseAdmin
       .from('users')
       .select('role')
@@ -40,14 +40,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User profile not found' }, { status: 404 });
     }
 
-    // Build query based on user role
-    const query = supabaseAdmin
-      .from('quizzes')
-      .select('*')
-      .eq('course_id', courseId)
-      .order('created_at', { ascending: false });
-
-    // Students can only see quizzes for enrolled courses
+    // Check permissions based on user role
+    let hasPermission = true;
+    
     if (userProfile.role === 'student') {
       const { data: enrollment } = await supabaseAdmin
         .from('student_enrollments')
@@ -55,37 +50,35 @@ export async function GET(request: NextRequest) {
         .eq('student_id', user.id)
         .eq('course_id', courseId)
         .single();
-
-      if (!enrollment) {
-        return NextResponse.json({ error: 'Not enrolled in this course' }, { status: 403 });
-      }
-    }
-
-    // Teachers can only see quizzes for courses they're assigned to
-    if (userProfile.role === 'teacher') {
+      hasPermission = !!enrollment;
+    } else if (userProfile.role === 'teacher') {
       const { data: teacherCourse } = await supabaseAdmin
         .from('teacher_courses')
         .select('course_id')
         .eq('teacher_id', user.id)
         .eq('course_id', courseId)
         .single();
-
-      if (!teacherCourse) {
-        return NextResponse.json({ error: 'Not assigned to this course' }, { status: 403 });
-      }
+      hasPermission = !!teacherCourse;
     }
 
-    console.log('🔍 Fetching quizzes for course:', courseId, 'by user:', user.id, 'role:', userProfile.role);
-    
-    const { data: quizzes, error } = await query;
+    if (!hasPermission) {
+      const errorMsg = userProfile.role === 'student' 
+        ? 'Not enrolled in this course' 
+        : 'Not assigned to this course';
+      return NextResponse.json({ error: errorMsg }, { status: 403 });
+    }
+
+    // Fetch quizzes
+    const { data: quizzes, error } = await supabaseAdmin
+      .from('quizzes')
+      .select('*')
+      .eq('course_id', courseId)
+      .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('❌ Error fetching quizzes:', error);
+      console.error('Error fetching quizzes:', error);
       return NextResponse.json({ error: 'Failed to fetch quizzes' }, { status: 500 });
     }
-
-    console.log('✅ Quizzes fetched:', quizzes?.length || 0, 'quizzes');
-    console.log('📋 Quiz data:', quizzes);
 
     return NextResponse.json({ quizzes: quizzes || [] });
   } catch (error) {

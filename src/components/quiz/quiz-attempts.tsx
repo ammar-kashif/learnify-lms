@@ -118,7 +118,7 @@ export default function QuizAttempts({ quiz, attempts, onBack, loading = false }
                       <User className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <CardTitle className="text-base">Student Attempt</CardTitle>
+                      <CardTitle className="text-base">{attempt.student_name || 'Student Attempt'}</CardTitle>
                       <p className="text-sm text-gray-600 dark:text-gray-300">
                         {new Date(attempt.created_at).toLocaleString()}
                       </p>

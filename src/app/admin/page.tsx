@@ -26,9 +26,14 @@ import {
   Home,
   CreditCard,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Eye,
+  FileText,
+  Settings,
+  Calendar
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { formatDate } from '@/utils/date';
 
 interface User {
   id: string;
@@ -44,6 +49,8 @@ interface Course {
   description: string;
   created_by: string;
   created_at: string;
+  chapters_count?: number;
+  quizzes_count?: number;
 }
 
 interface TeacherCourse {
@@ -120,7 +127,11 @@ export default function AdminDashboard() {
 
       const coursesPromise = supabase
         .from('courses')
-        .select('id,title,description,created_at,created_by')
+        .select(`
+          id,title,description,created_at,created_by,
+          chapters:chapters(count),
+          quizzes:quizzes(count)
+        `)
         .order('created_at', { ascending: false });
 
       const assignmentsPromise = supabase
@@ -142,7 +153,13 @@ export default function AdminDashboard() {
         console.error('❌ Error fetching courses:', coursesRes.error);
         setError((prev) => prev || 'Failed to fetch courses.');
       } else {
-        setCourses(coursesRes.data || []);
+        // Process courses to extract content counts
+        const processedCourses = (coursesRes.data || []).map(course => ({
+          ...course,
+          chapters_count: course.chapters?.[0]?.count || 0,
+          quizzes_count: course.quizzes?.[0]?.count || 0
+        }));
+        setCourses(processedCourses);
       }
 
       if (assignmentsRes.error) {
@@ -186,6 +203,18 @@ export default function AdminDashboard() {
       fetchData();
     }
   }, [userRole, fetchData]);
+
+  // Auto-refresh payment verification data when payments tab is active
+  useEffect(() => {
+    if (activeTab === 'payments' && userRole === 'superadmin') {
+      const interval = setInterval(() => {
+        console.log('🔄 Auto-refreshing payment verification data...');
+        fetchData();
+      }, 5000); // Refresh every 5 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [activeTab, userRole, fetchData]);
 
   // Lazy-load payments only when tab is opened and not already loaded
   useEffect(() => {
@@ -982,7 +1011,7 @@ export default function AdminDashboard() {
                             </Badge>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                            {new Date(user.created_at).toLocaleDateString()}
+                            {formatDate(user.created_at)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <Button
@@ -1025,16 +1054,18 @@ export default function AdminDashboard() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filteredCourses.map((course) => (
-                    <Card key={course.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-200 dark:border-gray-700">
+                    <Card key={course.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
                       <CardHeader>
-                        <CardTitle className="text-lg text-gray-900 dark:text-white">{course.title}</CardTitle>
-                        <CardDescription className="text-gray-700 dark:text-gray-300">{course.description}</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600 dark:text-gray-400">
-                            Created: {new Date(course.created_at).toLocaleDateString()}
-                          </span>
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                              <BookOpen className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-lg text-gray-900 dark:text-white">{course.title}</CardTitle>
+                              <CardDescription className="text-gray-700 dark:text-gray-300 mt-1">{course.description}</CardDescription>
+                            </div>
+                          </div>
                           <Button
                             variant="outline"
                             size="sm"
@@ -1043,6 +1074,55 @@ export default function AdminDashboard() {
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-4 w-4" />
+                              Created: {formatDate(course.created_at)}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                            <div className="flex items-center gap-1">
+                              <FileText className="h-3 w-3" />
+                              {course.chapters_count || 0} chapters
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Settings className="h-3 w-3" />
+                              {course.quizzes_count || 0} quizzes
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(`/courses/${course.id}`, '_blank')}
+                              className="flex-1 bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/30"
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Content
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(`/courses/${course.id}?tab=chapters`, '_blank')}
+                              className="bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
+                            >
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(`/courses/${course.id}?tab=quizzes`, '_blank')}
+                              className="bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
+                            >
+                              <Settings className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -1118,7 +1198,13 @@ export default function AdminDashboard() {
             {activeTab === 'payments' && (
               <div>
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Payment Verification</h2>
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Payment Verification</h2>
+                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <span>Auto-refreshing every 5s</span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -1189,7 +1275,7 @@ export default function AdminDashboard() {
                               </Badge>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                              {new Date(payment.created_at).toLocaleDateString()}
+                              {formatDate(payment.created_at)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                               <div className="flex items-center space-x-2">
@@ -1213,7 +1299,7 @@ export default function AdminDashboard() {
                                 )}
                                 {payment.status !== 'pending' && (
                                   <span className="text-gray-400 dark:text-gray-500 mr-2">
-                                    {payment.verified_at ? new Date(payment.verified_at).toLocaleDateString() : 'N/A'}
+                                    {payment.verified_at ? formatDate(payment.verified_at) : 'N/A'}
                                   </span>
                                 )}
                                 <Button

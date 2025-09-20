@@ -90,6 +90,9 @@ export async function POST(
           ...answer,
           is_correct: false,
           points_earned: 0,
+          question_text: 'Question not found',
+          correct_answer: 'Not available',
+          points: 0,
         };
       }
 
@@ -100,6 +103,9 @@ export async function POST(
         ...answer,
         is_correct: isCorrect,
         points_earned: pointsEarned,
+        question_text: question.question || 'Question text not available',
+        correct_answer: question.options?.[question.correct_answer] || 'Correct answer not available',
+        points: question.points || 0,
       };
     });
 

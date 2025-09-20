@@ -42,6 +42,7 @@ export interface QuizAttempt {
   id: string;
   quiz_id: string;
   student_id: string;
+  student_name?: string; // Added student name for display
   answers: StudentAnswer[];
   score: number;
   max_score: number;
