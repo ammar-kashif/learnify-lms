@@ -132,7 +132,35 @@ export default function QuizSection({ courseId, userRole, userId }: QuizSectionP
     if (!session) return;
 
     try {
-      // Use the quiz results API to get attempts with student names
+      if (userRole === 'student') {
+        // Students: load only their attempts via quiz-specific endpoint
+        const res = await fetch(`/api/quizzes/${quizId}/attempt`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` },
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to fetch attempts');
+        }
+
+        const data = await res.json();
+        const ownAttempts = (data.attempts || [])
+          .filter((a: any) => a.student_id === userId) // ensure only own
+          .map((a: any) => ({
+            id: a.id,
+            quiz_id: a.quiz_id,
+            student_id: a.student_id,
+            student_name: a.student_name || 'You',
+            answers: a.answers || [],
+            score: a.score,
+            max_score: a.max_score,
+            completed_at: a.completed_at,
+            created_at: a.created_at || a.completed_at,
+          }));
+        setAttempts(ownAttempts);
+        return;
+      }
+
+      // Admin/teacher: use aggregated results API
       const response = await fetch(`/api/quizzes/results?courseId=${courseId}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -144,7 +172,6 @@ export default function QuizSection({ courseId, userRole, userId }: QuizSectionP
       }
 
       const data = await response.json();
-      // Filter attempts for the specific quiz and transform to QuizAttempt format
       const quizAttempts = (data.results || [])
         .filter((result: any) => result.quiz_id === quizId)
         .map((result: any) => ({
@@ -158,7 +185,6 @@ export default function QuizSection({ courseId, userRole, userId }: QuizSectionP
           completed_at: result.completed_at,
           created_at: result.created_at || result.completed_at
         }));
-      
       setAttempts(quizAttempts);
     } catch (error) {
       console.error('Error loading attempts:', error);

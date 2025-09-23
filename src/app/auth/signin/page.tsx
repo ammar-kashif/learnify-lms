@@ -12,9 +12,11 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth-context';
+import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
+import TwoFactorVerify from '@/components/auth/two-factor-verify';
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
@@ -22,8 +24,9 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [step, setStep] = useState<'login' | '2fa' | 'backup'>('login');
 
-  const { signIn } = useAuth();
+  const { signIn, session } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,7 +39,24 @@ export default function SignInPage() {
       if (error) {
         setError(error.message);
       } else {
-        router.push('/dashboard');
+        // Ensure fresh token after sign-in
+        let token = session?.access_token;
+        if (!token) {
+          const { data } = await supabase.auth.getSession();
+          token = data.session?.access_token;
+        }
+        // Check 2FA status
+        const res = token ? await fetch('/api/auth/2fa/status', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }).catch(() => null) : null;
+        const data = res && res.ok ? await res.json() : { enabled: false };
+        const has2FA = !!data.enabled;
+        
+        if (has2FA) {
+          setStep('2fa');
+        } else {
+          router.push('/dashboard');
+        }
       }
     } catch (err) {
       setError('An unexpected error occurred');
@@ -44,6 +64,33 @@ export default function SignInPage() {
       setIsLoading(false);
     }
   };
+
+  const handle2FASuccess = () => {
+    router.push('/dashboard');
+  };
+
+  // backup code flow removed
+
+  const handleBackToLogin = () => {
+    setStep('login');
+    setError('');
+  };
+
+  // backup code flow removed
+
+  // Render 2FA verification step
+  if (step === '2fa') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-white to-primary-50 p-4 dark:from-gray-900 dark:via-gray-950 dark:to-black">
+        <TwoFactorVerify
+          onSuccess={handle2FASuccess}
+          onBack={handleBackToLogin}
+        />
+      </div>
+    );
+  }
+
+  // Backup code view removed
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-white to-primary-50 p-4 dark:from-gray-900 dark:via-gray-950 dark:to-black">

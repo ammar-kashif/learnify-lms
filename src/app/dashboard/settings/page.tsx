@@ -21,10 +21,12 @@ import Link from 'next/link';
 import ThemeToggle from '@/components/theme-toggle';
 import AvatarUpload from '@/components/ui/avatar-upload';
 import Avatar from '@/components/ui/avatar';
+import TwoFactorSettings from '@/components/auth/two-factor-settings';
 
 export default function SettingsPage() {
   const { user, userProfile, signOut, updateUserProfile } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [show2FASettings, setShow2FASettings] = useState(false);
 
   // Navigation items based on user role
   const getNavigationItems = (userRole: string) => {
@@ -295,9 +297,49 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Security Settings */}
+            <Card className="border-gray-200 dark:border-gray-700">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Shield className="h-5 w-5" />
+                  <span>Security Settings</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                      Two-Factor Authentication
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      Add an extra layer of security to your account with 2FA.
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={() => setShow2FASettings(true)}
+                    variant="outline"
+                  >
+                    <Shield className="h-4 w-4 mr-2" />
+                    Manage 2FA
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
+
+      {/* 2FA Settings Modal */}
+      {show2FASettings && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <TwoFactorSettings onClose={() => setShow2FASettings(false)} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
