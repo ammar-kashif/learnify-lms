@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import AWS from 'aws-sdk';
+import sharp from 'sharp';
 import { createClient } from '@supabase/supabase-js';
 
 // Configure AWS SDK
@@ -101,17 +102,33 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate unique key for new avatar
-    const key = generateAvatarKey(userId, file.name);
+    let key = generateAvatarKey(userId, file.name);
 
     // Convert file to buffer
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const arrayBuffer = await file.arrayBuffer();
+    let buffer: Buffer = Buffer.from(new Uint8Array(arrayBuffer));
+    let contentType = file.type;
+
+    // If JPEG/PNG, convert to WebP
+    if (['image/jpeg', 'image/png'].includes(file.type)) {
+      try {
+        const webpBuffer = await sharp(buffer).webp({ quality: 82 }).toBuffer();
+        buffer = webpBuffer;
+        // ensure .webp extension
+        const basePath = key.replace(/\.[^/.]+$/, '');
+        key = `${basePath}.webp`;
+        contentType = 'image/webp';
+      } catch (convErr) {
+        console.warn('Avatar WebP conversion failed, uploading original:', convErr);
+      }
+    }
 
     // Upload parameters
     const uploadParams = {
       Bucket: AVATAR_BUCKET,
       Key: key,
       Body: buffer,
-      ContentType: file.type,
+      ContentType: contentType,
     };
 
     // Upload to S3
