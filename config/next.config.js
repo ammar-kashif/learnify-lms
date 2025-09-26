@@ -26,6 +26,16 @@ const nextConfig = {
       'lms-lesson-hls.s3.amazonaws.com',
       'lms-avatars.s3.amazonaws.com'
     ],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.amazonaws.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+      },
+    ],
   },
   async headers() {
     return [
