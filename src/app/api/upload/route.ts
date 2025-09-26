@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import AWS from 'aws-sdk';
-import sharp from 'sharp';
 
 // Configure AWS SDK
 const s3 = new AWS.S3({
@@ -74,39 +73,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid bucket type' }, { status: 400 });
     }
 
-    // Detect if we should convert to WebP (for JPEG/PNG only)
-    const isConvertibleImage = ['image/jpeg', 'image/png'].includes(fileType);
+    // Generate unique key
+    const key = generateFileKey(prefix || 'uploads', file.name);
 
-    // Prepare buffer and key
-    const arrayBuffer = await file.arrayBuffer();
-    let buffer: Buffer = Buffer.from(new Uint8Array(arrayBuffer));
-    let key = generateFileKey(prefix || 'uploads', file.name);
-    let contentType = file.type;
-
-    if (isConvertibleImage) {
-      try {
-        // Convert to WebP with sensible defaults
-        const webpBuffer = await sharp(buffer)
-          .webp({ quality: 82 })
-          .toBuffer();
-
-        buffer = webpBuffer;
-
-        // Force .webp extension in key
-        const basePath = key.replace(/\.[^/.]+$/, '');
-        key = `${basePath}.webp`;
-        contentType = 'image/webp';
-      } catch (convErr) {
-        console.warn('Image conversion to WebP failed, uploading original:', convErr);
-      }
-    }
+    // Convert file to buffer
+    const buffer = Buffer.from(await file.arrayBuffer());
 
     // Upload parameters
     const uploadParams = {
       Bucket: bucketName,
       Key: key,
       Body: buffer,
-      ContentType: contentType,
+      ContentType: file.type,
       // Note: ACL removed as the bucket doesn't allow ACLs
       // Files will inherit bucket's default permissions
     };
