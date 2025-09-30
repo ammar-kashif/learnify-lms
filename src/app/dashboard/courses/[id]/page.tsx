@@ -28,6 +28,8 @@ import Link from 'next/link';
 import QuizSection from '@/components/quiz/quiz-section';
 import ThemeToggle from '@/components/theme-toggle';
 import FileUpload from '@/components/ui/file-upload';
+import LectureRecordingUpload from '@/components/course/lecture-recording-upload';
+import LectureRecordingsList from '@/components/course/lecture-recordings-list';
 import { uploadToS3, deleteFromS3, formatFileSize } from '@/lib/s3';
 import { getChapters, createChapterFromFile, deleteChapter, type Chapter } from '@/lib/chapters';
 import { supabase } from '@/lib/supabase';
@@ -51,13 +53,15 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   const [quizCount, setQuizCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'quizzes' | 'content' | 'students'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'quizzes' | 'content' | 'students' | 'recordings'>('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
   // Content management state
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [contentLoading, setContentLoading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [recordingsRefreshKey, setRecordingsRefreshKey] = useState(0);
+  const [showRecordingUploadModal, setShowRecordingUploadModal] = useState(false);
 
   // Navigation items based on user role
   const getNavigationItems = (userRole: string) => {
@@ -297,6 +301,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
     { id: 'overview', label: 'Overview', icon: BookOpen },
     { id: 'quizzes', label: 'Quizzes', icon: ClipboardList },
     { id: 'content', label: 'Content', icon: FileText },
+    { id: 'recordings', label: 'Recordings', icon: Video },
     { id: 'students', label: 'Students', icon: Users },
   ];
 
@@ -745,6 +750,54 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
                             Upload Content
                           </Button>
                         )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'recordings' && (
+                  <div className="space-y-6">
+                    {(userProfile?.role === 'teacher' || userProfile?.role === 'superadmin' || userProfile?.role === 'admin') && (
+                      <div className="flex items-center justify-end">
+                        <Button
+                          onClick={() => setShowRecordingUploadModal(true)}
+                          className="bg-primary text-white hover:bg-primary-600"
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Upload Lecture Recording
+                        </Button>
+                      </div>
+                    )}
+
+                    <LectureRecordingsList
+                      courseId={params.id}
+                      userRole={userProfile?.role || 'student'}
+                      refreshKey={recordingsRefreshKey}
+                    />
+
+                    {showRecordingUploadModal && (
+                      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                        <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-800">
+                          <div className="p-6">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Upload Lecture Recording</h3>
+                              <Button
+                                variant="ghost"
+                                onClick={() => setShowRecordingUploadModal(false)}
+                                className="text-gray-600 dark:text-gray-300"
+                              >
+                                <X className="h-5 w-5" />
+                              </Button>
+                            </div>
+                            <LectureRecordingUpload
+                              courseId={params.id}
+                              onUploadSuccess={() => {
+                                setShowRecordingUploadModal(false);
+                                setRecordingsRefreshKey((k) => k + 1);
+                              }}
+                            />
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>

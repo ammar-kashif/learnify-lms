@@ -55,9 +55,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User profile not found' }, { status: 404 });
     }
 
-    // Only admins and superadmins can view quiz results
-    if (userProfile.role !== 'admin' && userProfile.role !== 'superadmin') {
-      return NextResponse.json({ error: 'Only admins can view quiz results' }, { status: 403 });
+    // Permission: admins/superadmins OR teachers assigned to this course
+    if (userProfile.role === 'teacher') {
+      const { data: assignment } = await supabaseAdmin
+        .from('teacher_courses')
+        .select('course_id')
+        .eq('teacher_id', user.id)
+        .eq('course_id', courseId)
+        .single();
+      if (!assignment) {
+        return NextResponse.json({ error: 'Not assigned to this course' }, { status: 403 });
+      }
+    } else if (userProfile.role !== 'admin' && userProfile.role !== 'superadmin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // First get quizzes for this course

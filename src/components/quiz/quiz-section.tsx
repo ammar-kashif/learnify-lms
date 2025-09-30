@@ -450,7 +450,7 @@ export default function QuizSection({ courseId, userRole, userId }: QuizSectionP
                       <div className="flex justify-end pt-4">
                         <Button 
                           onClick={() => handleViewAttempts(quiz.id)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-sm"
+                          className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg shadow-sm"
                         >
                           <BarChart3 className="h-4 w-4 mr-2" />
                           View Attempts
@@ -554,7 +554,7 @@ export default function QuizSection({ courseId, userRole, userId }: QuizSectionP
                           <div className="flex justify-center pt-4">
                             <Button 
                               onClick={() => handleReviewAnswers(quiz)}
-                              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
+                              className="bg-primary hover:bg-primary/90 text-white px-6 py-2"
                             >
                               <BarChart3 className="h-4 w-4 mr-2" />
                               View Attempts

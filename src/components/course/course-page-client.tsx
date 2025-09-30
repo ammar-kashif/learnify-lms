@@ -7,6 +7,8 @@ import Link from 'next/link';
 import ThemeToggle from '@/components/theme-toggle';
 import QuizSection from '@/components/quiz/quiz-section';
 import FileUpload from '@/components/ui/file-upload';
+import LectureRecordingsList from '@/components/course/lecture-recordings-list';
+import LectureRecordingUpload from '@/components/course/lecture-recording-upload';
 import { uploadToS3 } from '@/lib/s3';
 import { createChapterFromFile } from '@/lib/chapters';
 import { formatDate } from '@/utils/date';
@@ -57,6 +59,7 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
   const [showQuizResults, setShowQuizResults] = useState(false);
   const [selectedAttempt, setSelectedAttempt] = useState<any>(null);
   const [showAttemptDetails, setShowAttemptDetails] = useState(false);
+  const [showRecordingUploadModal, setShowRecordingUploadModal] = useState(false);
 
   useEffect(() => {
     setIsAdmin(userRole === 'admin' || userRole === 'superadmin');
@@ -378,16 +381,29 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
             </section>
           )}
 
-          {/* Recorded Lectures (placeholder) */}
+          {/* Recorded Lectures */}
           {activeTab === 'lectures' && (
             <section id="lectures" className="space-y-5">
               <div className="flex items-center justify-between pl-0 pt-2">
                 <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">Recorded Lectures</h2>
-                <span className="text-xs text-gray-500 dark:text-gray-400">0 items</span>
               </div>
-              <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm">
-                <p className="text-sm text-gray-600 dark:text-gray-300">Coming soon. Recorded lectures for this course will appear here.</p>
-              </div>
+              
+              {isAdmin && (
+                <div className="flex items-center justify-end">
+                  <button 
+                    onClick={() => setShowRecordingUploadModal(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Upload Lecture Recording
+                  </button>
+                </div>
+              )}
+
+              <LectureRecordingsList
+                courseId={courseId}
+                userRole={isAdmin ? (userRole === 'superadmin' ? "superadmin" : "admin") : "student"}
+              />
             </section>
           )}
 
@@ -591,6 +607,34 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                 accept=".pdf,.doc,.docx,image/*,video/*"
                 maxFiles={10}
                 maxSize={50} // 50MB
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recording Upload Modal */}
+      {showRecordingUploadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Upload Lecture Recording
+                </h3>
+                <button
+                  onClick={() => setShowRecordingUploadModal(false)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              <LectureRecordingUpload
+                courseId={courseId}
+                onUploadSuccess={() => {
+                  setShowRecordingUploadModal(false);
+                  window.location.reload();
+                }}
               />
             </div>
           </div>

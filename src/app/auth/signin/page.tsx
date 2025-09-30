@@ -25,6 +25,9 @@ export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [step, setStep] = useState<'login' | '2fa' | 'backup'>('login');
+  const [backupCode, setBackupCode] = useState('');
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [backupError, setBackupError] = useState('');
 
   const { signIn, session } = useAuth();
   const router = useRouter();
@@ -39,19 +42,25 @@ export default function SignInPage() {
       if (error) {
         setError(error.message);
       } else {
-        // Ensure fresh token after sign-in
-        let token = session?.access_token;
-        if (!token) {
-          const { data } = await supabase.auth.getSession();
-          token = data.session?.access_token;
-        }
-        // Check 2FA status
-        const res = token ? await fetch('/api/auth/2fa/status', {
-          headers: { 'Authorization': `Bearer ${token}` }
+        // Always fetch a fresh session/token after sign-in
+        const { data } = await supabase.auth.getSession();
+        const freshToken = data.session?.access_token;
+
+        // Check 2FA status; if the check fails for any reason, default to requiring 2FA
+        const res = freshToken ? await fetch('/api/auth/2fa/status', {
+          headers: { 'Authorization': `Bearer ${freshToken}` }
         }).catch(() => null) : null;
-        const data = res && res.ok ? await res.json() : { enabled: false };
-        const has2FA = !!data.enabled;
-        
+
+        let has2FA = true; // secure default
+        if (res && res.ok) {
+          try {
+            const json = await res.json();
+            has2FA = !!json.enabled;
+          } catch (_) {
+            has2FA = true;
+          }
+        }
+
         if (has2FA) {
           setStep('2fa');
         } else {
@@ -85,12 +94,96 @@ export default function SignInPage() {
         <TwoFactorVerify
           onSuccess={handle2FASuccess}
           onBack={handleBackToLogin}
+          onUseBackupCode={() => {
+            setBackupCode('');
+            setBackupError('');
+            setStep('backup');
+          }}
         />
       </div>
     );
   }
 
-  // Backup code view removed
+  // Backup code verification step
+  if (step === 'backup') {
+    const submitBackup = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setBackupError('');
+      if (!backupCode || backupCode.trim().length < 8) {
+        setBackupError('Enter a valid backup code');
+        return;
+      }
+      try {
+        setBackupLoading(true);
+        // Ensure fresh token
+        const { data } = await supabase.auth.getSession();
+        const freshToken = data.session?.access_token;
+        if (!freshToken) {
+          setBackupError('You need to sign in again');
+          return;
+        }
+        const res = await fetch('/api/auth/2fa/backup-verify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${freshToken}`,
+          },
+          body: JSON.stringify({ code: backupCode.trim() })
+        }).catch(() => null);
+
+        if (!res || !res.ok) {
+          let msg = 'Backup code verification failed';
+          try { msg = (await res!.json()).error || msg; } catch {}
+          setBackupError(msg);
+          return;
+        }
+
+        router.push('/dashboard');
+      } finally {
+        setBackupLoading(false);
+      }
+    };
+
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-white to-primary-50 p-4 dark:from-gray-900 dark:via-gray-950 dark:to-black">
+        <div className="w-full max-w-md">
+          <Card className="border-charcoal-200 shadow-lg dark:border-gray-800 dark:bg-gray-900">
+            <CardHeader className="text-center">
+              <CardTitle className="text-xl text-charcoal-900 dark:text-gray-100">Use a backup code</CardTitle>
+              <CardDescription className="text-charcoal-600 dark:text-gray-300">Enter one of your unused backup codes</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={submitBackup} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="backup">Backup Code</Label>
+                  <Input
+                    id="backup"
+                    type="text"
+                    value={backupCode}
+                    onChange={(e) => { setBackupCode(e.target.value.toUpperCase()); setBackupError(''); }}
+                    placeholder="XXXXXXXX"
+                    className="text-center tracking-widest font-mono"
+                    autoComplete="one-time-code"
+                  />
+                  {backupError && (
+                    <p className="text-sm text-red-600">{backupError}</p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit" className="flex-1" disabled={backupLoading || backupCode.trim().length < 8}>
+                    {backupLoading ? 'Verifying…' : 'Verify'}
+                  </Button>
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => setStep('2fa')}>
+                    Back to 2FA
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-white to-primary-50 p-4 dark:from-gray-900 dark:via-gray-950 dark:to-black">
