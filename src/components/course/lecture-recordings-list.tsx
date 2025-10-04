@@ -349,8 +349,10 @@ export default function LectureRecordingsList({
                     autoPlay
                     muted
                     playsInline
+                    controlsList="nodownload noremoteplayback"
+                    disablePictureInPicture
                   >
-                    <source src={recording.video_url} />
+                    <source src={`/api/lecture-recordings/stream?key=${encodeURIComponent(recording.video_key)}&token=${encodeURIComponent(session?.access_token || '')}`} />
                   </video>
                 </div>
               )}
