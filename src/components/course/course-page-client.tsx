@@ -9,6 +9,10 @@ import QuizSection from '@/components/quiz/quiz-section';
 import FileUpload from '@/components/ui/file-upload';
 import LectureRecordingsList from '@/components/course/lecture-recordings-list';
 import LectureRecordingUpload from '@/components/course/lecture-recording-upload';
+import DemoAccessRequest from '@/components/course/demo-access-request';
+import SubscriptionPlans from '@/components/course/subscription-plans';
+import LiveClassesList from '@/components/course/live-classes-list';
+import AssignmentManagement from '@/components/assignments/assignment-management';
 import { uploadToS3 } from '@/lib/s3';
 import { createChapterFromFile } from '@/lib/chapters';
 import { formatDate } from '@/utils/date';
@@ -24,6 +28,7 @@ import {
   Download,
   Calendar,
   X,
+  Video,
 } from 'lucide-react';
 
 type ChapterItem = {
@@ -60,10 +65,24 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
   const [selectedAttempt, setSelectedAttempt] = useState<any>(null);
   const [showAttemptDetails, setShowAttemptDetails] = useState(false);
   const [showRecordingUploadModal, setShowRecordingUploadModal] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
 
   useEffect(() => {
     setIsAdmin(userRole === 'admin' || userRole === 'superadmin');
   }, [userRole]);
+
+  // Debug logging for LectureRecordingsList props
+  useEffect(() => {
+    console.log('📋 LectureRecordingsList props:', {
+      courseId,
+      finalUserRole: isAdmin ? (userRole === 'superadmin' ? "superadmin" : "admin") : "student",
+      showAccessControls: userRole === 'student' && !!user,
+      isAdmin,
+      originalUserRole: userRole,
+      hasUser: !!user
+    });
+  }, [courseId, isAdmin, userRole, user]);
 
   const handleDeleteChapter = async (chapterId: string) => {
     if (!isAdmin) return;
@@ -240,9 +259,21 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                   </Link>
                 </li>
                 <li>
+                  <Link href={{ pathname: `/courses/${courseId}`, query: { tab: 'live-classes' } }} className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='live-classes' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}>
+                    <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='live-classes' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
+                    <Video className="h-4 w-4" /> Live Classes
+                  </Link>
+                </li>
+                <li>
                   <Link href={{ pathname: `/courses/${courseId}`, query: { tab: 'quizzes' } }} className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='quizzes' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}>
                     <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='quizzes' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
                     <Eye className="h-4 w-4" /> Quizzes
+                  </Link>
+                </li>
+                <li>
+                  <Link href={{ pathname: `/courses/${courseId}`, query: { tab: 'assignments' } }} className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='assignments' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}>
+                    <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='assignments' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
+                    <FileText className="h-4 w-4" /> Assignments
                   </Link>
                 </li>
               </ul>
@@ -403,6 +434,34 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
               <LectureRecordingsList
                 courseId={courseId}
                 userRole={isAdmin ? (userRole === 'superadmin' ? "superadmin" : "admin") : "student"}
+                showAccessControls={userRole === 'student' && !!user}
+                onAccessRequired={() => setShowSubscriptionModal(true)}
+              />
+            </section>
+          )}
+
+          {/* Live Classes */}
+          {activeTab === 'live-classes' && (
+            <section className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">Live Classes</h2>
+                {(userRole === 'teacher' || userRole === 'admin' || userRole === 'superadmin') && (
+                  <button
+                    onClick={() => setShowRecordingUploadModal(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Schedule Live Class
+                  </button>
+                )}
+              </div>
+
+              <LiveClassesList
+                courseId={courseId}
+                userRole={isAdmin ? (userRole === 'superadmin' ? "superadmin" : "admin") : "student"}
+                showAccessControls={userRole === 'student'}
+                onAccessRequired={() => setShowSubscriptionModal(true)}
+                onCreateClass={() => setShowRecordingUploadModal(true)}
               />
             </section>
           )}
@@ -583,6 +642,20 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
               )}
             </div>
           )}
+
+          {/* Assignments */}
+          {activeTab === 'assignments' && (
+            <section className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">Assignments</h2>
+              </div>
+              <AssignmentManagement
+                courseId={courseId}
+                userRole={isAdmin ? (userRole === 'superadmin' ? 'superadmin' : 'admin') : 'student'}
+                chapters={[]}
+              />
+            </section>
+          )}
         </main>
       </div>
       
@@ -633,6 +706,64 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                 courseId={courseId}
                 onUploadSuccess={() => {
                   setShowRecordingUploadModal(false);
+                  window.location.reload();
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Subscription Plans Modal */}
+      {showSubscriptionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  Choose Your Plan
+                </h3>
+                <button
+                  onClick={() => setShowSubscriptionModal(false)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              <SubscriptionPlans
+                courseId={courseId}
+                courseTitle={course.title}
+                onSubscriptionCreated={() => {
+                  setShowSubscriptionModal(false);
+                  window.location.reload();
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Demo Access Modal */}
+      {showDemoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  Try for Free
+                </h3>
+                <button
+                  onClick={() => setShowDemoModal(false)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              <DemoAccessRequest
+                courseId={courseId}
+                courseTitle={course.title}
+                onAccessGranted={() => {
+                  setShowDemoModal(false);
                   window.location.reload();
                 }}
               />

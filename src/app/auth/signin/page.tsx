@@ -29,7 +29,7 @@ export default function SignInPage() {
   const [backupLoading, setBackupLoading] = useState(false);
   const [backupError, setBackupError] = useState('');
 
-  const { signIn, session } = useAuth();
+  const { signIn } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -133,7 +133,11 @@ export default function SignInPage() {
 
         if (!res || !res.ok) {
           let msg = 'Backup code verification failed';
-          try { msg = (await res!.json()).error || msg; } catch {}
+          try { 
+            msg = (await res!.json()).error || msg; 
+          } catch (parseError) {
+            console.error('Error parsing backup response:', parseError);
+          }
           setBackupError(msg);
           return;
         }

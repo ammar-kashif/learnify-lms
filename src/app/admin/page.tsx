@@ -70,7 +70,9 @@ export default function AdminDashboard() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [teacherCourses, setTeacherCourses] = useState<TeacherCourse[]>([]);
   const [paymentVerifications, setPaymentVerifications] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'assignments' | 'payments'>('users');
+  const [enrollments, setEnrollments] = useState<any[]>([]);
+  // const [enrollmentStats] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'assignments' | 'payments' | 'enrollments'>('users');
   const [dataLoading, setDataLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userSearch, setUserSearch] = useState('');
@@ -198,6 +200,28 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  const fetchEnrollments = useCallback(async () => {
+    try {
+      console.log('🔄 Fetching enrollment data...');
+      setDataLoading(true);
+      
+      const response = await fetch('/api/admin/enrollments-simple');
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch enrollments');
+      }
+      
+      setEnrollments(data.enrollments || []);
+      console.log('✅ Enrollment data fetched successfully');
+    } catch (error) {
+      console.error('❌ Error fetching enrollments:', error);
+      setError('Failed to fetch enrollment data');
+    } finally {
+      setDataLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (userRole === 'superadmin') {
       fetchData();
@@ -222,6 +246,13 @@ export default function AdminDashboard() {
       fetchPayments();
     }
   }, [activeTab, paymentVerifications.length, fetchPayments]);
+
+  // Lazy-load enrollments only when tab is opened and not already loaded
+  useEffect(() => {
+    if (activeTab === 'enrollments' && enrollments.length === 0) {
+      fetchEnrollments();
+    }
+  }, [activeTab, enrollments.length, fetchEnrollments]);
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -673,6 +704,7 @@ export default function AdminDashboard() {
     { id: 'courses', label: 'Courses', icon: BookOpen, count: courses.length },
     { id: 'assignments', label: 'Assignments', icon: GraduationCap, count: teacherCourses.length },
     { id: 'payments', label: 'Payments', icon: CreditCard, count: paymentVerifications.length },
+    { id: 'enrollments', label: 'Enrollments', icon: Users, count: enrollments.length },
   ];
 
   if (loading) {
@@ -793,6 +825,7 @@ export default function AdminDashboard() {
                   {activeTab === 'courses' && 'Course Management'}
                   {activeTab === 'assignments' && 'Teacher Assignments'}
                   {activeTab === 'payments' && 'Payment Verification'}
+                  {activeTab === 'enrollments' && 'Enrollment Management'}
                 </h1>
                 <p className="text-gray-600 dark:text-gray-300">
                   Welcome back, {user?.user_metadata?.full_name || user?.email}
@@ -927,7 +960,113 @@ export default function AdminDashboard() {
             </p>
           </CardContent>
         </Card>
-      </div>
+       </div>
+
+          {/* Enrollment Data - Show beneath cards when on enrollments tab */}
+          {activeTab === 'enrollments' && (
+            <div className="mb-8">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">All Enrollments</h2>
+              </div>
+
+              {dataLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+                  <span className="ml-2 text-gray-600 dark:text-gray-400">Loading enrollments...</span>
+                </div>
+              ) : enrollments.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Enrollments Found</h3>
+                  <p className="text-gray-600 dark:text-gray-300">There are no enrollments to display.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-700">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Student
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Course
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Type
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Subscription
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      {enrollments.map((enrollment) => (
+                        <tr key={enrollment.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="flex-shrink-0 h-10 w-10">
+                                {enrollment.studentAvatar ? (
+                                  <img
+                                    className="h-10 w-10 rounded-full"
+                                    src={enrollment.studentAvatar}
+                                    alt={enrollment.studentName}
+                                  />
+                                ) : (
+                                  <div className="h-10 w-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                      {enrollment.studentName.charAt(0).toUpperCase()}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="ml-4">
+                                <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {enrollment.studentName}
+                                </div>
+                                <div className="text-sm text-gray-500 dark:text-gray-400">
+                                  {enrollment.studentEmail}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">
+                              {enrollment.courseTitle}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            <Badge 
+                              variant={enrollment.enrollmentType === 'paid' ? 'default' : 'secondary'}
+                              className={enrollment.enrollmentType === 'paid' 
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                                : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+                              }
+                            >
+                              {enrollment.enrollmentType === 'paid' ? 'Paid' : 'Demo'}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {enrollment.subscription ? (
+                              <div className="text-sm">
+                                <div className="font-medium text-gray-900 dark:text-white">
+                                  {enrollment.subscription.planName}
+                                </div>
+                                <div className="text-gray-500 dark:text-gray-400">
+                                  {enrollment.subscription.planType} - PKR {enrollment.subscription.price}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 dark:text-gray-500">No subscription</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Content based on active tab */}
           {/* Users Tab */}
@@ -1544,5 +1683,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
         </div>
 )}

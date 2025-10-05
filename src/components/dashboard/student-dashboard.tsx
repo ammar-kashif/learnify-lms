@@ -23,13 +23,16 @@ import {
   AlertCircle,
   FileText,
   Users,
-
+  X,
   Eye,
+  Star,
+  Crown,
 } from 'lucide-react';
 import { mockAssignments } from '@/data/mock-data';
 import { useAuth } from '@/contexts/auth-context';
 import { toast } from 'sonner';
 import PaymentPopup from '@/components/payment-popup';
+import DemoAccessRequest from '@/components/course/demo-access-request';
 
 export default function StudentDashboard() {
   const { user, session, loading: authLoading, userRole } = useAuth();
@@ -40,6 +43,10 @@ export default function StudentDashboard() {
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentVerifications, setPaymentVerifications] = useState<any[]>([]);
+  const [subscriptionPlans, setSubscriptionPlans] = useState<any[]>([]);
+  const [showSubscriptionPlans, setShowSubscriptionPlans] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
+  const [showChoiceModal, setShowChoiceModal] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -174,7 +181,19 @@ export default function StudentDashboard() {
     }
   };
 
-  const handleEnrollClick = (course: any) => {
+  const fetchSubscriptionPlans = async () => {
+    try {
+      const response = await fetch('/api/subscription-plans');
+      const data = await response.json();
+      if (response.ok) {
+        setSubscriptionPlans(data.plans || []);
+      }
+    } catch (error) {
+      console.error('Error fetching subscription plans:', error);
+    }
+  };
+
+  const handleEnrollClick = async (course: any) => {
     // Check if auth is still loading
     if (authLoading) {
       toast.info('Please wait...', {
@@ -205,44 +224,72 @@ export default function StudentDashboard() {
       return;
     }
 
-    // Open payment popup
-    console.log('🔍 Opening payment popup for course:', course);
+    // Show choice modal - demo or direct subscription
     setSelectedCourse(course);
-    setPaymentPopupOpen(true);
+    setShowChoiceModal(true);
   };
 
-  const handleCompletePayment = async (courseId: string, amount: number) => {
+  const handleCompletePayment = async (courseId: string, amount: number, subscriptionPlanId?: string) => {
     setPaymentLoading(true);
     try {
-      console.log('🔍 Submitting payment for course:', { courseId, amount });
-      const res = await fetch('/api/payment-verifications', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token || ''}`,
-        },
-        body: JSON.stringify({ courseId, amount }),
-      });
-
-      if (res.ok) {
-        toast.success('Payment verification request submitted!', {
-          description: 'Your payment request has been sent for verification. You will be enrolled once approved.'
+      console.log('🔍 Submitting payment for course:', { courseId, amount, subscriptionPlanId });
+      
+      if (subscriptionPlanId) {
+        // Create subscription directly
+        const res = await fetch('/api/user-subscriptions', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session?.access_token || ''}`,
+          },
+          body: JSON.stringify({ courseId, subscriptionPlanId }),
         });
-        setPaymentPopupOpen(false);
-        setSelectedCourse(null);
-      } else {
-        const data = await res.json();
-        if (res.status === 401 && data?.action?.url) {
-          toast.error('You are not signed in. Please sign in to continue.', {
-            action: {
-              label: data.action.label || 'Sign In',
-              onClick: () => (window.location.href = data.action.url),
-            },
+
+        if (res.ok) {
+          toast.success('Subscription created successfully!', {
+            description: 'You now have access to the course content.'
           });
+          setPaymentPopupOpen(false);
+          setSelectedCourse(null);
+          // Refresh the courses list
+          window.location.reload();
         } else {
-          toast.error('Failed to submit payment request', {
+          const data = await res.json();
+          toast.error('Failed to create subscription', {
             description: data.error || 'Please try again later.'
           });
+        }
+      } else {
+        // Legacy payment verification
+        const res = await fetch('/api/payment-verifications', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session?.access_token || ''}`,
+          },
+          body: JSON.stringify({ courseId, amount }),
+        });
+
+        if (res.ok) {
+          toast.success('Payment verification request submitted!', {
+            description: 'Your payment request has been sent for verification. You will be enrolled once approved.'
+          });
+          setPaymentPopupOpen(false);
+          setSelectedCourse(null);
+        } else {
+          const data = await res.json();
+          if (res.status === 401 && data?.action?.url) {
+            toast.error('You are not signed in. Please sign in to continue.', {
+              action: {
+                label: data.action.label || 'Sign In',
+                onClick: () => (window.location.href = data.action.url),
+              },
+            });
+          } else {
+            toast.error('Failed to submit payment request', {
+              description: data.error || 'Please try again later.'
+            });
+          }
         }
       }
     } catch (error) {
@@ -711,6 +758,158 @@ export default function StudentDashboard() {
           onCompletePayment={handleCompletePayment}
           loading={paymentLoading}
         />
+      )}
+
+      {/* Subscription Plans Modal */}
+      {selectedCourse && (
+        <PaymentPopup
+          isOpen={showSubscriptionPlans}
+          onClose={() => {
+            setShowSubscriptionPlans(false);
+            setSelectedCourse(null);
+          }}
+          course={selectedCourse}
+          onCompletePayment={handleCompletePayment}
+          loading={paymentLoading}
+          isSubscription={true}
+          subscriptionPlans={subscriptionPlans}
+        />
+      )}
+
+      {/* Choice Modal - Demo or Direct Subscription */}
+      {showChoiceModal && selectedCourse && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  Choose Your Path
+                </h3>
+                <button
+                  onClick={() => setShowChoiceModal(false)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="text-center mb-8">
+                <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  How would you like to access {selectedCourse.title}?
+                </h4>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Choose between trying our demo first or subscribing directly
+                </p>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                {/* Demo Option */}
+                <button 
+                  type="button"
+                  className="p-6 border-2 border-blue-200 rounded-lg cursor-pointer hover:border-blue-300 transition-all bg-blue-50 dark:bg-blue-950 dark:border-blue-800 w-full text-left"
+                  onClick={() => {
+                    setShowChoiceModal(false);
+                    setShowDemoModal(true);
+                  }}
+                >
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Star className="h-6 w-6 text-white" />
+                    </div>
+                    <h5 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                      Try Demo First
+                    </h5>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      Get 24-hour free access to experience the content before subscribing
+                    </p>
+                    <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                      <div className="flex items-center justify-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span>24-hour free access</span>
+                      </div>
+                      <div className="flex items-center justify-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span>No commitment required</span>
+                      </div>
+                      <div className="flex items-center justify-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span>Full content preview</span>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Direct Subscription Option */}
+                <button 
+                  type="button"
+                  className="p-6 border-2 border-orange-200 rounded-lg cursor-pointer hover:border-orange-300 transition-all bg-orange-50 dark:bg-orange-950 dark:border-orange-800 w-full text-left"
+                  onClick={() => {
+                    setShowChoiceModal(false);
+                    fetchSubscriptionPlans();
+                    setShowSubscriptionPlans(true);
+                  }}
+                >
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Crown className="h-6 w-6 text-white" />
+                    </div>
+                    <h5 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                      Subscribe Now
+                    </h5>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      Get immediate full access with our flexible subscription plans
+                    </p>
+                    <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                      <div className="flex items-center justify-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span>Immediate access</span>
+                      </div>
+                      <div className="flex items-center justify-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span>All content included</span>
+                      </div>
+                      <div className="flex items-center justify-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span>Cancel anytime</span>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Demo Access Modal */}
+      {showDemoModal && selectedCourse && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  Try {selectedCourse.title} for Free
+                </h3>
+                <button
+                  onClick={() => setShowDemoModal(false)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              <DemoAccessRequest
+                courseId={selectedCourse.id}
+                courseTitle={selectedCourse.title}
+                onAccessGranted={() => {
+                  setShowDemoModal(false);
+                  // After demo, show subscription plans
+                  fetchSubscriptionPlans();
+                  setShowSubscriptionPlans(true);
+                }}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

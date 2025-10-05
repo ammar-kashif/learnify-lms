@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch teacher names in batch from users table
     const teacherIds = Array.from(new Set((lectureRecordings || []).map((r: any) => r.teacher_id)));
-    let teacherNameById: Record<string, string> = {};
+    const teacherNameById: Record<string, string> = {};
     if (teacherIds.length > 0) {
       const { data: teachers } = await supabaseAdmin
         .from('users')

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import AWS from 'aws-sdk';
 import { createClient } from '@supabase/supabase-js';
+import { canAccessLectureRecordings } from '@/lib/access-control';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,16 +65,26 @@ export async function GET(request: NextRequest) {
 
     // Permission checks
     if (role === 'student') {
-      // must be enrolled and recording must be published
-      const { data: enrollment } = await supabaseAdmin
-        .from('student_enrollments')
-        .select('course_id')
-        .eq('student_id', user.id)
-        .eq('course_id', recording.course_id)
-        .maybeSingle();
+      // Check if recording is published
+      if (!recording.is_published) {
+        return new NextResponse('Recording not published', { status: 403 });
+      }
 
-      if (!enrollment || !recording.is_published) {
-        return new NextResponse('Forbidden', { status: 403 });
+      // Check subscription or demo access
+      const accessResult = await canAccessLectureRecordings(user.id, recording.course_id);
+      
+      if (!accessResult.hasAccess) {
+        return new NextResponse(
+          JSON.stringify({ 
+            error: 'Access denied', 
+            message: accessResult.message,
+            requiresSubscription: true 
+          }), 
+          { 
+            status: 403,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        );
       }
     } else if (role === 'teacher') {
       const { data: teacherCourse } = await supabaseAdmin
@@ -138,7 +149,11 @@ export async function GET(request: NextRequest) {
         nodeStream.on('error', (err) => controller.error(err));
       },
       cancel() {
-        try { nodeStream.destroy(); } catch {}
+        try { 
+          nodeStream.destroy(); 
+        } catch (destroyError) {
+          console.error('Error destroying stream:', destroyError);
+        }
       }
     });
 

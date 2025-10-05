@@ -30,6 +30,8 @@ import ThemeToggle from '@/components/theme-toggle';
 import FileUpload from '@/components/ui/file-upload';
 import LectureRecordingUpload from '@/components/course/lecture-recording-upload';
 import LectureRecordingsList from '@/components/course/lecture-recordings-list';
+import EnrollmentStatus from '@/components/course/enrollment-status';
+import AssignmentManagement from '@/components/assignments/assignment-management';
 import { uploadToS3, deleteFromS3, formatFileSize } from '@/lib/s3';
 import { getChapters, createChapterFromFile, deleteChapter, type Chapter } from '@/lib/chapters';
 import { supabase } from '@/lib/supabase';
@@ -53,7 +55,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   const [quizCount, setQuizCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'quizzes' | 'content' | 'students' | 'recordings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'quizzes' | 'content' | 'students' | 'recordings' | 'enrollments' | 'assignments'>('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
   // Content management state
@@ -302,7 +304,9 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
     { id: 'quizzes', label: 'Quizzes', icon: ClipboardList },
     { id: 'content', label: 'Content', icon: FileText },
     { id: 'recordings', label: 'Recordings', icon: Video },
+    { id: 'assignments', label: 'Assignments', icon: FileText },
     { id: 'students', label: 'Students', icon: Users },
+    ...((userProfile?.role === 'admin' || userProfile?.role === 'superadmin') ? [{ id: 'enrollments', label: 'Enrollments', icon: Users } as const] : []),
   ];
 
   if (loading) {
@@ -857,6 +861,25 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
                         </p>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {activeTab === 'assignments' && (
+                  <div className="space-y-6">
+                    <AssignmentManagement 
+                      courseId={params.id} 
+                      userRole={userProfile?.role || 'teacher'} 
+                      chapters={chapters}
+                    />
+                  </div>
+                )}
+
+                {activeTab === 'enrollments' && (
+                  <div className="space-y-6">
+                    <EnrollmentStatus 
+                      courseId={params.id} 
+                      userRole={userProfile?.role || 'teacher'} 
+                    />
                   </div>
                 )}
               </CardContent>

@@ -23,8 +23,17 @@ interface PaymentPopupProps {
     subject: string;
     amount?: number;
   };
-  onCompletePayment: (courseId: string, amount: number) => Promise<void>;
+  onCompletePayment: (courseId: string, amount: number, subscriptionPlanId?: string) => Promise<void>;
   loading?: boolean;
+  isSubscription?: boolean;
+  subscriptionPlans?: Array<{
+    id: string;
+    name: string;
+    type: string;
+    price_pkr: number;
+    duration_months?: number;
+    duration_until_date?: string;
+  }>;
 }
 
 export default function PaymentPopup({
@@ -33,14 +42,17 @@ export default function PaymentPopup({
   course,
   onCompletePayment,
   loading = false,
+  isSubscription = false,
+  subscriptionPlans = [],
 }: PaymentPopupProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   // Plan selection state
   type PlanId = 'oneMonth' | 'threeMonth' | 'untilCIES';
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('oneMonth');
   const [addonSelected, setAddonSelected] = useState<boolean>(false);
+  const [selectedSubscriptionPlan, setSelectedSubscriptionPlan] = useState<string>('');
 
-  // Pricing config (PKR)
+  // Pricing config (PKR) - Legacy system
   const pricing = {
     oneMonth: { label: '1 Month Recording', price: 7000 },
     threeMonth: { label: '3 Month Recording', pricePerMonth: 3500 },
@@ -50,6 +62,12 @@ export default function PaymentPopup({
 
   // Compute payable amount for this transaction
   const payableAmount = useMemo(() => {
+    if (isSubscription && subscriptionPlans.length > 0) {
+      const selectedPlanData = subscriptionPlans.find(plan => plan.id === selectedSubscriptionPlan);
+      return selectedPlanData?.price_pkr || 0;
+    }
+
+    // Legacy pricing calculation
     let base = 0;
     if (selectedPlan === 'oneMonth') base = pricing.oneMonth.price;
     if (selectedPlan === 'threeMonth') base = pricing.threeMonth.pricePerMonth;
@@ -58,7 +76,7 @@ export default function PaymentPopup({
     // Addon is paid only with 1-month plan; included (free) otherwise
     if (selectedPlan === 'oneMonth' && addonSelected) base += pricing.addon.price;
     return base;
-  }, [selectedPlan, addonSelected]);
+  }, [selectedPlan, addonSelected, selectedSubscriptionPlan, isSubscription, subscriptionPlans]);
 
   const bankDetails = {
     bankName: 'Sadapay',
@@ -84,20 +102,22 @@ export default function PaymentPopup({
       course, 
       courseId: course.id, 
       courseIdType: typeof course.id,
-      amount 
+      amount,
+      isSubscription,
+      selectedSubscriptionPlan
     });
     
     // Ensure course ID is a string
     const courseId = String(course.id);
     console.log('🔍 Converted course ID:', courseId, 'Type:', typeof courseId);
     
-    await onCompletePayment(courseId, amount);
+    await onCompletePayment(courseId, amount, isSubscription ? selectedSubscriptionPlan : undefined);
   }
   // Two-step view state
   const [step, setStep] = useState<1 | 2>(1);
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
             <CreditCard className="h-5 w-5 text-primary" />
@@ -113,80 +133,199 @@ export default function PaymentPopup({
           {step === 1 && (
           <Card className="border-gray-200 dark:border-gray-700">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base text-gray-900 dark:text-white">Select a Plan</CardTitle>
+              <CardTitle className="text-base text-gray-900 dark:text-white">
+                {isSubscription ? 'Select Subscription Plan' : 'Select a Plan'}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <input
-                id="plan-oneMonth"
-                type="radio"
-                name="plan"
-                className="sr-only"
-                checked={selectedPlan === 'oneMonth'}
-                onChange={() => setSelectedPlan('oneMonth')}
-              />
-              <label htmlFor="plan-oneMonth" className={`flex items-center justify-between rounded-md border p-3 cursor-pointer ${selectedPlan==='oneMonth' ? 'border-primary' : 'border-gray-200 dark:border-gray-700'}`}>
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{pricing.oneMonth.label}</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-300">PKR {pricing.oneMonth.price}</p>
+              {isSubscription && subscriptionPlans.length > 0 ? (
+                // Grid layout - all plans in one view, sorted by duration
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                  {subscriptionPlans
+                    .sort((a, b) => {
+                      // Sort by duration: 1 month first, then 3 months, then until CIES (May 31, 2026)
+                      const getDurationOrder = (plan: any) => {
+                        if (plan.duration_months === 1) return 1; // 1 month first
+                        if (plan.duration_months === 3) return 2; // 3 months second
+                        if (plan.duration_until_date) {
+                          const untilDate = new Date(plan.duration_until_date);
+                          const ciesDate = new Date('2026-05-31');
+                          // If it's until CIES date (around May 31, 2026), put it third
+                          if (Math.abs(untilDate.getTime() - ciesDate.getTime()) < 30 * 24 * 60 * 60 * 1000) {
+                            return 3; // Until CIES third
+                          }
+                          return 4; // Other until dates last
+                        }
+                        return 5; // No duration specified last
+                      };
+                      
+                      const aOrder = getDurationOrder(a);
+                      const bOrder = getDurationOrder(b);
+                      
+                      if (aOrder === bOrder) return a.price_pkr - b.price_pkr;
+                      return aOrder - bOrder;
+                    })
+                    .map((plan) => {
+                    const isSelected = selectedSubscriptionPlan === plan.id;
+
+                    return (
+                      <div key={plan.id} className="relative">
+                        <input
+                          id={`plan-${plan.id}`}
+                          type="radio"
+                          name="subscriptionPlan"
+                          className="sr-only"
+                          checked={isSelected}
+                          onChange={() => setSelectedSubscriptionPlan(plan.id)}
+                        />
+                        <label 
+                          htmlFor={`plan-${plan.id}`} 
+                          className={`block cursor-pointer transition-all duration-300 hover:shadow-lg ${
+                            isSelected ? 'scale-105' : ''
+                          }`}
+                        >
+                          <div className={`relative group transition-all duration-300 rounded-lg p-3 h-full min-h-[140px] ${
+                            isSelected 
+                              ? 'bg-primary text-primary-foreground shadow-lg' 
+                              : 'bg-card text-card-foreground border border-border hover:border-primary/50'
+                          }`}>
+                            {/* Plan Duration/Type */}
+                            <div className={`text-xs font-medium mb-1 ${
+                              isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'
+                            }`}>
+                              {plan.duration_months 
+                                ? `${plan.duration_months} month${plan.duration_months > 1 ? 's' : ''}`
+                                : plan.duration_until_date 
+                                ? `Until ${new Date(plan.duration_until_date).toLocaleDateString()}`
+                                : 'No duration specified'
+                              }
+                            </div>
+
+                            {/* Plan Name */}
+                            <h3 className={`text-xs font-semibold mb-1 line-clamp-2 ${
+                              isSelected ? 'text-primary-foreground' : 'text-foreground'
+                            }`}>
+                              {plan.name}
+                            </h3>
+
+                            {/* Price */}
+                            <div className={`text-sm font-bold mb-2 ${
+                              isSelected ? 'text-yellow-400' : 'text-primary'
+                            }`}>
+                              PKR {plan.price_pkr.toLocaleString()}
+                            </div>
+
+                            {/* Features - Compact */}
+                            <ul className="space-y-0.5 mb-2">
+                              {[
+                                plan.type === 'recordings_only' ? 'Recordings' : 
+                                plan.type === 'live_classes_only' ? 'Live classes' :
+                                'Recordings + Live',
+                                '24/7 Support'
+                              ].map((feature, index) => (
+                                <li key={index} className={`flex items-start gap-1 text-xs ${
+                                  isSelected ? 'text-primary-foreground/90' : 'text-muted-foreground'
+                                }`}>
+                                  <Check className={`h-2.5 w-2.5 flex-shrink-0 mt-0.5 ${
+                                    isSelected ? 'text-yellow-400' : 'text-green-500'
+                                  }`} />
+                                  <span className="line-clamp-1">{feature}</span>
+                                </li>
+                              ))}
+                            </ul>
+
+                            {/* Selection Indicator */}
+                            <div className="flex items-center justify-center mt-auto">
+                              <div className={`w-3 h-3 rounded-full border-2 flex items-center justify-center ${
+                                isSelected 
+                                  ? 'border-yellow-400 bg-yellow-400' 
+                                  : 'border-gray-300 dark:border-gray-600'
+                              }`}>
+                                {isSelected && <div className="w-1 h-1 rounded-full bg-black" />}
+                              </div>
+                            </div>
+                          </div>
+                        </label>
+                      </div>
+                    );
+                  })}
                 </div>
-                <span aria-hidden className="h-4 w-4 rounded-full border border-gray-400 flex items-center justify-center">
-                  {selectedPlan==='oneMonth' && <span className="h-2 w-2 rounded-full bg-primary" />}
-                </span>
-              </label>
- 
-              <input
-                id="plan-threeMonth"
-                type="radio"
-                name="plan"
-                className="sr-only"
-                checked={selectedPlan === 'threeMonth'}
-                onChange={() => setSelectedPlan('threeMonth')}
-              />
-              <label htmlFor="plan-threeMonth" className={`flex items-center justify-between rounded-md border p-3 cursor-pointer ${selectedPlan==='threeMonth' ? 'border-primary' : 'border-gray-200 dark:border-gray-700'}`}>
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{pricing.threeMonth.label}</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-300">PKR {pricing.threeMonth.pricePerMonth} / month</p>
-                </div>
-                <span aria-hidden className="h-4 w-4 rounded-full border border-gray-400 flex items-center justify-center">
-                  {selectedPlan==='threeMonth' && <span className="h-2 w-2 rounded-full bg-primary" />}
-                </span>
-              </label>
- 
-              <input
-                id="plan-untilCIES"
-                type="radio"
-                name="plan"
-                className="sr-only"
-                checked={selectedPlan === 'untilCIES'}
-                onChange={() => setSelectedPlan('untilCIES')}
-              />
-              <label htmlFor="plan-untilCIES" className={`flex items-center justify-between rounded-md border p-3 cursor-pointer ${selectedPlan==='untilCIES' ? 'border-primary' : 'border-gray-200 dark:border-gray-700'}`}>
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{pricing.untilCIES.label}</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-300">PKR {pricing.untilCIES.pricePerMonth} / month</p>
-                </div>
-                <span aria-hidden className="h-4 w-4 rounded-full border border-gray-400 flex items-center justify-center">
-                  {selectedPlan==='untilCIES' && <span className="h-2 w-2 rounded-full bg-primary" />}
-                </span>
-              </label>
-              {/* Add-on logic */}
-              <div className="mt-1 rounded-md border border-dashed border-gray-300 dark:border-gray-700 p-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{pricing.addon.label}</p>
-                    {selectedPlan === 'oneMonth' ? (
-                      <p className="text-xs text-gray-600 dark:text-gray-300">PKR {pricing.addon.price} (optional)</p>
-                    ) : (
-                      <p className="text-xs text-green-700 dark:text-green-300">Included free with this plan</p>
-                    )}
+              ) : (
+                // Legacy plan selection
+                <>
+                  <input
+                    id="plan-oneMonth"
+                    type="radio"
+                    name="plan"
+                    className="sr-only"
+                    checked={selectedPlan === 'oneMonth'}
+                    onChange={() => setSelectedPlan('oneMonth')}
+                  />
+                  <label htmlFor="plan-oneMonth" className={`flex items-center justify-between rounded-md border p-3 cursor-pointer ${selectedPlan==='oneMonth' ? 'border-primary' : 'border-gray-200 dark:border-gray-700'}`}>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{pricing.oneMonth.label}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-300">PKR {pricing.oneMonth.price}</p>
+                    </div>
+                    <span aria-hidden className="h-4 w-4 rounded-full border border-gray-400 flex items-center justify-center">
+                      {selectedPlan==='oneMonth' && <span className="h-2 w-2 rounded-full bg-primary" />}
+                    </span>
+                  </label>
+       
+                  <input
+                    id="plan-threeMonth"
+                    type="radio"
+                    name="plan"
+                    className="sr-only"
+                    checked={selectedPlan === 'threeMonth'}
+                    onChange={() => setSelectedPlan('threeMonth')}
+                  />
+                  <label htmlFor="plan-threeMonth" className={`flex items-center justify-between rounded-md border p-3 cursor-pointer ${selectedPlan==='threeMonth' ? 'border-primary' : 'border-gray-200 dark:border-gray-700'}`}>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{pricing.threeMonth.label}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-300">PKR {pricing.threeMonth.pricePerMonth} / month</p>
+                    </div>
+                    <span aria-hidden className="h-4 w-4 rounded-full border border-gray-400 flex items-center justify-center">
+                      {selectedPlan==='threeMonth' && <span className="h-2 w-2 rounded-full bg-primary" />}
+                    </span>
+                  </label>
+       
+                  <input
+                    id="plan-untilCIES"
+                    type="radio"
+                    name="plan"
+                    className="sr-only"
+                    checked={selectedPlan === 'untilCIES'}
+                    onChange={() => setSelectedPlan('untilCIES')}
+                  />
+                  <label htmlFor="plan-untilCIES" className={`flex items-center justify-between rounded-md border p-3 cursor-pointer ${selectedPlan==='untilCIES' ? 'border-primary' : 'border-gray-200 dark:border-gray-700'}`}>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{pricing.untilCIES.label}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-300">PKR {pricing.untilCIES.pricePerMonth} / month</p>
+                    </div>
+                    <span aria-hidden className="h-4 w-4 rounded-full border border-gray-400 flex items-center justify-center">
+                      {selectedPlan==='untilCIES' && <span className="h-2 w-2 rounded-full bg-primary" />}
+                    </span>
+                  </label>
+                  {/* Add-on logic */}
+                  <div className="mt-1 rounded-md border border-dashed border-gray-300 dark:border-gray-700 p-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">{pricing.addon.label}</p>
+                        {selectedPlan === 'oneMonth' ? (
+                          <p className="text-xs text-gray-600 dark:text-gray-300">PKR {pricing.addon.price} (optional)</p>
+                        ) : (
+                          <p className="text-xs text-green-700 dark:text-green-300">Included free with this plan</p>
+                        )}
+                      </div>
+                      {selectedPlan === 'oneMonth' ? (
+                        <input type="checkbox" checked={addonSelected} onChange={(e)=> setAddonSelected(e.target.checked)} />
+                      ) : (
+                        <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">Free</Badge>
+                      )}
+                    </div>
                   </div>
-                  {selectedPlan === 'oneMonth' ? (
-                    <input type="checkbox" checked={addonSelected} onChange={(e)=> setAddonSelected(e.target.checked)} />
-                  ) : (
-                    <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">Free</Badge>
-                  )}
-                </div>
-              </div>
+                </>
+              )}
             </CardContent>
           </Card>
           )}

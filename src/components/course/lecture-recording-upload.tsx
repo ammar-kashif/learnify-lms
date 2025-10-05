@@ -30,7 +30,7 @@ export default function LectureRecordingUpload({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   // track lifecycle if needed later
-  const [uploadPhase, setUploadPhase] = useState<'idle' | 'to_api' | 'to_s3' | 'done'>('idle');
+  // const [uploadPhase, setUploadPhase] = useState<'idle' | 'to_api' | 'to_s3' | 'done'>('idle');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -142,7 +142,7 @@ export default function LectureRecordingUpload({
 
     setIsUploading(true);
     setUploadProgress({ loaded: 0, total: selectedFile.size, percentage: 0 });
-    setUploadPhase('to_api');
+    // setUploadPhase('to_api');
 
     try {
       const id = crypto.randomUUID();
@@ -193,7 +193,7 @@ export default function LectureRecordingUpload({
         xhr.onreadystatechange = () => {
           if (xhr.readyState === XMLHttpRequest.LOADING) {
             // Request finished sending; server is handling S3 transfer
-            setUploadPhase('to_s3');
+            // setUploadPhase('to_s3');
           }
           if (xhr.readyState === XMLHttpRequest.DONE) {
             try {
@@ -201,7 +201,7 @@ export default function LectureRecordingUpload({
               if (xhr.status >= 200 && xhr.status < 300) {
                 toast.success('Lecture recording uploaded successfully!');
                 setUploadProgress(p => p ? { ...p, percentage: 100 } : null);
-                setUploadPhase('done');
+                // setUploadPhase('done');
                 resolve();
               } else {
                 reject(new Error(data.error || 'Upload failed'));
@@ -233,7 +233,7 @@ export default function LectureRecordingUpload({
     } finally {
       setIsUploading(false);
       setUploadProgress(null);
-      setUploadPhase('idle');
+      // setUploadPhase('idle');
       if (sseRef.current) {
         sseRef.current.close();
         sseRef.current = null;

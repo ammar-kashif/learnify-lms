@@ -34,6 +34,7 @@ export interface Database {
           full_name: string;
           role: 'student' | 'teacher' | 'admin' | 'superadmin';
           avatar_url: string | null;
+          demo_used: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -43,6 +44,7 @@ export interface Database {
           full_name: string;
           role: 'student' | 'teacher' | 'admin' | 'superadmin';
           avatar_url?: string | null;
+          demo_used?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -52,6 +54,7 @@ export interface Database {
           full_name?: string;
           role?: 'student' | 'teacher' | 'admin' | 'superadmin';
           avatar_url?: string | null;
+          demo_used?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -132,14 +135,20 @@ export interface Database {
         Row: {
           student_id: string;
           course_id: string;
+          subscription_id: string | null;
+          enrollment_type: 'paid' | 'demo';
         };
         Insert: {
           student_id: string;
           course_id: string;
+          subscription_id?: string | null;
+          enrollment_type?: 'paid' | 'demo';
         };
         Update: {
           student_id?: string;
           course_id?: string;
+          subscription_id?: string | null;
+          enrollment_type?: 'paid' | 'demo';
         };
       };
       payment_verifications: {
@@ -236,6 +245,326 @@ export interface Database {
           max_score?: number;
           completed_at?: string | null;
           created_at?: string;
+        };
+      };
+      lecture_recordings: {
+        Row: {
+          id: string;
+          course_id: string;
+          teacher_id: string;
+          title: string;
+          description: string | null;
+          video_url: string;
+          video_key: string;
+          duration: number | null;
+          file_size: number | null;
+          thumbnail_url: string | null;
+          is_published: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          course_id: string;
+          teacher_id: string;
+          title: string;
+          description?: string | null;
+          video_url: string;
+          video_key: string;
+          duration?: number | null;
+          file_size?: number | null;
+          thumbnail_url?: string | null;
+          is_published?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          course_id?: string;
+          teacher_id?: string;
+          title?: string;
+          description?: string | null;
+          video_url?: string;
+          video_key?: string;
+          duration?: number | null;
+          file_size?: number | null;
+          thumbnail_url?: string | null;
+          is_published?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      subscription_plans: {
+        Row: {
+          id: string;
+          name: string;
+          type: 'recordings_only' | 'live_classes_only' | 'recordings_and_live';
+          duration_months: number | null;
+          duration_until_date: string | null;
+          price_pkr: number;
+          features: any; // JSONB
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          type: 'recordings_only' | 'live_classes_only' | 'recordings_and_live';
+          duration_months?: number | null;
+          duration_until_date?: string | null;
+          price_pkr: number;
+          features?: any;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          type?: 'recordings_only' | 'live_classes_only' | 'recordings_and_live';
+          duration_months?: number | null;
+          duration_until_date?: string | null;
+          price_pkr?: number;
+          features?: any;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      user_subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          course_id: string;
+          subscription_plan_id: string;
+          status: 'active' | 'expired' | 'cancelled';
+          starts_at: string;
+          expires_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          course_id: string;
+          subscription_plan_id: string;
+          status?: 'active' | 'expired' | 'cancelled';
+          starts_at?: string;
+          expires_at: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          course_id?: string;
+          subscription_plan_id?: string;
+          status?: 'active' | 'expired' | 'cancelled';
+          starts_at?: string;
+          expires_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      demo_access: {
+        Row: {
+          id: string;
+          user_id: string;
+          course_id: string;
+          access_type: 'lecture_recording' | 'live_class';
+          resource_id: string | null;
+          used_at: string;
+          expires_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          course_id: string;
+          access_type: 'lecture_recording' | 'live_class';
+          resource_id?: string | null;
+          used_at?: string;
+          expires_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          course_id?: string;
+          access_type?: 'lecture_recording' | 'live_class';
+          resource_id?: string | null;
+          used_at?: string;
+          expires_at?: string;
+        };
+      };
+      live_classes: {
+        Row: {
+          id: string;
+          course_id: string;
+          teacher_id: string;
+          title: string;
+          description: string | null;
+          meeting_url: string | null;
+          meeting_id: string | null;
+          scheduled_at: string;
+          duration_minutes: number;
+          max_participants: number | null;
+          is_published: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          course_id: string;
+          teacher_id: string;
+          title: string;
+          description?: string | null;
+          meeting_url?: string | null;
+          meeting_id?: string | null;
+          scheduled_at: string;
+          duration_minutes?: number;
+          max_participants?: number | null;
+          is_published?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          course_id?: string;
+          teacher_id?: string;
+          title?: string;
+          description?: string | null;
+          meeting_url?: string | null;
+          meeting_id?: string | null;
+          scheduled_at?: string;
+          duration_minutes?: number;
+          max_participants?: number | null;
+          is_published?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      assignments: {
+        Row: {
+          id: string;
+          course_id: string;
+          chapter_id: string | null;
+          teacher_id: string;
+          title: string;
+          description: string | null;
+          instructions: string | null;
+          attachment_url: string | null;
+          attachment_key: string | null;
+          attachment_name: string | null;
+          due_date: string | null;
+          stop_submissions_after_due: boolean;
+          max_points: number;
+          allowed_file_types: string[];
+          max_file_size_mb: number;
+          max_submissions: number;
+          is_published: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          course_id: string;
+          chapter_id?: string | null;
+          teacher_id: string;
+          title: string;
+          description?: string | null;
+          instructions?: string | null;
+          attachment_url?: string | null;
+          attachment_key?: string | null;
+          attachment_name?: string | null;
+          due_date?: string | null;
+          stop_submissions_after_due?: boolean;
+          max_points?: number;
+          allowed_file_types?: string[];
+          max_file_size_mb?: number;
+          max_submissions?: number;
+          is_published?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          course_id?: string;
+          chapter_id?: string | null;
+          teacher_id?: string;
+          title?: string;
+          description?: string | null;
+          instructions?: string | null;
+          attachment_url?: string | null;
+          attachment_key?: string | null;
+          attachment_name?: string | null;
+          due_date?: string | null;
+          stop_submissions_after_due?: boolean;
+          max_points?: number;
+          allowed_file_types?: string[];
+          max_file_size_mb?: number;
+          max_submissions?: number;
+          is_published?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      assignment_submissions: {
+        Row: {
+          id: string;
+          assignment_id: string;
+          student_id: string;
+          submission_number: number;
+          file_url: string;
+          file_key: string;
+          file_name: string;
+          file_size: number;
+          file_type: string;
+          submitted_at: string;
+          grade: number | null;
+          feedback: string | null;
+          graded_by: string | null;
+          graded_at: string | null;
+          status: 'submitted' | 'graded' | 'returned';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          assignment_id: string;
+          student_id: string;
+          submission_number?: number;
+          file_url: string;
+          file_key: string;
+          file_name: string;
+          file_size: number;
+          file_type: string;
+          submitted_at?: string;
+          grade?: number | null;
+          feedback?: string | null;
+          graded_by?: string | null;
+          graded_at?: string | null;
+          status?: 'submitted' | 'graded' | 'returned';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          assignment_id?: string;
+          student_id?: string;
+          submission_number?: number;
+          file_url?: string;
+          file_key?: string;
+          file_name?: string;
+          file_size?: number;
+          file_type?: string;
+          submitted_at?: string;
+          grade?: number | null;
+          feedback?: string | null;
+          graded_by?: string | null;
+          graded_at?: string | null;
+          status?: 'submitted' | 'graded' | 'returned';
+          created_at?: string;
+          updated_at?: string;
         };
       };
     };

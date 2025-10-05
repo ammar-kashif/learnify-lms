@@ -8,6 +8,87 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// GET /api/enrollments - Check if user is enrolled in a course
+export async function GET(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
+    const bearer = authHeader && authHeader.startsWith('Bearer ')
+      ? authHeader.replace('Bearer ', '').trim()
+      : null;
+
+    if (!bearer) {
+      return NextResponse.json(
+        { 
+          error: 'You are not signed in. Please sign in to continue.',
+          action: { label: 'Sign In', url: '/auth/signin' }
+        }, 
+        { status: 401 }
+      );
+    }
+
+    // Resolve user from JWT
+    const { data: userResult, error: userErr } = await supabase.auth.getUser(bearer);
+    if (userErr || !userResult?.user) {
+      return NextResponse.json(
+        { 
+          error: 'You are not signed in. Please sign in to continue.',
+          action: { label: 'Sign In', url: '/auth/signin' }
+        }, 
+        { status: 401 }
+      );
+    }
+
+    const authedUserId = userResult.user.id;
+    const { searchParams } = new URL(request.url);
+    const courseId = searchParams.get('courseId');
+
+    if (!courseId) {
+      return NextResponse.json(
+        { error: 'Missing courseId parameter' },
+        { status: 400 }
+      );
+    }
+
+    // Check if user is enrolled in the course
+    console.log('🔍 Checking enrollment for user:', authedUserId, 'course:', courseId);
+    
+    // Query the student_enrollments table with correct columns
+    const { data: enrollment, error: enrollmentError } = await supabase
+      .from('student_enrollments')
+      .select('student_id, course_id, subscription_id, enrollment_type')
+      .eq('student_id', authedUserId)
+      .eq('course_id', courseId)
+      .maybeSingle();
+
+    if (enrollmentError) {
+      console.error('❌ Error checking enrollment:', enrollmentError);
+      return NextResponse.json(
+        { error: 'Failed to check enrollment status', details: enrollmentError.message },
+        { status: 500 }
+      );
+    }
+
+    console.log('✅ Enrollment check result:', { enrollment, found: !!enrollment });
+
+    return NextResponse.json({ 
+      enrolled: !!enrollment,
+      enrollmentType: enrollment?.enrollment_type || null, // "paid" or "demo"
+      isPaidEnrollment: enrollment?.enrollment_type === 'paid',
+      isDemoEnrollment: enrollment?.enrollment_type === 'demo',
+      subscriptionId: enrollment?.subscription_id || null,
+      // Include the actual enrollment data for debugging
+      enrollmentData: enrollment
+    });
+
+  } catch (error) {
+    console.error('Error checking enrollment:', error);
+    return NextResponse.json(
+      { error: 'Failed to check enrollment status' },
+      { status: 500 }
+    );
+  }
+}
+
 // Enroll the authenticated student into a courseId (ignores any client-provided studentId)
 export async function POST(request: NextRequest) {
   try {

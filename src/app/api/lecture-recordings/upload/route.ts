@@ -139,13 +139,21 @@ export async function POST(request: NextRequest) {
       const pct = Math.round((progress.loaded / (progress.total || progress.loaded)) * 100);
       console.log(`Video upload progress: ${pct}%`);
       if (progressId) {
-        try { getProgressEmitter(progressId).emit('progress', pct); } catch (e) {}
+        try { 
+          getProgressEmitter(progressId).emit('progress', pct); 
+        } catch (e) {
+          console.error('Error emitting progress:', e);
+        }
       }
     });
     
     const result = await upload.promise();
     if (progressId) {
-      try { getProgressEmitter(progressId).emit('done'); } catch (e) {}
+      try { 
+        getProgressEmitter(progressId).emit('done'); 
+      } catch (e) {
+        console.error('Error emitting done:', e);
+      }
     }
 
     // Save lecture recording to database

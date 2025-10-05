@@ -22,12 +22,49 @@ import {
   CheckCircle,
   Menu,
   X,
+  Sparkles,
+  Zap,
+  Globe,
+  Rocket,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ThemeToggle from '@/components/theme-toggle';
 
 export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [visibleElements, setVisibleElements] = useState<Set<string>>(new Set());
+  const [particles, setParticles] = useState<Array<{ left: number; top: number; delay: number; duration: number }>>([]);
+
+  useEffect(() => {
+    setIsVisible(true);
+    // Generate particle positions client-side to avoid hydration mismatches
+    const generated = Array.from({ length: 20 }).map(() => ({
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      delay: Math.random() * 10,
+      duration: 10 + Math.random() * 20,
+    }));
+    setParticles(generated);
+    
+    // Scroll observer for animations
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setVisibleElements(prev => new Set(prev).add(entry.target.id));
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    // Observe elements that should animate on scroll
+    const elementsToObserve = document.querySelectorAll('[data-animate]');
+    elementsToObserve.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, []);
 
   const features = [
     {
@@ -229,51 +266,103 @@ export default function HomePage() {
 
       {/* Hero Section */}
       <section className="relative overflow-hidden px-4 py-20 text-center">
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-gray-100/50 dark:from-primary/10 dark:to-gray-800/50"></div>
-        <div className="relative mx-auto max-w-4xl">
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-primary/5 to-gray-100/50 dark:from-primary/10 dark:via-primary/5 dark:to-gray-800/50"></div>
+        
+        {/* Floating Particles */}
+        <div className="absolute inset-0 overflow-hidden">
+          {particles.map((p, i) => (
+            <div
+              key={i}
+              className="absolute animate-float"
+              style={{
+                left: `${p.left}%`,
+                top: `${p.top}%`,
+                animationDelay: `${p.delay}s`,
+                animationDuration: `${p.duration}s`,
+              }}
+            >
+              <div className="h-2 w-2 rounded-full bg-primary/20 animate-pulse"></div>
+            </div>
+          ))}
+        </div>
+
+        {/* Floating Icons */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-10 animate-bounce-slow">
+            <BookOpen className="h-8 w-8 text-primary/30" />
+          </div>
+          <div className="absolute top-32 right-20 animate-bounce-slow" style={{ animationDelay: '1s' }}>
+            <Users className="h-6 w-6 text-primary/30" />
+          </div>
+          <div className="absolute bottom-40 left-20 animate-bounce-slow" style={{ animationDelay: '2s' }}>
+            <BarChart3 className="h-7 w-7 text-primary/30" />
+          </div>
+          <div className="absolute bottom-20 right-10 animate-bounce-slow" style={{ animationDelay: '3s' }}>
+            <Shield className="h-6 w-6 text-primary/30" />
+          </div>
+        </div>
+
+        <div className={`relative mx-auto max-w-4xl transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+          <div className="mb-4 inline-flex items-center rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary dark:bg-primary/20">
+            <Sparkles className="mr-2 h-4 w-4" />
+            New: AI-Powered Learning Analytics
+          </div>
+          
           <h1 className="mb-6 text-5xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-6xl lg:text-7xl">
             Welcome to{' '}
-            <span className="bg-gradient-to-r from-primary via-primary-600 to-gray-600 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-primary via-primary-600 to-purple-600 bg-clip-text text-transparent animate-gradient-x">
               Learnify LMS
             </span>
           </h1>
+          
           <p className="mx-auto mb-8 max-w-3xl text-xl leading-relaxed text-gray-600 dark:text-gray-300">
             A modern, powerful learning management system designed for educators
             and students. Create, manage, and deliver engaging learning
             experiences with cutting-edge technology.
           </p>
+          
           <div className="mb-12 flex flex-col gap-4 sm:flex-row sm:justify-center">
             <Button
               asChild
               size="lg"
-              className="h-12 bg-primary px-8 text-lg text-white shadow-lg transition-all duration-300 hover:bg-primary-600 hover:shadow-xl"
+              className="group h-12 bg-gradient-to-r from-primary to-primary-600 px-8 text-lg text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-primary/25"
             >
               <Link href="/auth/signin" className="flex items-center space-x-2">
+                <Rocket className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                 <span>Get Started</span>
-                <ArrowRight className="h-5 w-5" />
+                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Link>
             </Button>
             <Button
               asChild
               size="lg"
               variant="outline"
-              className="h-12 border-2 border-gray-300 px-8 text-lg text-gray-700 transition-all duration-300 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+              className="group h-12 border-2 border-gray-300 px-8 text-lg text-gray-700 transition-all duration-300 hover:scale-105 hover:bg-gray-50 hover:border-primary hover:text-primary dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:border-primary"
             >
               <Link href="/courses" className="flex items-center space-x-2">
-                <Play className="h-5 w-5" />
+                <Play className="h-5 w-5 transition-transform group-hover:scale-110" />
                 <span>Browse Courses</span>
               </Link>
             </Button>
           </div>
 
-          {/* Stats Section */}
+          {/* Animated Stats Section */}
           <div className="mx-auto grid max-w-2xl grid-cols-2 gap-6 md:grid-cols-4">
             {stats.map((stat, index) => (
-              <div key={index} className="text-center">
-                <div className="mb-1 text-2xl font-bold text-gray-900 dark:text-gray-100 md:text-3xl">
+              <div 
+                key={index}
+                id={`stat-${index}`}
+                data-animate
+                className={`group text-center transition-all duration-500 hover:scale-105 ${
+                  visibleElements.has(`stat-${index}`) ? 'animate-scale-in' : 'opacity-0 scale-90'
+                }`}
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <div className="mb-1 text-2xl font-bold text-gray-900 dark:text-gray-100 md:text-3xl group-hover:text-primary transition-colors">
                   {stat.number}
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-300">
+                <div className="text-sm text-gray-600 dark:text-gray-300 group-hover:text-primary/80 transition-colors">
                   {stat.label}
                 </div>
               </div>
@@ -283,11 +372,22 @@ export default function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="px-4 py-20">
-        <div className="mx-auto max-w-6xl">
+      <section id="features" className="relative px-4 py-20 overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-primary/5 dark:from-gray-900 dark:via-gray-900 dark:to-primary/5"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.05),transparent_50%)]"></div>
+        
+        <div className="relative mx-auto max-w-6xl">
           <div className="mb-16 text-center">
+            <div className="mb-4 inline-flex items-center rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary dark:bg-primary/20">
+              <Zap className="mr-2 h-4 w-4" />
+              Powerful Features
+            </div>
             <h2 className="mb-4 text-4xl font-bold text-gray-900 dark:text-gray-100">
-              Why Choose Learnify LMS?
+              Why Choose{' '}
+              <span className="bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+                Learnify LMS?
+              </span>
             </h2>
             <p className="mx-auto max-w-2xl text-xl text-gray-600 dark:text-gray-300">
               Experience the future of education with our comprehensive learning
@@ -299,23 +399,34 @@ export default function HomePage() {
             {features.map((feature, index) => (
               <Card
                 key={index}
-                className="group border-gray-200 bg-white backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-2xl dark:border-gray-800 dark:bg-gray-900"
+                id={`feature-${index}`}
+                data-animate
+                className={`group relative border-gray-200 bg-white/80 backdrop-blur-sm transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-primary/10 dark:border-gray-800 dark:bg-gray-900/80 overflow-hidden ${
+                  visibleElements.has(`feature-${index}`) ? 'animate-slide-up' : 'opacity-0 translate-y-10'
+                }`}
+                style={{ animationDelay: `${index * 100}ms` }}
               >
-                <CardHeader className="pb-4 text-center">
+                {/* Hover Effect Background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                
+                <CardHeader className="relative pb-4 text-center">
                   <div
-                    className={`mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full ${feature.bgColor} transition-transform duration-300 group-hover:scale-110`}
+                    className={`mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full ${feature.bgColor} transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-lg`}
                   >
-                    <feature.icon className={`h-8 w-8 ${feature.color}`} />
+                    <feature.icon className={`h-8 w-8 ${feature.color} transition-transform duration-300 group-hover:scale-110`} />
                   </div>
-                  <CardTitle className={`text-xl font-bold ${feature.color}`}>
+                  <CardTitle className={`text-xl font-bold ${feature.color} group-hover:text-primary transition-colors duration-300`}>
                     {feature.title}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="text-center">
-                  <CardDescription className="text-base leading-relaxed text-gray-600 dark:text-gray-300">
+                <CardContent className="relative text-center">
+                  <CardDescription className="text-base leading-relaxed text-gray-600 dark:text-gray-300 group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors duration-300">
                     {feature.description}
                   </CardDescription>
                 </CardContent>
+                
+                {/* Animated Border */}
+                <div className="absolute inset-0 rounded-lg border-2 border-transparent bg-gradient-to-r from-primary/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               </Card>
             ))}
           </div>
@@ -323,13 +434,19 @@ export default function HomePage() {
       </section>
 
       {/* Social Proof Section */}
-      <section id="about" className="bg-white/80 px-4 py-20 dark:bg-gray-900">
-        <div className="mx-auto max-w-4xl text-center">
+      <section id="about" className="relative bg-white/80 px-4 py-20 dark:bg-gray-900 overflow-hidden">
+        {/* Background Effects */}
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-purple-600/5"></div>
+        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent"></div>
+        <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent"></div>
+        
+        <div className="relative mx-auto max-w-4xl text-center">
           <div className="mb-6 flex items-center justify-center space-x-1">
             {[...Array(5)].map((_, i) => (
               <Star
                 key={i}
-                className="h-6 w-6 fill-yellow-400 text-yellow-400"
+                className="h-6 w-6 fill-yellow-400 text-yellow-400 animate-pulse"
+                style={{ animationDelay: `${i * 100}ms` }}
               />
             ))}
             <span className="ml-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -337,33 +454,63 @@ export default function HomePage() {
             </span>
           </div>
           <p className="mb-8 text-lg text-gray-600 dark:text-gray-300">
-            Trusted by over 10,000+ educators and students worldwide
+            Trusted by over{' '}
+            <span className="font-bold text-primary">10,000+</span> educators and students worldwide
           </p>
           <div className="flex flex-wrap items-center justify-center gap-8 text-gray-500 dark:text-gray-400">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              <span>ISO 27001 Certified</span>
+            <div className="group flex items-center space-x-2 transition-all duration-300 hover:scale-105 hover:text-green-600">
+              <CheckCircle className="h-5 w-5 text-green-500 group-hover:animate-bounce" />
+              <span className="font-medium">ISO 27001 Certified</span>
             </div>
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              <span>GDPR Compliant</span>
+            <div className="group flex items-center space-x-2 transition-all duration-300 hover:scale-105 hover:text-green-600">
+              <CheckCircle className="h-5 w-5 text-green-500 group-hover:animate-bounce" />
+              <span className="font-medium">GDPR Compliant</span>
             </div>
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              <span>24/7 Support</span>
+            <div className="group flex items-center space-x-2 transition-all duration-300 hover:scale-105 hover:text-green-600">
+              <CheckCircle className="h-5 w-5 text-green-500 group-hover:animate-bounce" />
+              <span className="font-medium">24/7 Support</span>
             </div>
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section id="contact" className="px-4 py-20">
-        <div className="mx-auto max-w-4xl text-center">
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary to-primary-600 p-12 text-white">
+      <section id="contact" className="relative px-4 py-20 overflow-hidden">
+        {/* Background Effects */}
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-primary/5 dark:from-gray-900 dark:via-gray-900 dark:to-primary/5"></div>
+        
+        <div className="relative mx-auto max-w-4xl text-center">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary via-primary-600 to-purple-600 p-12 text-white shadow-2xl">
+            {/* Animated Background Elements */}
             <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-primary-600/20"></div>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]"></div>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.1),transparent_50%)]"></div>
+            
+            {/* Floating Elements */}
+            <div className="absolute top-4 left-4 animate-bounce-slow">
+              <Globe className="h-6 w-6 text-white/30" />
+            </div>
+            <div className="absolute top-8 right-8 animate-bounce-slow" style={{ animationDelay: '1s' }}>
+              <Rocket className="h-5 w-5 text-white/30" />
+            </div>
+            <div className="absolute bottom-6 left-8 animate-bounce-slow" style={{ animationDelay: '2s' }}>
+              <Sparkles className="h-4 w-4 text-white/30" />
+            </div>
+            <div className="absolute bottom-4 right-6 animate-bounce-slow" style={{ animationDelay: '3s' }}>
+              <Zap className="h-5 w-5 text-white/30" />
+            </div>
+            
             <div className="relative">
+              <div className="mb-4 inline-flex items-center rounded-full bg-white/20 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm">
+                <Sparkles className="mr-2 h-4 w-4" />
+                Limited Time Offer
+              </div>
+              
               <h2 className="mb-6 text-4xl font-bold">
-                Ready to Transform Your Learning Experience?
+                Ready to Transform Your{' '}
+                <span className="bg-gradient-to-r from-white to-yellow-200 bg-clip-text text-transparent">
+                  Learning Experience?
+                </span>
               </h2>
               <p className="mx-auto mb-8 max-w-2xl text-xl text-primary-100">
                 Join thousands of educators and students already using Learnify
@@ -372,14 +519,15 @@ export default function HomePage() {
               <Button
                 asChild
                 size="lg"
-                className="h-12 bg-white px-8 text-lg text-primary shadow-lg transition-all duration-300 hover:bg-gray-100 hover:shadow-xl"
+                className="group h-12 bg-white px-8 text-lg text-primary shadow-lg transition-all duration-300 hover:scale-105 hover:bg-gray-100 hover:shadow-2xl hover:shadow-white/25"
               >
                 <Link
                   href="/auth/signup"
                   className="flex items-center space-x-2"
                 >
+                  <Rocket className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                   <span>Start Your Free Trial</span>
-                  <ArrowRight className="h-5 w-5" />
+                  <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </Link>
               </Button>
             </div>

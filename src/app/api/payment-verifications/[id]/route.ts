@@ -130,11 +130,22 @@ export async function PATCH(
     if (status === 'approved') {
       console.log('🎓 Enrolling student:', paymentVerification.student_id, 'in course:', paymentVerification.course_id);
       
+      // Check if this payment verification has subscription information
+      const { data: subscriptionData } = await supabaseAdmin
+        .from('user_subscriptions')
+        .select('id')
+        .eq('user_id', paymentVerification.student_id)
+        .eq('course_id', paymentVerification.course_id)
+        .eq('status', 'active')
+        .single();
+
       const { error: enrollmentError } = await supabaseAdmin
         .from('student_enrollments')
-        .insert({
+        .upsert({
           student_id: paymentVerification.student_id,
-          course_id: paymentVerification.course_id
+          course_id: paymentVerification.course_id,
+          subscription_id: subscriptionData?.id || null,
+          enrollment_type: subscriptionData ? 'paid' : 'paid'
         });
 
       if (enrollmentError) {
