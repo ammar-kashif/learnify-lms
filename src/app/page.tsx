@@ -37,7 +37,7 @@ export default function HomePage() {
   const [particles, setParticles] = useState<Array<{ left: number; top: number; delay: number; duration: number }>>([]);
 
   useEffect(() => {
-    setIsVisible(true);
+    const id = requestAnimationFrame(() => setIsVisible(true));
     // Generate particle positions client-side to avoid hydration mismatches
     const generated = Array.from({ length: 20 }).map(() => ({
       left: Math.random() * 100,
@@ -63,7 +63,10 @@ export default function HomePage() {
     const elementsToObserve = document.querySelectorAll('[data-animate]');
     elementsToObserve.forEach((el) => observer.observe(el));
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(id);
+    };
   }, []);
 
   const features = [
@@ -155,6 +158,12 @@ export default function HomePage() {
                 Courses
               </Link>
               <Link
+                href="/blog"
+                className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
+              >
+                Blog
+              </Link>
+              <Link
                 href="#features"
                 className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
               >
@@ -224,6 +233,12 @@ export default function HomePage() {
                   className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
                 >
                   Courses
+                </Link>
+                <Link
+                  href="/blog"
+                  className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
+                >
+                  Blog
                 </Link>
                 <Link
                   href="#features"
@@ -303,13 +318,13 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className={`relative mx-auto max-w-4xl transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        <div className={`relative mx-auto max-w-4xl will-change-transform transition-transform duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
           <div className="mb-4 inline-flex items-center rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary dark:bg-primary/20">
             <Sparkles className="mr-2 h-4 w-4" />
             New: AI-Powered Learning Analytics
           </div>
           
-          <h1 className="mb-6 text-5xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-6xl lg:text-7xl">
+          <h1 className="mb-6 text-5xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-6xl lg:text-7xl animate-slide-up">
             Welcome to{' '}
             <span className="bg-gradient-to-r from-primary via-primary-600 to-purple-600 bg-clip-text text-transparent animate-gradient-x">
               Learnify LMS
@@ -345,6 +360,7 @@ export default function HomePage() {
                 <span>Browse Courses</span>
               </Link>
             </Button>
+            {/* Removed blog tertiary CTA per request */}
           </div>
 
           {/* Animated Stats Section */}
@@ -428,6 +444,29 @@ export default function HomePage() {
                 {/* Animated Border */}
                 <div className="absolute inset-0 rounded-lg border-2 border-transparent bg-gradient-to-r from-primary/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Trusted by Section removed per request */}
+
+      {/* How it works */}
+      <section className="relative px-4 py-20 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-primary/5 dark:from-gray-900 dark:via-gray-900 dark:to-primary/5" />
+        <div className="relative mx-auto max-w-6xl">
+          <h2 className="mb-10 text-center text-3xl font-bold text-gray-900 dark:text-gray-100">How it works</h2>
+          <div className="grid gap-6 md:grid-cols-3">
+            {[
+              { title: 'Create', desc: 'Spin up a course with chapters, lectures, and assignments in minutes.' },
+              { title: 'Engage', desc: 'Run live classes, track progress, and collect submissions effortlessly.' },
+              { title: 'Mastery', desc: 'Grade fast, give feedback, and watch outcomes improve.' },
+            ].map((s, i) => (
+              <div key={i} className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
+                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">{i+1}</div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{s.title}</h3>
+                <p className="mt-1 text-gray-600 dark:text-gray-300">{s.desc}</p>
+              </div>
             ))}
           </div>
         </div>

@@ -288,6 +288,14 @@ export default function AssignmentCreationForm({
               <div
                 className="relative flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-6 text-center transition-colors hover:border-primary"
                 onClick={() => attachmentInputRef.current?.click()}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    attachmentInputRef.current?.click();
+                  }
+                }}
               >
                 <Upload className="mb-2 h-6 w-6 text-gray-500" />
                 <p className="text-sm text-gray-700">Click to upload PDF/DOC/DOCX</p>

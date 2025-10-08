@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { CreditCard, Copy, Check, AlertCircle } from 'lucide-react';
+import { CreditCard, Copy, Check, AlertCircle, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PaymentPopupProps {
@@ -113,6 +113,62 @@ export default function PaymentPopup({
     
     await onCompletePayment(courseId, amount, isSubscription ? selectedSubscriptionPlan : undefined);
   }
+  
+  const openWhatsApp = () => {
+    const amount = payableAmount || course.amount || 5000;
+    const phone = '923005299693';
+    const message = `Hi, I have completed the payment for ${course.title}.\nAmount: PKR ${amount}.\nI will share the screenshot here.`;
+    const encoded = encodeURIComponent(message);
+
+    // Best-effort: copy message so user can paste if Desktop app ignores text param
+    try {
+      void navigator.clipboard.writeText(message).then(() => {
+        toast.success('Message copied. If not auto-filled, paste in WhatsApp (Ctrl+V).');
+      }).catch(() => {
+        // ignore clipboard errors
+      });
+    } catch (_) {}
+
+    // Open WhatsApp Web with prefilled text
+    const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encoded}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const openWhatsAppDesktop = () => {
+    const amount = payableAmount || course.amount || 5000;
+    const phone = '923005299693';
+    const message = `Hi, I have completed the payment for ${course.title}.\nAmount: PKR ${amount}.\nI will share the screenshot here.`;
+    const encoded = encodeURIComponent(message);
+
+    try {
+      void navigator.clipboard.writeText(message).catch(() => {});
+    } catch (_) {}
+
+    const encodedCRLF = encodeURIComponent(message.replace(/\n/g, '\\n'));
+    const encodedPct = message.replace(/\n/g, '%0A').replace(/ /g, '%20');
+    const variants = [
+      `whatsapp://send?abid=+${phone}&text=${encoded}`,
+      `whatsapp://send?phone=+${phone}&text=${encoded}`,
+      `whatsapp://send?phone=${phone}&text=${encoded}`,
+      `whatsapp://send?text=${encoded}&phone=${phone}`,
+      `whatsapp://send?text=${encoded}&phone=+${phone}`,
+      `whatsapp://send/?phone=${phone}&text=${encoded}`,
+      `whatsapp://send/?text=${encoded}&phone=${phone}`,
+      `whatsapp://send?jid=${phone}@s.whatsapp.net&text=${encoded}`,
+      `whatsapp://send?phone=${phone}&text=${encodedPct}`,
+      `whatsapp://send?text=${encodedPct}&phone=${phone}`,
+      `whatsapp://send?phone=${phone}&text=${encodedCRLF}`,
+    ];
+
+    let idx = 0;
+    const tryNext = () => {
+      if (idx >= variants.length) return;
+      const uri = variants[idx++];
+      window.location.href = uri;
+      setTimeout(tryNext, 600);
+    };
+    tryNext();
+  };
   // Two-step view state
   const [step, setStep] = useState<1 | 2>(1);
   return (
@@ -472,6 +528,28 @@ export default function PaymentPopup({
                 >
                   Back
                 </Button>
+                <div className="flex-1 grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full bg-green-600 hover:bg-green-700 text-white"
+                    disabled={loading}
+                    onClick={openWhatsAppDesktop}
+                    title="Open WhatsApp Desktop"
+                  >
+                    <MessageCircle className="h-4 w-4 mr-2" /> Desktop
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                    disabled={loading}
+                    onClick={openWhatsApp}
+                    title="Open WhatsApp Web"
+                  >
+                    <MessageCircle className="h-4 w-4 mr-2" /> Web
+                  </Button>
+                </div>
                 <Button
                   onClick={handleCompletePayment}
                   disabled={loading}
