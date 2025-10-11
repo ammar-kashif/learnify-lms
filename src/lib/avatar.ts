@@ -11,6 +11,72 @@ export interface AvatarDeleteResult {
   error?: string;
 }
 
+// Basic client-side image compression/resizing utility for avatars
+export async function compressImage(
+  file: File,
+  options: {
+    maxWidth?: number;
+    maxHeight?: number;
+    quality?: number; // 0..1
+    convertToMimeType?: 'image/webp' | 'image/jpeg' | 'image/png';
+  } = {}
+): Promise<File> {
+  const { maxWidth = 512, maxHeight = 512, quality = 0.8, convertToMimeType = 'image/webp' } = options;
+  return new Promise((resolve, reject) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+
+        // Maintain aspect ratio within the target box
+        if (width > maxWidth || height > maxHeight) {
+          const widthRatio = maxWidth / width;
+          const heightRatio = maxHeight / height;
+          const ratio = Math.min(widthRatio, heightRatio);
+          width = Math.floor(width * ratio);
+          height = Math.floor(height * ratio);
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              resolve(file);
+              return;
+            }
+            const ext = convertToMimeType === 'image/webp' ? 'webp' : convertToMimeType === 'image/jpeg' ? 'jpg' : 'png';
+            const compressed = new File([blob], file.name.replace(/\.[^.]+$/, `.${ext}`), {
+              type: convertToMimeType,
+              lastModified: Date.now(),
+            });
+            resolve(compressed.size < file.size ? compressed : file);
+          },
+          convertToMimeType,
+          quality
+        );
+      };
+      img.onerror = () => resolve(file);
+      const reader = new FileReader();
+      reader.onload = () => {
+        img.src = reader.result as string;
+      };
+      reader.onerror = () => resolve(file);
+      reader.readAsDataURL(file);
+    } catch (e) {
+      resolve(file);
+    }
+  });
+}
+
 // Upload avatar for a user
 export async function uploadAvatar(
   file: File,

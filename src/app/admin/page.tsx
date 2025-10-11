@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import PlansEditor from '@/components/admin/plans-editor';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -72,7 +73,7 @@ export default function AdminDashboard() {
   const [paymentVerifications, setPaymentVerifications] = useState<any[]>([]);
   const [enrollments, setEnrollments] = useState<any[]>([]);
   // const [enrollmentStats] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'assignments' | 'payments' | 'enrollments'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'assignments' | 'payments' | 'enrollments' | 'plans'>('users');
   const [dataLoading, setDataLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userSearch, setUserSearch] = useState('');
@@ -705,6 +706,7 @@ export default function AdminDashboard() {
     { id: 'assignments', label: 'Assignments', icon: GraduationCap, count: teacherCourses.length },
     { id: 'payments', label: 'Payments', icon: CreditCard, count: paymentVerifications.length },
     { id: 'enrollments', label: 'Enrollments', icon: Users, count: enrollments.length },
+    ...(userRole === 'superadmin' ? [{ id: 'plans', label: 'Plans', icon: CreditCard, count: 0 }] : []),
   ];
 
   if (loading) {
@@ -772,6 +774,8 @@ export default function AdminDashboard() {
               )}
             </Button>
           ))}
+
+          
         </nav>
 
         {/* Sidebar Footer */}
@@ -826,6 +830,7 @@ export default function AdminDashboard() {
                   {activeTab === 'assignments' && 'Teacher Assignments'}
                   {activeTab === 'payments' && 'Payment Verification'}
                   {activeTab === 'enrollments' && 'Enrollment Management'}
+                  {activeTab === 'plans' && 'Subscription Plans'}
                 </h1>
                 <p className="text-gray-600 dark:text-gray-300">
                   Welcome back, {user?.user_metadata?.full_name || user?.email}
@@ -1458,6 +1463,11 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               </div>
+            )}
+
+            {/* Plans Tab (Superadmin) */}
+            {activeTab === 'plans' && userRole === 'superadmin' && (
+              <PlansEditor />
             )}
 
           </div>

@@ -10,7 +10,7 @@ import {
   Camera
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { uploadAvatar, deleteAvatar, validateAvatarFile } from '@/lib/avatar';
+import { uploadAvatar, deleteAvatar, validateAvatarFile, compressImage } from '@/lib/avatar';
 
 interface AvatarUploadProps {
   userId: string;
@@ -56,7 +56,14 @@ export default function AvatarUpload({
 
     setIsUploading(true);
     try {
-      const result = await uploadAvatar(file, userId);
+      // Compress/resize on client for faster uploads and lower storage
+      const compressed = await compressImage(file, {
+        maxWidth: 512,
+        maxHeight: 512,
+        quality: 0.8,
+        convertToMimeType: 'image/webp',
+      });
+      const result = await uploadAvatar(compressed, userId);
       
       if (result.success && result.avatar_url) {
         onAvatarChange?.(result.avatar_url);

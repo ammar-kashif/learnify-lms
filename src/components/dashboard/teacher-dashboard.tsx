@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import {
   BookOpen,
   Users,
-  TrendingUp,
   Award,
   Eye,
   MoreHorizontal,
@@ -70,10 +69,7 @@ export default function TeacherDashboard() {
     (sum, course) => sum + course.current_students,
     0
   );
-  const totalRevenue = teacherCourses.reduce(
-    (sum, course) => sum + course.price * course.current_students,
-    0
-  );
+  // Removed revenue calculation and card per request
 
   const recentActivities = [
     {
@@ -122,7 +118,7 @@ export default function TeacherDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2">
         <Card className="border-0 bg-gradient-to-br from-primary-50 to-primary-100 dark:from-gray-800 dark:to-gray-700 shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -155,21 +151,7 @@ export default function TeacherDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 bg-gradient-to-br from-primary-50 to-primary-100 dark:from-gray-800 dark:to-gray-700 shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-primary-600 dark:text-primary-400">
-                  Total Revenue
-                </p>
-                <p className="text-3xl font-bold text-primary-900 dark:text-white">
-                  ${totalRevenue.toLocaleString()}
-                </p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-primary-600 dark:text-primary-400" />
-            </div>
-          </CardContent>
-        </Card>
+        
       </div>
 
       {/* Main Content Grid */}
