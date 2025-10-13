@@ -2,9 +2,12 @@
 export interface QuizQuestion {
   id: string;
   question: string;
-  options: string[];
-  correct_answer: number; // Index of correct option (0-based)
+  type: 'multiple_choice' | 'text';
+  options?: string[]; // Only for multiple choice
+  correct_answer?: number; // Index of correct option (0-based) for multiple choice
+  correct_text_answer?: string; // For text questions - teacher's expected answer
   points: number;
+  requires_manual_grading?: boolean; // For text questions
 }
 
 // Quiz Settings Interface
@@ -32,9 +35,12 @@ export interface Quiz {
 // Student Answer Interface
 export interface StudentAnswer {
   question_id: string;
-  selected_answer: number; // Index of selected option (0-based)
+  selected_answer?: number; // Index of selected option (0-based) for multiple choice
+  text_answer?: string; // For text questions
   is_correct: boolean;
   points_earned: number;
+  manually_graded?: boolean; // Whether this answer was manually graded
+  teacher_feedback?: string; // Teacher's feedback for text questions
 }
 
 // Quiz Attempt Interface

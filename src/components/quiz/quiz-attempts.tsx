@@ -99,9 +99,10 @@ export default function QuizAttempts({ quiz, attempts, onBack, loading = false }
 
       <div className="grid gap-4">
         {attempts.map((attempt) => {
-          const percentage = Math.round((attempt.score / attempt.max_score) * 100);
-          const grade = getGradeText(percentage);
-          const passed = percentage >= 60;
+          const isPendingGrading = attempt.status === 'pending_grading';
+          const percentage = isPendingGrading ? 0 : Math.round((attempt.score / attempt.max_score) * 100);
+          const grade = isPendingGrading ? 'Pending' : getGradeText(percentage);
+          const passed = !isPendingGrading && percentage >= 60;
 
           return (
             <Card 
@@ -125,10 +126,16 @@ export default function QuizAttempts({ quiz, attempts, onBack, loading = false }
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Badge className={getGradeColor(percentage)}>
-                      {grade} ({percentage}%)
+                    <Badge className={
+                      isPendingGrading 
+                        ? 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-200'
+                        : getGradeColor(percentage)
+                    }>
+                      {grade} {!isPendingGrading && `(${percentage}%)`}
                     </Badge>
-                    {passed ? (
+                    {isPendingGrading ? (
+                      <Clock className="h-5 w-5 text-yellow-500" />
+                    ) : passed ? (
                       <CheckCircle className="h-5 w-5 text-green-500" />
                     ) : (
                       <XCircle className="h-5 w-5 text-red-500" />
@@ -140,7 +147,12 @@ export default function QuizAttempts({ quiz, attempts, onBack, loading = false }
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="flex items-center space-x-2 text-sm">
                     <Award className="h-4 w-4 text-gray-500" />
-                    <span>{attempt.score}/{attempt.max_score} points</span>
+                    <span>
+                      {isPendingGrading 
+                        ? `--/${attempt.max_score} points` 
+                        : `${attempt.score}/${attempt.max_score} points`
+                      }
+                    </span>
                   </div>
                   <div className="flex items-center space-x-2 text-sm">
                     <Clock className="h-4 w-4 text-gray-500" />
@@ -153,12 +165,24 @@ export default function QuizAttempts({ quiz, attempts, onBack, loading = false }
                   </div>
                   <div className="flex items-center space-x-2 text-sm">
                     <span className="text-gray-500">Correct:</span>
-                    <span>{attempt.answers.filter(a => a.is_correct).length}/{attempt.answers.length}</span>
+                    <span>
+                      {isPendingGrading 
+                        ? '--' 
+                        : `${attempt.answers.filter(a => a.is_correct).length}/${attempt.answers.length}`
+                      }
+                    </span>
                   </div>
                   <div className="flex items-center space-x-2 text-sm">
                     <span className="text-gray-500">Status:</span>
-                    <Badge variant={attempt.completed_at ? 'default' : 'secondary'}>
-                      {attempt.completed_at ? 'Completed' : 'In Progress'}
+                    <Badge variant={
+                      isPendingGrading 
+                        ? 'secondary' 
+                        : attempt.completed_at ? 'default' : 'secondary'
+                    }>
+                      {isPendingGrading 
+                        ? 'Waiting for Grade' 
+                        : attempt.completed_at ? 'Completed' : 'In Progress'
+                      }
                     </Badge>
                   </div>
                 </div>
@@ -195,42 +219,84 @@ export default function QuizAttempts({ quiz, attempts, onBack, loading = false }
                     </div>
                   </div>
                   <p className="text-gray-700 dark:text-gray-300 mb-3">{question.question}</p>
-                  <div className="space-y-2">
-                    {question.options.map((option, optionIndex) => {
-                      const isSelected = answer.selected_answer === optionIndex;
-                      const isCorrect = question.correct_answer === optionIndex;
+                  
+                  {question.type === 'multiple_choice' ? (
+                    <div className="space-y-2">
+                      {question.options?.map((option, optionIndex) => {
+                        const isSelected = answer.selected_answer === optionIndex;
+                        const isCorrect = question.correct_answer === optionIndex;
+                        
+                        return (
+                          <div
+                            key={optionIndex}
+                            className={`p-2 rounded border ${
+                              isSelected && isCorrect
+                                ? 'bg-green-100 border-green-500 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                : isSelected && !isCorrect
+                                ? 'bg-red-100 border-red-500 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                : isCorrect
+                                ? 'bg-green-50 border-green-300 text-green-700 dark:bg-green-800 dark:text-green-300'
+                                : 'bg-gray-50 border-gray-200 dark:bg-gray-800 dark:border-gray-700'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <span className="font-medium">{String.fromCharCode(65 + optionIndex)}.</span>
+                              <span>{option}</span>
+                              {isCorrect && (
+                                <Badge variant="outline" className="text-green-600 border-green-600">
+                                  Correct
+                                </Badge>
+                              )}
+                              {isSelected && !isCorrect && (
+                                <Badge variant="outline" className="text-red-600 border-red-600">
+                                  Selected
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Student's Answer:
+                        </label>
+                        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+                          <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">
+                            {answer.text_answer || answer.selected_answer || 'No answer provided'}
+                          </p>
+                        </div>
+                      </div>
                       
-                      return (
-                        <div
-                          key={optionIndex}
-                          className={`p-2 rounded border ${
-                            isSelected && isCorrect
-                              ? 'bg-green-100 border-green-500 text-green-800 dark:bg-green-900 dark:text-green-200'
-                              : isSelected && !isCorrect
-                              ? 'bg-red-100 border-red-500 text-red-800 dark:bg-red-900 dark:text-red-200'
-                              : isCorrect
-                              ? 'bg-green-50 border-green-300 text-green-700 dark:bg-green-800 dark:text-green-300'
-                              : 'bg-gray-50 border-gray-200 dark:bg-gray-800 dark:border-gray-700'
-                          }`}
-                        >
-                          <div className="flex items-center space-x-2">
-                            <span className="font-medium">{String.fromCharCode(65 + optionIndex)}.</span>
-                            <span>{option}</span>
-                            {isCorrect && (
-                              <Badge variant="outline" className="text-green-600 border-green-600">
-                                Correct
-                              </Badge>
-                            )}
-                            {isSelected && !isCorrect && (
-                              <Badge variant="outline" className="text-red-600 border-red-600">
-                                Selected
-                              </Badge>
-                            )}
+                      {answer.teacher_feedback && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Teacher Feedback:
+                          </label>
+                          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                            <p className="text-blue-900 dark:text-blue-100 whitespace-pre-wrap">
+                              {answer.teacher_feedback}
+                            </p>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                      )}
+                      
+                      {question.correct_text_answer && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Expected Answer:
+                          </label>
+                          <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                            <p className="text-green-900 dark:text-green-100 whitespace-pre-wrap">
+                              {question.correct_text_answer}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

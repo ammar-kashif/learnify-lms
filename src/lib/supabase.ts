@@ -156,8 +156,12 @@ export interface Database {
           id: string;
           student_id: string;
           course_id: string;
+          subscription_plan_id: string | null;
           amount: number;
           status: 'pending' | 'approved' | 'rejected';
+          verified_at: string | null;
+          verified_by: string | null;
+          notes: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -165,8 +169,12 @@ export interface Database {
           id?: string;
           student_id: string;
           course_id: string;
+          subscription_plan_id?: string | null;
           amount: number;
           status?: 'pending' | 'approved' | 'rejected';
+          verified_at?: string | null;
+          verified_by?: string | null;
+          notes?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -174,8 +182,12 @@ export interface Database {
           id?: string;
           student_id?: string;
           course_id?: string;
+          subscription_plan_id?: string | null;
           amount?: number;
           status?: 'pending' | 'approved' | 'rejected';
+          verified_at?: string | null;
+          verified_by?: string | null;
+          notes?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -186,8 +198,23 @@ export interface Database {
           course_id: string;
           title: string;
           description: string | null;
-          questions: any; // JSONB array of questions
-          settings: any; // JSONB object with quiz settings
+          questions: Array<{
+            id: string;
+            question: string;
+            type: 'multiple_choice' | 'text';
+            options?: string[];
+            correct_answer?: number;
+            correct_text_answer?: string;
+            points: number;
+            requires_manual_grading?: boolean;
+          }>; // JSONB array of questions
+          settings: {
+            time_limit?: number;
+            max_attempts?: number;
+            shuffle_questions?: boolean;
+            show_correct_answers?: boolean;
+            allow_review?: boolean;
+          }; // JSONB object with quiz settings
           created_by: string;
           created_at: string;
           updated_at: string;
@@ -197,8 +224,23 @@ export interface Database {
           course_id: string;
           title: string;
           description?: string | null;
-          questions: any;
-          settings?: any;
+          questions: Array<{
+            id: string;
+            question: string;
+            type: 'multiple_choice' | 'text';
+            options?: string[];
+            correct_answer?: number;
+            correct_text_answer?: string;
+            points: number;
+            requires_manual_grading?: boolean;
+          }>;
+          settings?: {
+            time_limit?: number;
+            max_attempts?: number;
+            shuffle_questions?: boolean;
+            show_correct_answers?: boolean;
+            allow_review?: boolean;
+          };
           created_by: string;
           created_at?: string;
           updated_at?: string;
@@ -208,8 +250,23 @@ export interface Database {
           course_id?: string;
           title?: string;
           description?: string | null;
-          questions?: any;
-          settings?: any;
+          questions?: Array<{
+            id: string;
+            question: string;
+            type: 'multiple_choice' | 'text';
+            options?: string[];
+            correct_answer?: number;
+            correct_text_answer?: string;
+            points: number;
+            requires_manual_grading?: boolean;
+          }>;
+          settings?: {
+            time_limit?: number;
+            max_attempts?: number;
+            shuffle_questions?: boolean;
+            show_correct_answers?: boolean;
+            allow_review?: boolean;
+          };
           created_by?: string;
           created_at?: string;
           updated_at?: string;
@@ -220,9 +277,21 @@ export interface Database {
           id: string;
           quiz_id: string;
           student_id: string;
-          answers: any; // JSONB array of student answers
+          answers: Array<{
+            question_id: string;
+            selected_answer?: number;
+            text_answer?: string;
+            is_correct: boolean;
+            points_earned: number;
+            manually_graded?: boolean;
+            teacher_feedback?: string;
+            question_text?: string;
+            correct_answer?: string;
+            points?: number;
+          }>; // JSONB array of student answers
           score: number;
           max_score: number;
+          status: 'pending_grading' | 'graded' | 'auto_graded';
           completed_at: string | null;
           created_at: string;
         };
@@ -230,9 +299,21 @@ export interface Database {
           id?: string;
           quiz_id: string;
           student_id: string;
-          answers?: any;
+          answers?: Array<{
+            question_id: string;
+            selected_answer?: number;
+            text_answer?: string;
+            is_correct: boolean;
+            points_earned: number;
+            manually_graded?: boolean;
+            teacher_feedback?: string;
+            question_text?: string;
+            correct_answer?: string;
+            points?: number;
+          }>;
           score?: number;
           max_score?: number;
+          status?: 'pending_grading' | 'graded' | 'auto_graded';
           completed_at?: string | null;
           created_at?: string;
         };
@@ -240,9 +321,21 @@ export interface Database {
           id?: string;
           quiz_id?: string;
           student_id?: string;
-          answers?: any;
+          answers?: Array<{
+            question_id: string;
+            selected_answer?: number;
+            text_answer?: string;
+            is_correct: boolean;
+            points_earned: number;
+            manually_graded?: boolean;
+            teacher_feedback?: string;
+            question_text?: string;
+            correct_answer?: string;
+            points?: number;
+          }>;
           score?: number;
           max_score?: number;
+          status?: 'pending_grading' | 'graded' | 'auto_graded';
           completed_at?: string | null;
           created_at?: string;
         };
@@ -563,6 +656,82 @@ export interface Database {
           graded_by?: string | null;
           graded_at?: string | null;
           status?: 'submitted' | 'graded' | 'returned';
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      live_classes: {
+        Row: {
+          id: string;
+          course_id: string;
+          teacher_id: string;
+          title: string;
+          description: string | null;
+          scheduled_date: string;
+          duration_minutes: number;
+          meeting_link: string | null;
+          status: 'scheduled' | 'live' | 'ended';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          course_id: string;
+          teacher_id: string;
+          title: string;
+          description?: string | null;
+          scheduled_date: string;
+          duration_minutes?: number;
+          meeting_link?: string | null;
+          status?: 'scheduled' | 'live' | 'ended';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          course_id?: string;
+          teacher_id?: string;
+          title?: string;
+          description?: string | null;
+          scheduled_date?: string;
+          duration_minutes?: number;
+          meeting_link?: string | null;
+          status?: 'scheduled' | 'live' | 'ended';
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      attendance: {
+        Row: {
+          id: string;
+          live_class_id: string;
+          student_id: string;
+          status: 'present' | 'absent' | 'late';
+          marked_at: string;
+          marked_by: string;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          live_class_id: string;
+          student_id: string;
+          status?: 'present' | 'absent' | 'late';
+          marked_at?: string;
+          marked_by: string;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          live_class_id?: string;
+          student_id?: string;
+          status?: 'present' | 'absent' | 'late';
+          marked_at?: string;
+          marked_by?: string;
+          notes?: string | null;
           created_at?: string;
           updated_at?: string;
         };

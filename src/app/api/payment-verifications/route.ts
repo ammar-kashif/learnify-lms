@@ -226,10 +226,19 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
 
-    // First, get payment verifications
+    // First, get payment verifications with subscription plan data
     let paymentQuery = supabaseAdmin
       .from('payment_verifications')
-      .select('*');
+      .select(`
+        *,
+        subscription_plans!payment_verifications_subscription_plan_id_fkey (
+          id,
+          name,
+          type,
+          price_pkr,
+          features
+        )
+      `);
 
     if (userProfile.role === 'student') {
       // Students can only see their own payment verifications

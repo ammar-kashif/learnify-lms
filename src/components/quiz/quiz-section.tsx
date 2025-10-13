@@ -10,6 +10,7 @@ import { Quiz, QuizAttempt } from '@/types/quiz';
 import QuizForm from './quiz-form';
 import QuizAttempts from './quiz-attempts';
 import QuizTaker from './quiz-taker';
+import QuizGrading from './quiz-grading';
 
 interface QuizSectionProps {
   courseId: string;
@@ -24,6 +25,7 @@ export default function QuizSection({ courseId, userRole, userId }: QuizSectionP
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
   const [viewingAttempts, setViewingAttempts] = useState<Quiz | null>(null);
   const [takingQuiz, setTakingQuiz] = useState<Quiz | null>(null);
+  const [gradingQuiz, setGradingQuiz] = useState<Quiz | null>(null);
   const [attempts, setAttempts] = useState<QuizAttempt[]>([]);
   const [session, setSession] = useState<any>(null);
   const [studentAttempts, setStudentAttempts] = useState<Map<string, QuizAttempt[]>>(new Map());
@@ -266,6 +268,11 @@ export default function QuizSection({ courseId, userRole, userId }: QuizSectionP
     setTakingQuiz(quiz);
   };
 
+  const handleGradeQuiz = async (quiz: Quiz) => {
+    setGradingQuiz(quiz);
+    await loadAttempts(quiz.id);
+  };
+
   const handleQuizComplete = async (attempt: QuizAttempt) => {
     setTakingQuiz(null);
     
@@ -363,6 +370,10 @@ export default function QuizSection({ courseId, userRole, userId }: QuizSectionP
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Quizzes ({quizzes.length})</h3>
+            <Button onClick={() => setShowCreateForm(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Quiz
+            </Button>
           </div>
 
           {loading ? (
@@ -446,15 +457,25 @@ export default function QuizSection({ courseId, userRole, userId }: QuizSectionP
                         </div>
                       </div>
 
-                      {/* Clean View Attempts Button for Admins */}
-                      <div className="flex justify-end pt-4">
+                      {/* Teacher Actions */}
+                      <div className="flex justify-end space-x-2 pt-4">
                         <Button 
                           onClick={() => handleViewAttempts(quiz.id)}
-                          className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg shadow-sm"
+                          variant="outline"
+                          className="px-4 py-2"
                         >
                           <BarChart3 className="h-4 w-4 mr-2" />
                           View Attempts
                         </Button>
+                        {quiz.questions.some(q => q.type === 'text') && (
+                          <Button 
+                            onClick={() => handleGradeQuiz(quiz)}
+                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2"
+                          >
+                            <Award className="h-4 w-4 mr-2" />
+                            Grade Quiz
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -583,6 +604,32 @@ export default function QuizSection({ courseId, userRole, userId }: QuizSectionP
                 })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Grading Interface */}
+      {gradingQuiz && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Grade Quiz: {gradingQuiz.title}</h2>
+            <Button
+              variant="outline"
+              onClick={() => setGradingQuiz(null)}
+            >
+              Close Grading
+            </Button>
+          </div>
+          <QuizGrading
+            quiz={gradingQuiz}
+            attempts={attempts}
+            onGradingComplete={() => {
+              setGradingQuiz(null);
+              // Refresh attempts
+              if (gradingQuiz) {
+                loadAttempts(gradingQuiz.id);
+              }
+            }}
+          />
         </div>
       )}
     </div>

@@ -1,202 +1,207 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 
-export const dynamic = 'force-dynamic';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-// GET /api/live-classes - Get live classes for a course
 export async function GET(request: NextRequest) {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { searchParams } = new URL(request.url);
+    const courseId = searchParams.get('course_id');
+    const teacherId = searchParams.get('teacher_id');
+    const status = searchParams.get('status');
+
+    // Get session
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const courseId = searchParams.get('courseId');
-
-    if (!courseId) {
-      return NextResponse.json(
-        { error: 'Missing courseId parameter' },
-        { status: 400 }
-      );
-    }
-
-    // Get user role
+    // Get user role to determine what live classes they can see
     const { data: userProfile } = await supabase
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single();
 
-    const role = userProfile?.role;
-
+    // Build query
     let query = supabase
       .from('live_classes')
       .select(`
         *,
-        users!live_classes_teacher_id_fkey (
-          full_name
-        )
+        courses!inner(title, created_by),
+        users!live_classes_teacher_id_fkey(full_name, email)
       `)
-      .eq('course_id', courseId)
-      .order('scheduled_at', { ascending: true });
+      .order('scheduled_date', { ascending: true });
 
-    // Apply role-based filtering
-    if (role === 'student') {
-      query = query.eq('is_published', true);
-    } else if (role === 'teacher') {
-      // Teachers can see their own classes and classes for courses they're assigned to
-      query = query.or(`teacher_id.eq.${user.id},is_published.eq.true`);
+    // Apply filters
+    if (courseId) {
+      query = query.eq('course_id', courseId);
     }
-    // Admins and superadmins can see all classes
+    
+    if (teacherId) {
+      query = query.eq('teacher_id', teacherId);
+    }
+    
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    // For students, only show live classes for courses they're enrolled in
+    if (userProfile?.role === 'student') {
+      const { data: enrollments } = await supabase
+        .from('student_enrollments')
+        .select('course_id')
+        .eq('student_id', user.id);
+
+      if (enrollments && enrollments.length > 0) {
+        const enrolledCourseIds = enrollments.map(e => e.course_id);
+        query = query.in('course_id', enrolledCourseIds);
+      } else {
+        // Student has no enrollments, return empty array
+        return NextResponse.json({ liveClasses: [] });
+      }
+    }
+
+    // For teachers, only show live classes for courses they're assigned to
+    if (userProfile?.role === 'teacher') {
+      const { data: teacherCourses } = await supabase
+        .from('teacher_courses')
+        .select('course_id')
+        .eq('teacher_id', user.id);
+
+      if (teacherCourses && teacherCourses.length > 0) {
+        const assignedCourseIds = teacherCourses.map(tc => tc.course_id);
+        query = query.in('course_id', assignedCourseIds);
+      } else {
+        // Teacher has no assigned courses, return empty array
+        return NextResponse.json({ liveClasses: [] });
+      }
+    }
+
+    // Admins and superadmins can see all live classes
 
     const { data: liveClasses, error } = await query;
 
     if (error) {
       console.error('Error fetching live classes:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch live classes' },
-        { status: 500 }
-      );
+      console.error('Query details:', { courseId, teacherId, status });
+      return NextResponse.json({ error: 'Failed to fetch live classes', details: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ liveClasses });
   } catch (error) {
-    console.error('Error in live classes API:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('Error in live classes GET:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// POST /api/live-classes - Create new live class
 export async function POST(request: NextRequest) {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    const body = await request.json();
+    const { course_id, title, description, scheduled_date, duration_minutes, meeting_link } = body;
+
+    // Get session
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user role
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Validate required fields
+    if (!course_id || !title || !scheduled_date) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // Verify user is teacher of the course
+    const { data: course, error: courseError } = await supabase
+      .from('courses')
+      .select('created_by')
+      .eq('id', course_id)
+      .single();
+
+    if (courseError || !course) {
+      return NextResponse.json({ error: 'Course not found' }, { status: 404 });
+    }
+
+    // Get user role from database
     const { data: userProfile } = await supabase
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single();
 
-    const role = userProfile?.role;
-
-    // Only teachers, admins, and superadmins can create live classes
-    if (!['teacher', 'admin', 'superadmin'].includes(role || '')) {
-      return NextResponse.json(
-        { error: 'Forbidden - Teacher access required' },
-        { status: 403 }
-      );
+    // Check if user is authorized to create live classes for this course
+    if (userProfile?.role === 'student') {
+      return NextResponse.json({ 
+        error: 'Students cannot create live classes',
+        details: {
+          userId: user.id,
+          userRole: userProfile?.role
+        }
+      }, { status: 403 });
     }
 
-    const body = await request.json();
-    const { 
-      courseId, 
-      title, 
-      description, 
-      meetingUrl, 
-      meetingId, 
-      scheduledAt, 
-      durationMinutes = 60, 
-      maxParticipants,
-      isPublished = false 
-    } = body;
-
-    if (!courseId || !title || !scheduledAt) {
-      return NextResponse.json(
-        { error: 'Missing required fields: courseId, title, scheduledAt' },
-        { status: 400 }
-      );
-    }
-
-    // Validate course exists
-    const { data: course, error: courseError } = await supabase
-      .from('courses')
-      .select('id')
-      .eq('id', courseId)
-      .single();
-
-    if (courseError || !course) {
-      return NextResponse.json(
-        { error: 'Course not found' },
-        { status: 404 }
-      );
-    }
-
-    // For teachers, verify they're assigned to the course
-    if (role === 'teacher') {
+    // For teachers, check if they're assigned to this course
+    if (userProfile?.role === 'teacher') {
       const { data: teacherCourse } = await supabase
         .from('teacher_courses')
-        .select('course_id')
+        .select('teacher_id')
+        .eq('course_id', course_id)
         .eq('teacher_id', user.id)
-        .eq('course_id', courseId)
         .single();
 
       if (!teacherCourse) {
-        return NextResponse.json(
-          { error: 'You are not assigned to this course' },
-          { status: 403 }
-        );
+        return NextResponse.json({ 
+          error: 'You are not assigned as a teacher for this course',
+          details: {
+            userId: user.id,
+            courseId: course_id,
+            userRole: userProfile?.role
+          }
+        }, { status: 403 });
       }
     }
 
+    // Admins and superadmins can create live classes for any course
+
     // Create live class
-    const { data: liveClass, error: insertError } = await supabase
+    const { data: liveClass, error: createError } = await supabase
       .from('live_classes')
       .insert({
-        course_id: courseId,
+        course_id,
         teacher_id: user.id,
         title,
-        description,
-        meeting_url: meetingUrl,
-        meeting_id: meetingId,
-        scheduled_at: scheduledAt,
-        duration_minutes: durationMinutes,
-        max_participants: maxParticipants,
-        is_published: isPublished
+        description: description || null,
+        scheduled_date: scheduled_date,
+        duration_minutes: duration_minutes || 60,
+        meeting_link: meeting_link || null
       })
       .select(`
         *,
-        users!live_classes_teacher_id_fkey (
-          full_name
-        )
+        courses!inner(title),
+        users!live_classes_teacher_id_fkey(full_name, email)
       `)
       .single();
 
-    if (insertError) {
-      console.error('Error creating live class:', insertError);
-      return NextResponse.json(
-        { error: 'Failed to create live class' },
-        { status: 500 }
-      );
+    if (createError) {
+      console.error('Error creating live class:', createError);
+      return NextResponse.json({ error: 'Failed to create live class' }, { status: 500 });
     }
 
     return NextResponse.json({ liveClass }, { status: 201 });
   } catch (error) {
-    console.error('Error in live classes POST API:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('Error in live classes POST:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-

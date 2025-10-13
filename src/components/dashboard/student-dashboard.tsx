@@ -246,9 +246,16 @@ export default function StudentDashboard() {
         });
 
         if (res.ok) {
-          toast.success('Subscription created successfully!', {
-            description: 'You now have access to the course content.'
-          });
+          const data = await res.json();
+          if (data.requiresApproval) {
+            toast.success('Payment verification request submitted!', {
+              description: 'Please wait for admin approval. You will be notified once approved.'
+            });
+          } else {
+            toast.success('Subscription created successfully!', {
+              description: 'You now have access to the course content.'
+            });
+          }
           setPaymentPopupOpen(false);
           setSelectedCourse(null);
           // Refresh the courses list

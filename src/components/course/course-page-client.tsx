@@ -11,7 +11,6 @@ import LectureRecordingsList from '@/components/course/lecture-recordings-list';
 import LectureRecordingUpload from '@/components/course/lecture-recording-upload';
 import DemoAccessRequest from '@/components/course/demo-access-request';
 import SubscriptionPlans from '@/components/course/subscription-plans';
-import LiveClassesList from '@/components/course/live-classes-list';
 import AssignmentManagement from '@/components/assignments/assignment-management';
 import { uploadToS3 } from '@/lib/s3';
 import { createChapterFromFile } from '@/lib/chapters';
@@ -259,12 +258,6 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                   </Link>
                 </li>
                 <li>
-                  <Link href={{ pathname: `/courses/${courseId}`, query: { tab: 'live-classes' } }} className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='live-classes' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}>
-                    <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='live-classes' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
-                    <Video className="h-4 w-4" /> Live Classes
-                  </Link>
-                </li>
-                <li>
                   <Link href={{ pathname: `/courses/${courseId}`, query: { tab: 'quizzes' } }} className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='quizzes' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}>
                     <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='quizzes' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
                     <Eye className="h-4 w-4" /> Quizzes
@@ -440,31 +433,6 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
             </section>
           )}
 
-          {/* Live Classes */}
-          {activeTab === 'live-classes' && (
-            <section className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">Live Classes</h2>
-                {(userRole === 'teacher' || userRole === 'admin' || userRole === 'superadmin') && (
-                  <button
-                    onClick={() => setShowRecordingUploadModal(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Schedule Live Class
-                  </button>
-                )}
-              </div>
-
-              <LiveClassesList
-                courseId={courseId}
-                userRole={isAdmin ? (userRole === 'superadmin' ? "superadmin" : "admin") : "student"}
-                showAccessControls={userRole === 'student'}
-                onAccessRequired={() => setShowSubscriptionModal(true)}
-                onCreateClass={() => setShowRecordingUploadModal(true)}
-              />
-            </section>
-          )}
 
           {/* Quizzes */}
           {activeTab === 'quizzes' && (

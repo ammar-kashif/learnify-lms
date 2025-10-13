@@ -126,34 +126,98 @@ export async function PATCH(
       );
     }
 
-    // If approved, enroll the student in the course
+    // If approved, create subscription and enroll the student
     if (status === 'approved') {
-      console.log('🎓 Enrolling student:', paymentVerification.student_id, 'in course:', paymentVerification.course_id);
+      console.log('🎓 Creating subscription and enrolling student:', paymentVerification.student_id, 'in course:', paymentVerification.course_id);
       
-      // Check if this payment verification has subscription information
-      const { data: subscriptionData } = await supabaseAdmin
-        .from('user_subscriptions')
-        .select('id')
-        .eq('user_id', paymentVerification.student_id)
-        .eq('course_id', paymentVerification.course_id)
-        .eq('status', 'active')
-        .single();
+      try {
+        // Get subscription plan details from payment verification
+        const { data: paymentDetails } = await supabaseAdmin
+          .from('payment_verifications')
+          .select(`
+            subscription_plan_id,
+            subscription_plans!payment_verifications_subscription_plan_id_fkey (
+              id,
+              name,
+              type,
+              price_pkr,
+              duration_months,
+              duration_until_date
+            )
+          `)
+          .eq('id', paymentId)
+          .single();
 
-      const { error: enrollmentError } = await supabaseAdmin
-        .from('student_enrollments')
-        .upsert({
-          student_id: paymentVerification.student_id,
-          course_id: paymentVerification.course_id,
-          subscription_id: subscriptionData?.id || null,
-          enrollment_type: subscriptionData ? 'paid' : 'paid'
-        });
+        if (!paymentDetails?.subscription_plans) {
+          console.error('❌ No subscription plan found for payment verification');
+          return NextResponse.json(
+            { error: 'Subscription plan not found' },
+            { status: 400 }
+          );
+        }
 
-      if (enrollmentError) {
-        console.error('❌ Error enrolling student after payment approval:', enrollmentError);
-        // Don't fail the request, just log the error
-        // The payment verification is still updated
-      } else {
-        console.log('✅ Student enrolled successfully');
+        const plan = paymentDetails.subscription_plans;
+
+        // Calculate expiration date
+        let expiresAt: Date;
+        if (plan.duration_months) {
+          expiresAt = new Date();
+          expiresAt.setMonth(expiresAt.getMonth() + plan.duration_months);
+        } else if (plan.duration_until_date) {
+          expiresAt = new Date(plan.duration_until_date);
+        } else {
+          console.error('❌ Invalid subscription plan duration');
+          return NextResponse.json(
+            { error: 'Invalid subscription plan duration' },
+            { status: 400 }
+          );
+        }
+
+        // Create subscription
+        const { data: subscription, error: subscriptionError } = await supabaseAdmin
+          .from('user_subscriptions')
+          .insert({
+            user_id: paymentVerification.student_id,
+            course_id: paymentVerification.course_id,
+            subscription_plan_id: plan.id,
+            expires_at: expiresAt.toISOString()
+          })
+          .select()
+          .single();
+
+        if (subscriptionError) {
+          console.error('❌ Error creating subscription:', subscriptionError);
+          return NextResponse.json(
+            { error: 'Failed to create subscription' },
+            { status: 500 }
+          );
+        }
+
+        // Create student enrollment
+        const { error: enrollmentError } = await supabaseAdmin
+          .from('student_enrollments')
+          .upsert({
+            student_id: paymentVerification.student_id,
+            course_id: paymentVerification.course_id,
+            subscription_id: subscription.id,
+            enrollment_type: 'paid'
+          });
+
+        if (enrollmentError) {
+          console.error('❌ Error enrolling student:', enrollmentError);
+          return NextResponse.json(
+            { error: 'Failed to enroll student' },
+            { status: 500 }
+          );
+        }
+
+        console.log('✅ Subscription created and student enrolled successfully');
+      } catch (error) {
+        console.error('❌ Error in subscription creation process:', error);
+        return NextResponse.json(
+          { error: 'Failed to create subscription and enroll student' },
+          { status: 500 }
+        );
       }
     }
 

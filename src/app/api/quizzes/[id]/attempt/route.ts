@@ -87,33 +87,65 @@ export async function POST(
       const question = quiz.questions.find((q: any) => q.id === answer.question_id);
       if (!question) {
         return {
-          ...answer,
+          question_id: answer.question_id,
+          selected_answer: answer.selected_answer,
+          text_answer: answer.text_answer,
           is_correct: false,
           points_earned: 0,
+          manually_graded: false,
           question_text: 'Question not found',
           correct_answer: 'Not available',
           points: 0,
         };
       }
 
-      const isCorrect = answer.selected_answer === question.correct_answer;
-      const pointsEarned = isCorrect ? question.points : 0;
+      let isCorrect = false;
+      let pointsEarned = 0;
+      let manuallyGraded = false;
+
+      if (question.type === 'multiple_choice') {
+        // Auto-grade multiple choice questions
+        isCorrect = answer.selected_answer === question.correct_answer;
+        pointsEarned = isCorrect ? question.points : 0;
+        manuallyGraded = false;
+      } else if (question.type === 'text') {
+        // Text questions require manual grading
+        isCorrect = false; // Will be updated when teacher grades
+        pointsEarned = 0; // Will be updated when teacher grades
+        manuallyGraded = true;
+      }
 
       return {
-        ...answer,
+        question_id: answer.question_id,
+        selected_answer: question.type === 'multiple_choice' ? (answer.selected_answer ?? undefined) : undefined,
+        text_answer: question.type === 'text' ? (answer.text_answer || answer.selected_answer || '') : undefined,
         is_correct: isCorrect,
         points_earned: pointsEarned,
+        manually_graded: manuallyGraded,
         question_text: question.question || 'Question text not available',
-        correct_answer: question.options?.[question.correct_answer] || 'Correct answer not available',
+        correct_answer: question.type === 'multiple_choice' 
+          ? (question.options?.[question.correct_answer] || 'Correct answer not available')
+          : (question.correct_text_answer || 'No expected answer provided'),
         points: question.points || 0,
       };
     });
 
-    // Calculate scores
-    const score = gradedAnswers.reduce((sum, answer) => sum + answer.points_earned, 0);
+    // Calculate scores - only count auto-graded questions
+    const autoGradedAnswers = gradedAnswers.filter(answer => !answer.manually_graded);
+    const score = autoGradedAnswers.reduce((sum, answer) => sum + answer.points_earned, 0);
     const maxScore = quiz.questions.reduce((sum: number, q: any) => sum + q.points, 0);
+    
+    // Check if there are text questions that need manual grading
+    const hasTextQuestions = quiz.questions.some((q: any) => q.type === 'text');
+    const allTextQuestionsGraded = hasTextQuestions ? 
+      gradedAnswers.filter(answer => answer.manually_graded).every(answer => answer.points_earned > 0 || answer.teacher_feedback) : 
+      true;
+
+    // Determine status based on question types
+    const status = hasTextQuestions ? 'pending_grading' : 'auto_graded';
 
     // Create quiz attempt
+
     const { data: attempt, error: attemptError } = await supabaseAdmin
       .from('quiz_attempts')
       .insert({
@@ -122,6 +154,7 @@ export async function POST(
         answers: gradedAnswers,
         score,
         max_score: maxScore,
+        status,
         completed_at: new Date().toISOString(),
       })
       .select()
@@ -129,7 +162,7 @@ export async function POST(
 
     if (attemptError) {
       console.error('Error creating quiz attempt:', attemptError);
-      return NextResponse.json({ error: 'Failed to submit quiz' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to submit quiz', details: attemptError.message }, { status: 500 });
     }
 
     return NextResponse.json({ 

@@ -147,7 +147,13 @@ export default function SubscriptionPlans({
       const data = await response.json();
 
       if (response.ok) {
-        toast.success('Subscription created successfully!');
+        if (data.requiresApproval) {
+          toast.success('Payment verification request submitted!', {
+            description: 'Please wait for admin approval. You will be notified once approved.'
+          });
+        } else {
+          toast.success('Subscription created successfully!');
+        }
         onSubscriptionCreated?.();
       } else {
         if (data.error.includes('already has an active subscription')) {

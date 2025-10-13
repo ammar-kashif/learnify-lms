@@ -179,18 +179,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create subscription
-    const { data: subscription, error: insertError } = await supabase
-      .from('user_subscriptions')
+    // Create payment verification request instead of immediate subscription
+    const { data: paymentVerification, error: paymentError } = await supabase
+      .from('payment_verifications')
       .insert({
-        user_id: user.id,
+        student_id: user.id,
         course_id: courseId,
         subscription_plan_id: subscriptionPlanId,
-        expires_at: expiresAt.toISOString()
+        amount: plan.price_pkr,
+        status: 'pending'
       })
       .select(`
         *,
-        subscription_plans (
+        courses!payment_verifications_course_id_fkey (
+          id,
+          title,
+          description
+        ),
+        subscription_plans!payment_verifications_subscription_plan_id_fkey (
           id,
           name,
           type,
@@ -200,30 +206,19 @@ export async function POST(request: NextRequest) {
       `)
       .single();
 
-    if (insertError) {
-      console.error('Error creating subscription:', insertError);
+    if (paymentError) {
+      console.error('Error creating payment verification:', paymentError);
       return NextResponse.json(
-        { error: 'Failed to create subscription' },
+        { error: 'Failed to create payment verification request' },
         { status: 500 }
       );
     }
 
-    // Update student enrollment to link with subscription
-    const { error: enrollmentError } = await supabase
-      .from('student_enrollments')
-      .upsert({
-        student_id: user.id,
-        course_id: courseId,
-        subscription_id: subscription.id,
-        enrollment_type: 'paid'
-      });
-
-    if (enrollmentError) {
-      console.error('Error updating enrollment:', enrollmentError);
-      // Don't fail the request, just log the error
-    }
-
-    return NextResponse.json({ subscription }, { status: 201 });
+    return NextResponse.json({ 
+      message: 'Payment verification request created successfully. Please wait for admin approval.',
+      paymentVerification,
+      requiresApproval: true
+    }, { status: 201 });
   } catch (error) {
     console.error('Error in user subscriptions POST API:', error);
     return NextResponse.json(

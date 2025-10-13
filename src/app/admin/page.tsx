@@ -1365,6 +1365,9 @@ export default function AdminDashboard() {
                           Amount
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Plan
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Status
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -1402,6 +1405,14 @@ export default function AdminDashboard() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                               PKR {payment.amount}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                              {payment.subscription_plans?.name || 'N/A'}
+                              {payment.subscription_plans?.type && (
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  {payment.subscription_plans.type.replace('_', ' ').toUpperCase()}
+                                </div>
+                              )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <Badge
