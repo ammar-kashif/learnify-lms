@@ -377,7 +377,7 @@ export default function LiveClassCalendar({
                 <div className="flex items-center space-x-2">
                   <Clock className="h-4 w-4 text-gray-500" />
                   <span className="text-sm">
-                    {new Date(selectedEvent.scheduled_at).toLocaleString()}
+                    {new Date(selectedEvent.scheduled_date).toLocaleString()}
                   </span>
                 </div>
                 
