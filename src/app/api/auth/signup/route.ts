@@ -16,25 +16,26 @@ const supabaseAdmin = createClient(
 export async function POST(request: NextRequest) {
   try {
     // Get the request body
-    const { email, password, fullName, role } = await request.json();
+    const { email, password, fullName, role = 'student' } = await request.json();
 
     // Validate input
-    if (!email || !password || !fullName || !role) {
+    if (!email || !password || !fullName) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // Validate role
-    if (!['student', 'teacher', 'admin', 'superadmin'].includes(role)) {
+    // Validate role (default to student if not provided)
+    const userRole = role || 'student';
+    if (!['student', 'teacher', 'admin', 'superadmin'].includes(userRole)) {
       return NextResponse.json(
         { error: 'Invalid role' },
         { status: 400 }
       );
     }
 
-    console.log('🚀 Creating user via signup API:', { email, fullName, role });
+    console.log('🚀 Creating user via signup API:', { email, fullName, role: userRole });
 
     // Create auth user using service role
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
       email_confirm: true,
       user_metadata: {
         full_name: fullName,
-        role: role
+        role: userRole
       }
     });
 
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
         id: authData.user.id,
         email,
         full_name: fullName,
-        role,
+        role: userRole,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
         id: authData.user?.id,
         email,
         full_name: fullName,
-        role
+        role: userRole
       }
     });
 

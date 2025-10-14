@@ -28,8 +28,7 @@ export interface AuthContextType {
   signUp: (
     email: string,
     password: string,
-    fullName: string,
-    role: 'student' | 'teacher' | 'admin' | 'superadmin'
+    fullName: string
   ) => Promise<{ error: AuthError | PostgrestError | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
@@ -201,8 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (
     email: string,
     password: string,
-    fullName: string,
-    role: 'student' | 'teacher' | 'admin' | 'superadmin'
+    fullName: string
   ) => {
     try {
       console.log('🚀 Starting signup process for:', email);
@@ -218,7 +216,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: email,
           password: password,
           fullName: fullName,
-          role: role
+          role: 'student' // Default all new users to student role
         })
       });
 
@@ -231,8 +229,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log('✅ User created successfully:', result.user);
       
-      // Set the user role immediately
-      setUserRole(role);
+      // Set the user role immediately to student
+      setUserRole('student');
 
       return { error: null };
     } catch (error) {

@@ -331,16 +331,16 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                   </div>
                 </div>
               ) : (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                   {chaptersList.map(ch => (
-                    <div key={ch.id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm hover:shadow-md transition-shadow">
+                    <div key={ch.id} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800 transition-all">
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-2">
-                          <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                          <div className="p-2.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
                             <FileText className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900 dark:text-white">{ch.title}</p>
+                            <p className="font-medium text-gray-900 dark:text-white line-clamp-1">{ch.title}</p>
                             {ch.created_at && (
                               <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                                 <Calendar className="h-3 w-3" />
@@ -353,13 +353,13 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                           <div className="flex gap-1">
                             <button
                               onClick={() => handleDeleteChapter(ch.id)}
-                              className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                              className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition"
                               title="Delete chapter"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
                             <button
-                              className="p-1.5 text-gray-600 hover:text-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors"
+                              className="p-1.5 text-gray-600 hover:text-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition"
                               title="Edit chapter"
                             >
                               <Edit className="h-4 w-4" />

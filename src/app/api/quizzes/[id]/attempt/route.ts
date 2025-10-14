@@ -108,8 +108,8 @@ export async function POST(
         isCorrect = answer.selected_answer === question.correct_answer;
         pointsEarned = isCorrect ? question.points : 0;
         manuallyGraded = false;
-      } else if (question.type === 'text') {
-        // Text questions require manual grading
+      } else {
+        // Treat any non-MCQ question type as text/subjective requiring manual grading
         isCorrect = false; // Will be updated when teacher grades
         pointsEarned = 0; // Will be updated when teacher grades
         manuallyGraded = true;
@@ -118,7 +118,7 @@ export async function POST(
       return {
         question_id: answer.question_id,
         selected_answer: question.type === 'multiple_choice' ? (answer.selected_answer ?? undefined) : undefined,
-        text_answer: question.type === 'text' ? (answer.text_answer || answer.selected_answer || '') : undefined,
+        text_answer: question.type === 'multiple_choice' ? undefined : (answer.text_answer || answer.selected_answer || ''),
         is_correct: isCorrect,
         points_earned: pointsEarned,
         manually_graded: manuallyGraded,

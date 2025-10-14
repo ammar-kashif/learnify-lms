@@ -11,13 +11,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -28,7 +21,6 @@ import {
   Lock,
   User,
   ArrowLeft,
-  BookOpen,
 } from 'lucide-react';
 
 export default function SignUpPage() {
@@ -37,7 +29,6 @@ export default function SignUpPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'student' as 'student' | 'teacher',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -73,8 +64,7 @@ export default function SignUpPage() {
       const { error } = await signUp(
         formData.email,
         formData.password,
-        formData.fullName,
-        formData.role
+        formData.fullName
       );
 
       if (error) {
@@ -173,38 +163,6 @@ export default function SignUpPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="role" className="text-charcoal-700 dark:text-gray-300">
-                  Role
-                </Label>
-                <div className="relative">
-                  <BookOpen className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-charcoal-400 dark:text-gray-400" />
-                  <Select
-                    value={formData.role}
-                    onValueChange={(value: 'student' | 'teacher') =>
-                      handleInputChange('role', value)
-                    }
-                  >
-                    <SelectTrigger className="border-charcoal-300 dark:border-gray-600 bg-white dark:bg-gray-800 pl-10 transition-colors hover:border-charcoal-400 dark:hover:border-gray-500 hover:bg-charcoal-50 dark:hover:bg-gray-700 focus:border-primary focus:ring-primary text-charcoal-900 dark:text-gray-100">
-                      <SelectValue placeholder="Select your role" />
-                    </SelectTrigger>
-                    <SelectContent className="border-charcoal-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-charcoal-900 dark:text-gray-100">
-                      <SelectItem
-                        value="student"
-                        className="cursor-pointer text-charcoal-900 dark:text-gray-100 transition-colors hover:bg-primary/10 dark:hover:bg-primary/20 hover:text-primary"
-                      >
-                        Student
-                      </SelectItem>
-                      <SelectItem
-                        value="teacher"
-                        className="cursor-pointer text-charcoal-900 dark:text-gray-100 transition-colors hover:bg-primary/10 dark:hover:bg-primary/20 hover:text-primary"
-                      >
-                        Teacher
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-charcoal-700 dark:text-gray-300">
