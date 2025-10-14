@@ -81,23 +81,37 @@ export default function LiveClassCalendar({
 
   // Format events for FullCalendar
   const formatEvents = (classes: LiveClass[]) => {
-    return classes.map(liveClass => {
-      const start = new Date(liveClass.scheduled_at);
-      const end = new Date(start.getTime() + liveClass.duration_minutes * 60000);
-      
-      const color = '#3b82f6'; // Blue for scheduled
-
-      return {
-        id: liveClass.id,
-        title: liveClass.title,
-        start: start.toISOString(),
-        end: end.toISOString(),
-        color,
-        extendedProps: {
-          liveClass
+    return classes
+      .filter(liveClass => {
+        // Filter out classes with invalid dates
+        if (!liveClass.scheduled_date) {
+          console.warn('Live class missing scheduled_date:', liveClass.id, liveClass.title);
+          return false;
         }
-      };
-    });
+        const date = new Date(liveClass.scheduled_date);
+        if (isNaN(date.getTime())) {
+          console.warn('Live class has invalid scheduled_date:', liveClass.id, liveClass.title, liveClass.scheduled_date);
+          return false;
+        }
+        return true;
+      })
+      .map(liveClass => {
+        const start = new Date(liveClass.scheduled_date!);
+        const end = new Date(start.getTime() + (liveClass.duration_minutes || 60) * 60000);
+        
+        const color = '#3b82f6'; // Blue for scheduled
+
+        return {
+          id: liveClass.id,
+          title: liveClass.title,
+          start: start.toISOString(),
+          end: end.toISOString(),
+          color,
+          extendedProps: {
+            liveClass
+          }
+        };
+      });
   };
 
   // Handle event click

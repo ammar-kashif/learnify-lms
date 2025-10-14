@@ -64,7 +64,7 @@ export default function LiveClassForm({
       setFormData({
         title: liveClass.title,
         description: liveClass.description || '',
-        scheduled_date: new Date(liveClass.scheduled_at).toISOString().slice(0, 16),
+        scheduled_date: new Date(liveClass.scheduled_date).toISOString().slice(0, 16),
         duration_minutes: liveClass.duration_minutes,
         meeting_link: liveClass.meeting_id || '',
         selected_course_id: liveClass.course_id

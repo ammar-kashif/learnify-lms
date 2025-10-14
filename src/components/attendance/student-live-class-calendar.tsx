@@ -82,38 +82,52 @@ export default function StudentLiveClassCalendar({ courseId }: StudentLiveClassC
   }, []);
 
   const formatEvents = (classes: LiveClass[]) => {
-    return classes.map(liveClass => {
-      const start = new Date(liveClass.scheduled_date);
-      const end = new Date(start.getTime() + liveClass.duration_minutes * 60000);
-      
-      let backgroundColor = '#3B82F6'; // Blue for scheduled
-      let borderColor = '#2563EB';
-      
-      if (liveClass.status === 'live') {
-        backgroundColor = '#10B981'; // Green for live
-        borderColor = '#059669';
-      } else if (liveClass.status === 'ended') {
-        backgroundColor = '#6B7280'; // Gray for ended
-        borderColor = '#4B5563';
-      }
-
-      return {
-        id: liveClass.id,
-        title: liveClass.title,
-        start: start.toISOString(),
-        end: end.toISOString(),
-        backgroundColor,
-        borderColor,
-        extendedProps: {
-          liveClass,
-          courseTitle: liveClass.courses.title,
-          meetingLink: liveClass.meeting_link,
-          status: liveClass.status,
-          duration: liveClass.duration_minutes,
-          description: liveClass.description
+    return classes
+      .filter(liveClass => {
+        // Filter out classes with invalid dates
+        if (!liveClass.scheduled_date) {
+          console.warn('Live class missing scheduled_date:', liveClass.id, liveClass.title);
+          return false;
         }
-      };
-    });
+        const date = new Date(liveClass.scheduled_date);
+        if (isNaN(date.getTime())) {
+          console.warn('Live class has invalid scheduled_date:', liveClass.id, liveClass.title, liveClass.scheduled_date);
+          return false;
+        }
+        return true;
+      })
+      .map(liveClass => {
+        const start = new Date(liveClass.scheduled_date!);
+        const end = new Date(start.getTime() + (liveClass.duration_minutes || 60) * 60000);
+        
+        let backgroundColor = '#3B82F6'; // Blue for scheduled
+        let borderColor = '#2563EB';
+        
+        if (liveClass.status === 'live') {
+          backgroundColor = '#10B981'; // Green for live
+          borderColor = '#059669';
+        } else if (liveClass.status === 'ended') {
+          backgroundColor = '#6B7280'; // Gray for ended
+          borderColor = '#4B5563';
+        }
+
+        return {
+          id: liveClass.id,
+          title: liveClass.title,
+          start: start.toISOString(),
+          end: end.toISOString(),
+          backgroundColor,
+          borderColor,
+          extendedProps: {
+            liveClass,
+            courseTitle: liveClass.courses?.title,
+            meetingLink: liveClass.meeting_link,
+            status: liveClass.status,
+            duration: liveClass.duration_minutes,
+            description: liveClass.description
+          }
+        };
+      });
   };
 
   const handleEventClick = (clickInfo: any) => {
