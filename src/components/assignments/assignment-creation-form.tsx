@@ -128,7 +128,6 @@ export default function AssignmentCreationForm({
       } : {
         courseId,
         chapterId: (formData.chapterId === 'none' || !formData.chapterId) ? null : formData.chapterId,
-        chapterId: (formData.chapterId === 'none' || !formData.chapterId) ? null : formData.chapterId,
         title: formData.title,
         description: formData.description,
         instructions: formData.instructions,

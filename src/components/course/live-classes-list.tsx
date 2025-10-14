@@ -5,23 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  Video, 
-  Calendar, 
-  User, 
-  Clock,
-  ExternalLink,
-  Plus,
-  Edit,
-  Trash2,
-  Eye,
-  EyeOff,
-  Lock,
-  Star,
-  Crown,
-  Users
-} from 'lucide-react';
-import { useAuth } from '@/contexts/auth-context';
+import { Lock, Star, Crown, Users } from 'lucide-react';
+// import { useAuth } from '@/contexts/auth-context';
 import { toast } from 'sonner';
 import LiveClassCalendar from '@/components/attendance/live-class-calendar';
 import LiveClassForm from '@/components/attendance/live-class-form';
@@ -36,19 +21,17 @@ type LiveClass = Tables<'live_classes'> & {
 interface LiveClassesListProps {
   courseId: string;
   userRole: string;
-  refreshKey?: number;
+  // refreshKey?: number;
   showAccessControls?: boolean;
   onAccessRequired?: () => void;
-  onCreateClass?: () => void;
+  // onCreateClass?: () => void;
 }
 
 export default function LiveClassesList({ 
   courseId, 
   userRole,
-  refreshKey,
   showAccessControls = false,
-  onAccessRequired,
-  onCreateClass
+  onAccessRequired
 }: LiveClassesListProps) {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
@@ -62,8 +45,8 @@ export default function LiveClassesList({
     setShowCreateForm(true);
   };
 
-  const handleEditClass = (liveClass: LiveClass) => {
-    setSelectedLiveClass(liveClass);
+  const handleEditClass = (_liveClass: LiveClass) => {
+    setSelectedLiveClass(_liveClass);
     setShowCreateForm(true);
   };
 
@@ -72,7 +55,7 @@ export default function LiveClassesList({
     setShowAttendance(true);
   };
 
-  const handleClassSuccess = (liveClass: LiveClass) => {
+  const handleClassSuccess = (_liveClass: any) => {
     setShowCreateForm(false);
     setSelectedLiveClass(null);
     // Refresh the calendar without full page reload
@@ -171,13 +154,13 @@ export default function LiveClassesList({
         onEventClick={(liveClass) => {
           // This will be called when "Edit Class" button is clicked in the details modal
           if (userRole === 'teacher' || userRole === 'admin' || userRole === 'superadmin') {
-            handleEditClass(liveClass);
+            handleEditClass(liveClass as any);
           }
         }}
         onMarkAttendance={(liveClass) => {
           // This will be called when "Mark Attendance" button is clicked in the details modal
           if (userRole === 'teacher' || userRole === 'admin' || userRole === 'superadmin') {
-            handleMarkAttendance(liveClass);
+            handleMarkAttendance(liveClass as any);
           }
         }}
         onCreateClass={handleCreateClass}

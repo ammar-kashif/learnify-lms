@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+// import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Calendar, Clock, Video, Save, X, BookOpen } from 'lucide-react';
+import { Calendar, Video, Save, X, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth-context';
 import { Tables } from '@/lib/supabase';
@@ -64,9 +64,9 @@ export default function LiveClassForm({
       setFormData({
         title: liveClass.title,
         description: liveClass.description || '',
-        scheduled_date: new Date(liveClass.scheduled_date).toISOString().slice(0, 16),
+        scheduled_date: new Date(liveClass.scheduled_at).toISOString().slice(0, 16),
         duration_minutes: liveClass.duration_minutes,
-        meeting_link: liveClass.meeting_link || '',
+        meeting_link: liveClass.meeting_id || '',
         selected_course_id: liveClass.course_id
       });
     } else {
@@ -175,7 +175,8 @@ export default function LiveClassForm({
         description: '',
         scheduled_date: '',
         duration_minutes: 60,
-        meeting_link: ''
+        meeting_link: '',
+        selected_course_id: courseId
       });
     } catch (error) {
       console.error('Error saving live class:', error);

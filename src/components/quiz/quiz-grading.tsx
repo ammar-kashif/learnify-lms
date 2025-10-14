@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, XCircle, Clock, User } from 'lucide-react';
-import { Quiz, QuizAttempt, StudentAnswer } from '@/types/quiz';
+import { CheckCircle, Clock, User } from 'lucide-react';
+import { Quiz, QuizAttempt } from '@/types/quiz';
 import { toast } from 'sonner';
 
 interface QuizGradingProps {
@@ -193,7 +193,7 @@ export default function QuizGrading({ quiz, attempts, onGradingComplete }: QuizG
               <CardContent className="space-y-4">
                 {/* Student's Answer */}
                 <div>
-                  <Label className="text-sm font-medium">Student's Answer:</Label>
+                  <Label className="text-sm font-medium">Student&apos;s Answer:</Label>
                   <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
                     <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">
                       {answer.text_answer || answer.selected_answer || 'No answer provided'}

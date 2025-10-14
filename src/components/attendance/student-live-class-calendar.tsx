@@ -6,7 +6,6 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { useAuth } from '@/contexts/auth-context';
-import { supabase } from '@/lib/supabase';
 import { format } from 'date-fns';
 import { Calendar, Clock, Video, ExternalLink, AlertCircle, Users } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';

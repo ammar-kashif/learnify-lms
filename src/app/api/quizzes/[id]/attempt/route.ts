@@ -118,7 +118,7 @@ export async function POST(
       return {
         question_id: answer.question_id,
         selected_answer: question.type === 'multiple_choice' ? (answer.selected_answer ?? undefined) : undefined,
-        text_answer: question.type === 'multiple_choice' ? undefined : (answer.text_answer || answer.selected_answer || ''),
+        text_answer: question.type === 'multiple_choice' ? undefined : (answer.text_answer || String(answer.selected_answer || '')),
         is_correct: isCorrect,
         points_earned: pointsEarned,
         manually_graded: manuallyGraded,
@@ -137,9 +137,6 @@ export async function POST(
     
     // Check if there are text questions that need manual grading
     const hasTextQuestions = quiz.questions.some((q: any) => q.type === 'text');
-    const allTextQuestionsGraded = hasTextQuestions ? 
-      gradedAnswers.filter(answer => answer.manually_graded).every(answer => answer.points_earned > 0 || answer.teacher_feedback) : 
-      true;
 
     // Determine status based on question types
     const status = hasTextQuestions ? 'pending_grading' : 'auto_graded';

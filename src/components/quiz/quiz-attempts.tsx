@@ -99,10 +99,9 @@ export default function QuizAttempts({ quiz, attempts, onBack, loading = false }
 
       <div className="grid gap-4">
         {attempts.map((attempt) => {
-          const isPendingGrading = attempt.status === 'pending_grading';
-          const percentage = isPendingGrading ? 0 : Math.round((attempt.score / attempt.max_score) * 100);
-          const grade = isPendingGrading ? 'Pending' : getGradeText(percentage);
-          const passed = !isPendingGrading && percentage >= 60;
+          const percentage = Math.round((attempt.score / attempt.max_score) * 100);
+          const grade = getGradeText(percentage);
+          const passed = percentage >= 60;
 
           return (
             <Card 
@@ -126,16 +125,10 @@ export default function QuizAttempts({ quiz, attempts, onBack, loading = false }
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Badge className={
-                      isPendingGrading 
-                        ? 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-200'
-                        : getGradeColor(percentage)
-                    }>
-                      {grade} {!isPendingGrading && `(${percentage}%)`}
+                    <Badge className={getGradeColor(percentage)}>
+                      {grade} ({percentage}%)
                     </Badge>
-                    {isPendingGrading ? (
-                      <Clock className="h-5 w-5 text-yellow-500" />
-                    ) : passed ? (
+                    {passed ? (
                       <CheckCircle className="h-5 w-5 text-green-500" />
                     ) : (
                       <XCircle className="h-5 w-5 text-red-500" />
@@ -148,10 +141,7 @@ export default function QuizAttempts({ quiz, attempts, onBack, loading = false }
                   <div className="flex items-center space-x-2 text-sm">
                     <Award className="h-4 w-4 text-gray-500" />
                     <span>
-                      {isPendingGrading 
-                        ? `--/${attempt.max_score} points` 
-                        : `${attempt.score}/${attempt.max_score} points`
-                      }
+                      {`${attempt.score}/${attempt.max_score} points`}
                     </span>
                   </div>
                   <div className="flex items-center space-x-2 text-sm">
@@ -166,23 +156,13 @@ export default function QuizAttempts({ quiz, attempts, onBack, loading = false }
                   <div className="flex items-center space-x-2 text-sm">
                     <span className="text-gray-500">Correct:</span>
                     <span>
-                      {isPendingGrading 
-                        ? '--' 
-                        : `${attempt.answers.filter(a => a.is_correct).length}/${attempt.answers.length}`
-                      }
+                      {`${attempt.answers.filter(a => a.is_correct).length}/${attempt.answers.length}`}
                     </span>
                   </div>
                   <div className="flex items-center space-x-2 text-sm">
                     <span className="text-gray-500">Status:</span>
-                    <Badge variant={
-                      isPendingGrading 
-                        ? 'secondary' 
-                        : attempt.completed_at ? 'default' : 'secondary'
-                    }>
-                      {isPendingGrading 
-                        ? 'Waiting for Grade' 
-                        : attempt.completed_at ? 'Completed' : 'In Progress'
-                      }
+                    <Badge variant={attempt.completed_at ? 'default' : 'secondary'}>
+                      {attempt.completed_at ? 'Completed' : 'In Progress'}
                     </Badge>
                   </div>
                 </div>
@@ -260,10 +240,10 @@ export default function QuizAttempts({ quiz, attempts, onBack, loading = false }
                   ) : (
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Student's Answer:
+                        <label htmlFor={`student-answer-${index}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Student&apos;s Answer:
                         </label>
-                        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+                        <div id={`student-answer-${index}`} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
                           <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">
                             {answer.text_answer || answer.selected_answer || 'No answer provided'}
                           </p>
@@ -272,10 +252,10 @@ export default function QuizAttempts({ quiz, attempts, onBack, loading = false }
                       
                       {answer.teacher_feedback && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          <label htmlFor={`teacher-feedback-${index}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Teacher Feedback:
                           </label>
-                          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <div id={`teacher-feedback-${index}`} className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                             <p className="text-blue-900 dark:text-blue-100 whitespace-pre-wrap">
                               {answer.teacher_feedback}
                             </p>
@@ -285,10 +265,10 @@ export default function QuizAttempts({ quiz, attempts, onBack, loading = false }
                       
                       {question.correct_text_answer && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          <label htmlFor={`expected-answer-${index}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Expected Answer:
                           </label>
-                          <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                          <div id={`expected-answer-${index}`} className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                             <p className="text-green-900 dark:text-green-100 whitespace-pre-wrap">
                               {question.correct_text_answer}
                             </p>

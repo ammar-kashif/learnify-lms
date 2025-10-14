@@ -22,7 +22,7 @@ export async function compressImage(
   } = {}
 ): Promise<File> {
   const { maxWidth = 512, maxHeight = 512, quality = 0.8, convertToMimeType = 'image/webp' } = options;
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, _reject) => {
     try {
       const img = new Image();
       img.onload = () => {

@@ -215,11 +215,8 @@ export async function POST(request: NextRequest) {
         max_submissions: maxSubmissions || 1,
         is_published: isPublished || false,
         // if schema has columns for attachment, include them; otherwise expect-error
-        // @ts-expect-error: attachment columns are optional depending on migration state
         attachment_url: attachmentUrl || null,
-        // @ts-expect-error: attachment columns are optional depending on migration state
         attachment_key: attachmentKey || null,
-        // @ts-expect-error: attachment columns are optional depending on migration state
         attachment_name: attachmentName || null
       })
       .select()

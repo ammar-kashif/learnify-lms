@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
+// Removed unused Checkbox import
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import Avatar from '@/components/ui/avatar';
@@ -43,7 +43,7 @@ export default function AttendanceInterface({ liveClass, onClose }: AttendanceIn
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [bulkAction, setBulkAction] = useState<'present' | 'absent' | null>(null);
+  // const [bulkAction, setBulkAction] = useState<'present' | 'absent' | null>(null);
   const { session } = useAuth();
 
   // Fetch attendance data
@@ -98,7 +98,7 @@ export default function AttendanceInterface({ liveClass, onClose }: AttendanceIn
       status: action,
       marked_at: new Date().toISOString()
     })));
-    setBulkAction(action);
+    // setBulkAction(action);
   };
 
   // Save attendance
@@ -128,7 +128,7 @@ export default function AttendanceInterface({ liveClass, onClose }: AttendanceIn
       }
 
       toast.success('Attendance saved successfully');
-      setBulkAction(null);
+      // setBulkAction(null);
     } catch (error) {
       console.error('Error saving attendance:', error);
       toast.error('Failed to save attendance');
@@ -173,16 +173,10 @@ export default function AttendanceInterface({ liveClass, onClose }: AttendanceIn
               </div>
             </div>
             <Badge 
-              variant={liveClass.status === 'live' ? 'default' : 'outline'}
-              className={
-                liveClass.status === 'live' 
-                  ? 'bg-green-500 text-white' 
-                  : liveClass.status === 'ended'
-                  ? 'bg-gray-500 text-white'
-                  : ''
-              }
+              variant="outline"
+              className="bg-blue-500 text-white"
             >
-              {liveClass.status.charAt(0).toUpperCase() + liveClass.status.slice(1)}
+              Live Class
             </Badge>
           </div>
         </CardHeader>

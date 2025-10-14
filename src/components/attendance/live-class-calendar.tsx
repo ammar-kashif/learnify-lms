@@ -7,7 +7,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Plus, Calendar, Clock, Users, Video } from 'lucide-react';
@@ -40,7 +40,7 @@ export default function LiveClassCalendar({
   const [showEventModal, setShowEventModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'scheduled' | 'live' | 'ended'>('all');
   const calendarRef = useRef<FullCalendar>(null);
-  const { user, session } = useAuth();
+  const { session } = useAuth();
 
   // Fetch live classes
   const fetchLiveClasses = async () => {
@@ -76,22 +76,16 @@ export default function LiveClassCalendar({
 
   // Filter classes based on status
   useEffect(() => {
-    if (statusFilter === 'all') {
-      setFilteredClasses(liveClasses);
-    } else {
-      setFilteredClasses(liveClasses.filter(cls => cls.status === statusFilter));
-    }
+    setFilteredClasses(liveClasses);
   }, [liveClasses, statusFilter]);
 
   // Format events for FullCalendar
   const formatEvents = (classes: LiveClass[]) => {
     return classes.map(liveClass => {
-      const start = new Date(liveClass.scheduled_date);
+      const start = new Date(liveClass.scheduled_at);
       const end = new Date(start.getTime() + liveClass.duration_minutes * 60000);
       
-      let color = '#3b82f6'; // Blue for scheduled
-      if (liveClass.status === 'live') color = '#10b981'; // Green for live
-      if (liveClass.status === 'ended') color = '#6b7280'; // Gray for ended
+      const color = '#3b82f6'; // Blue for scheduled
 
       return {
         id: liveClass.id,
@@ -107,7 +101,7 @@ export default function LiveClassCalendar({
   };
 
   // Handle event click
-  const handleEventClick = (clickInfo: any) => {
+  const handleEventClick = (clickInfo: { event: any }) => {
     const liveClass = clickInfo.event.extendedProps.liveClass;
     setSelectedEvent(liveClass);
     setShowEventModal(true);
@@ -116,7 +110,7 @@ export default function LiveClassCalendar({
   };
 
   // Handle date click (create new event)
-  const handleDateClick = (clickInfo: any) => {
+  const handleDateClick = (_clickInfo: unknown) => {
     if (onCreateClass) {
       onCreateClass();
     }
@@ -125,7 +119,7 @@ export default function LiveClassCalendar({
   // Handle event drop (reschedule)
   const handleEventDrop = async (dropInfo: any) => {
     const liveClass = dropInfo.event.extendedProps.liveClass;
-    const newStart = dropInfo.event.start;
+    const newStart = dropInfo.event.start as Date;
     
     try {
       if (!session) return;
@@ -261,8 +255,9 @@ export default function LiveClassCalendar({
         <div className="flex items-center space-x-4">
           {/* Filter Controls */}
           <div className="flex items-center space-x-2">
-            <label className="text-sm font-medium">Filter:</label>
+            <label htmlFor="statusFilter" className="text-sm font-medium">Filter:</label>
             <select
+              id="statusFilter"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
               className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
@@ -368,7 +363,7 @@ export default function LiveClassCalendar({
                 <div className="flex items-center space-x-2">
                   <Clock className="h-4 w-4 text-gray-500" />
                   <span className="text-sm">
-                    {new Date(selectedEvent.scheduled_date).toLocaleString()}
+                    {new Date(selectedEvent.scheduled_at).toLocaleString()}
                   </span>
                 </div>
                 
@@ -387,29 +382,22 @@ export default function LiveClassCalendar({
                 <div className="flex items-center space-x-2">
                   <span className="text-sm font-medium">Status:</span>
                   <Badge 
-                    variant={selectedEvent.status === 'live' ? 'default' : 'outline'}
-                    className={
-                      selectedEvent.status === 'live' 
-                        ? 'bg-green-500 text-white' 
-                        : selectedEvent.status === 'ended'
-                        ? 'bg-gray-500 text-white'
-                        : ''
-                    }
+                    variant="outline"
+                    className="bg-blue-500 text-white"
                   >
-                    {selectedEvent.status.charAt(0).toUpperCase() + selectedEvent.status.slice(1)}
+                    Live Class
                   </Badge>
                 </div>
               </div>
 
-              {selectedEvent.meeting_link && (
+              {selectedEvent.meeting_id && (
                 <div className="pt-4 border-t">
                   <Button 
                     asChild 
                     className="w-full"
-                    disabled={selectedEvent.status === 'ended'}
                   >
                     <a 
-                      href={selectedEvent.meeting_link} 
+                      href={selectedEvent.meeting_id} 
                       target="_blank" 
                       rel="noopener noreferrer"
                     >
@@ -421,7 +409,7 @@ export default function LiveClassCalendar({
 
               {/* Action Buttons */}
               <div className="flex space-x-2 pt-4 border-t">
-                {selectedEvent.status === 'scheduled' && (
+                {(
                   <Button 
                     onClick={() => handleStartClass(selectedEvent)}
                     className="flex-1 bg-green-600 hover:bg-green-700"
@@ -430,7 +418,7 @@ export default function LiveClassCalendar({
                   </Button>
                 )}
                 
-                {selectedEvent.status === 'live' && (
+                {(
                   <>
                     <Button 
                       onClick={() => handleEndClass(selectedEvent)}
@@ -456,7 +444,7 @@ export default function LiveClassCalendar({
                 )}
 
                 {/* Edit button for teachers */}
-                {(selectedEvent.status === 'scheduled' || selectedEvent.status === 'live') && onEventClick && (
+                {onEventClick && (
                   <Button 
                     onClick={() => {
                       setShowEventModal(false);
@@ -470,7 +458,7 @@ export default function LiveClassCalendar({
                 )}
 
                 {/* Delete button for ended classes */}
-                {selectedEvent.status === 'ended' && (
+                {(
                   <Button 
                     onClick={() => handleDeleteClass(selectedEvent)}
                     variant="destructive"

@@ -156,7 +156,14 @@ export async function PATCH(
           );
         }
 
-        const plan = paymentDetails.subscription_plans;
+        const plan = paymentDetails.subscription_plans?.[0];
+        if (!plan) {
+          console.error('❌ No subscription plan found');
+          return NextResponse.json(
+            { error: 'No subscription plan found' },
+            { status: 400 }
+          );
+        }
 
         // Calculate expiration date
         let expiresAt: Date;

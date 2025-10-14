@@ -108,7 +108,7 @@ export default function AdminPlansPage() {
             {Object.entries(grouped).map(([type, typePlans]) => (
               <div key={type} className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-lg font-semibold capitalize">{type.replaceAll('_', ' ')}</h2>
+                  <h2 className="text-lg font-semibold capitalize">{type.replace(/_/g, ' ')}</h2>
                   <Badge variant="secondary">{typePlans.length} plans</Badge>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">

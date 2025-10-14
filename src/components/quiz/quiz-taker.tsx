@@ -243,12 +243,14 @@ export default function QuizTaker({ quiz, onComplete, onCancel, loading = false 
   }
 
   if (showResults && attempt) {
-    const isPendingGrading = attempt.status === 'pending_grading';
+    // Check if there are any manually graded questions that need grading
+    const hasTextQuestions = quiz.questions.some((q: any) => q.type === 'text');
+    const isPendingGrading = hasTextQuestions && attempt.score === 0;
     const percentage = isPendingGrading ? 0 : Math.round((attempt.score / attempt.max_score) * 100);
     const grade = isPendingGrading ? 'Pending' : getGradeText(percentage);
     const passed = !isPendingGrading && percentage >= 60;
     
-    console.log('🎯 QuizTaker: Rendering results, showAnswerReview:', showAnswerReview, 'Status:', attempt.status);
+    console.log('🎯 QuizTaker: Rendering results, showAnswerReview:', showAnswerReview, 'HasTextQuestions:', hasTextQuestions);
 
     return (
       <div className="space-y-6">
@@ -284,7 +286,7 @@ export default function QuizTaker({ quiz, onComplete, onCancel, loading = false 
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
                   Your quiz contains text questions that require manual grading by your teacher.
-                  You'll see your final grade once the teacher has reviewed your answers.
+                  You&apos;ll see your final grade once the teacher has reviewed your answers.
                 </p>
                 <div className="grid grid-cols-2 gap-4 max-w-md mx-auto mt-4">
                   <div className="text-center">
@@ -408,7 +410,7 @@ export default function QuizTaker({ quiz, onComplete, onCancel, loading = false 
                     ) : (
                       <div className="space-y-3">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          <label htmlFor={`text-answer-${question.id}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Your Answer:
                           </label>
                           <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
@@ -420,7 +422,7 @@ export default function QuizTaker({ quiz, onComplete, onCancel, loading = false 
                         
                         {answer?.teacher_feedback && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            <label htmlFor={`teacher-feedback-${question.id}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                               Teacher Feedback:
                             </label>
                             <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
@@ -433,7 +435,7 @@ export default function QuizTaker({ quiz, onComplete, onCancel, loading = false 
                         
                         {question.correct_text_answer && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            <label htmlFor={`expected-answer-${question.id}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                               Expected Answer:
                             </label>
                             <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">

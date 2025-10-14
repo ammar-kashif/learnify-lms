@@ -660,47 +660,6 @@ export interface Database {
           updated_at?: string;
         };
       };
-      live_classes: {
-        Row: {
-          id: string;
-          course_id: string;
-          teacher_id: string;
-          title: string;
-          description: string | null;
-          scheduled_date: string;
-          duration_minutes: number;
-          meeting_link: string | null;
-          status: 'scheduled' | 'live' | 'ended';
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          course_id: string;
-          teacher_id: string;
-          title: string;
-          description?: string | null;
-          scheduled_date: string;
-          duration_minutes?: number;
-          meeting_link?: string | null;
-          status?: 'scheduled' | 'live' | 'ended';
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          course_id?: string;
-          teacher_id?: string;
-          title?: string;
-          description?: string | null;
-          scheduled_date?: string;
-          duration_minutes?: number;
-          meeting_link?: string | null;
-          status?: 'scheduled' | 'live' | 'ended';
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
       attendance: {
         Row: {
           id: string;

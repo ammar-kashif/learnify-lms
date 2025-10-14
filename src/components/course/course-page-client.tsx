@@ -28,7 +28,6 @@ import {
   Download,
   Calendar,
   X,
-  Video,
 } from 'lucide-react';
 
 type ChapterItem = {

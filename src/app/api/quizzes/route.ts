@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
           error: 'Each question must have a question text and at least 2 options' 
         }, { status: 400 });
       }
-      if (question.correct_answer < 0 || question.correct_answer >= question.options.length) {
+      if (question.correct_answer === undefined || question.correct_answer < 0 || question.correct_answer >= question.options.length) {
         return NextResponse.json({ 
           error: 'Correct answer index must be valid for the options' 
         }, { status: 400 });

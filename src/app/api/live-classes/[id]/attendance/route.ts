@@ -91,18 +91,21 @@ export async function GET(
 
     // Filter students with active live class subscriptions
     const liveClassStudents = enrolledStudents?.filter(enrollment => {
-      const subscription = enrollment.user_subscriptions;
-      if (!subscription) return false;
+      const subscriptions = enrollment.user_subscriptions;
+      if (!subscriptions || !Array.isArray(subscriptions)) return false;
       
-      // Check if subscription is active and not expired
-      const isActive = subscription.status === 'active';
-      const isNotExpired = new Date(subscription.expires_at) > new Date();
-      
-      // Check if subscription plan includes live classes
-      const planType = subscription.subscription_plans?.type;
-      const hasLiveClasses = planType === 'live_classes_only' || planType === 'recordings_and_live';
-      
-      return isActive && isNotExpired && hasLiveClasses;
+      // Check if any subscription is active and not expired
+      return subscriptions.some(subscription => {
+        // Check if subscription is active and not expired
+        const isActive = subscription.status === 'active';
+        const isNotExpired = new Date(subscription.expires_at) > new Date();
+        
+        // Check if subscription plan includes live classes
+        const planType = subscription.subscription_plans?.[0]?.type;
+        const hasLiveClasses = planType === 'live_classes_only' || planType === 'recordings_and_live';
+        
+        return isActive && isNotExpired && hasLiveClasses;
+      });
     }) || [];
 
     // Get existing attendance records using admin client
@@ -118,7 +121,9 @@ export async function GET(
 
     // Combine student data with attendance records
     const attendanceData = liveClassStudents.map(enrollment => {
-      const student = enrollment.users;
+      const student = enrollment.users?.[0];
+      if (!student) return null;
+      
       const attendanceRecord = attendanceRecords?.find(record => record.student_id === student.id);
       
       return {
@@ -130,7 +135,7 @@ export async function GET(
         marked_at: attendanceRecord?.marked_at || null,
         notes: attendanceRecord?.notes || null
       };
-    });
+    }).filter(Boolean);
 
     return NextResponse.json({ attendance: attendanceData });
   } catch (error) {

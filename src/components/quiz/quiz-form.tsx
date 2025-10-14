@@ -24,6 +24,7 @@ export default function QuizForm({ courseId, onSave, onCancel, loading = false, 
     initialData?.questions || [
       {
         question: '',
+        type: 'multiple_choice',
         options: ['', ''],
         correct_answer: 0,
         points: 1,
@@ -41,6 +42,7 @@ export default function QuizForm({ courseId, onSave, onCancel, loading = false, 
   const addQuestion = () => {
     setQuestions([...questions, {
       question: '',
+      type: 'multiple_choice',
       options: ['', ''],
       correct_answer: 0,
       points: 1,
@@ -61,17 +63,22 @@ export default function QuizForm({ courseId, onSave, onCancel, loading = false, 
 
   const addOption = (questionIndex: number) => {
     const updated = [...questions];
-    updated[questionIndex].options.push('');
+    if (updated[questionIndex].options) {
+      updated[questionIndex].options.push('');
+    } else {
+      updated[questionIndex].options = [''];
+    }
     setQuestions(updated);
   };
 
   const removeOption = (questionIndex: number, optionIndex: number) => {
     const updated = [...questions];
-    if (updated[questionIndex].options.length > 2) {
-      updated[questionIndex].options.splice(optionIndex, 1);
+    const question = updated[questionIndex];
+    if (question.options && question.options.length > 2) {
+      question.options.splice(optionIndex, 1);
       // Adjust correct_answer if needed
-      if (updated[questionIndex].correct_answer >= updated[questionIndex].options.length) {
-        updated[questionIndex].correct_answer = updated[questionIndex].options.length - 1;
+      if (question.options && question.correct_answer !== undefined && question.correct_answer >= question.options.length) {
+        question.correct_answer = Math.max(0, question.options.length - 1);
       }
       setQuestions(updated);
     }
@@ -79,7 +86,9 @@ export default function QuizForm({ courseId, onSave, onCancel, loading = false, 
 
   const updateOption = (questionIndex: number, optionIndex: number, value: string) => {
     const updated = [...questions];
-    updated[questionIndex].options[optionIndex] = value;
+    if (updated[questionIndex].options) {
+      updated[questionIndex].options[optionIndex] = value;
+    }
     setQuestions(updated);
   };
 
@@ -103,7 +112,7 @@ export default function QuizForm({ courseId, onSave, onCancel, loading = false, 
         toast.error(`Question ${i + 1} text is required`);
         return;
       }
-      if (q.options.length < 2) {
+      if (!q.options || q.options.length < 2) {
         toast.error(`Question ${i + 1} must have at least 2 options`);
         return;
       }
@@ -201,7 +210,7 @@ export default function QuizForm({ courseId, onSave, onCancel, loading = false, 
               <div>
                 <Label>Options *</Label>
                 <div className="space-y-2">
-                  {question.options.map((option, optionIndex) => (
+                  {question.options?.map((option, optionIndex) => (
                     <div key={optionIndex} className="flex items-center space-x-2">
                       <input
                         type="radio"
@@ -216,7 +225,7 @@ export default function QuizForm({ courseId, onSave, onCancel, loading = false, 
                         placeholder={`Option ${optionIndex + 1}`}
                         required
                       />
-                      {question.options.length > 2 && (
+                      {question.options && question.options.length > 2 && (
                         <Button
                           type="button"
                           variant="outline"

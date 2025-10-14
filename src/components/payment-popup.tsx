@@ -127,7 +127,9 @@ export default function PaymentPopup({
       }).catch(() => {
         // ignore clipboard errors
       });
-    } catch (_) {}
+    } catch (_) {
+      // ignore clipboard errors
+    }
 
     // Open WhatsApp Web with prefilled text
     const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encoded}`;
@@ -142,7 +144,9 @@ export default function PaymentPopup({
 
     try {
       void navigator.clipboard.writeText(message).catch(() => {});
-    } catch (_) {}
+    } catch (_) {
+      // ignore clipboard errors
+    }
 
     const encodedCRLF = encodeURIComponent(message.replace(/\n/g, '\\n'));
     const encodedPct = message.replace(/\n/g, '%0A').replace(/ /g, '%20');
