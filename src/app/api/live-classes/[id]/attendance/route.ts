@@ -28,8 +28,8 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify user owns this live class
-    const { data: liveClass, error: liveClassError } = await supabase
+    // Load class and user role using admin client (bypass RLS)
+    const { data: liveClass, error: liveClassError } = await supabaseAdmin
       .from('live_classes')
       .select('teacher_id, course_id')
       .eq('id', id)
@@ -39,7 +39,25 @@ export async function GET(
       return NextResponse.json({ error: 'Live class not found' }, { status: 404 });
     }
 
-    if (liveClass.teacher_id !== user.id) {
+    const { data: userProfile } = await supabaseAdmin
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'superadmin';
+    let isAssignedTeacher = false;
+    if (userProfile?.role === 'teacher') {
+      const { data: tc } = await supabaseAdmin
+        .from('teacher_courses')
+        .select('teacher_id')
+        .eq('teacher_id', user.id)
+        .eq('course_id', liveClass.course_id)
+        .maybeSingle();
+      isAssignedTeacher = !!tc;
+    }
+
+    if (!(isAdmin || liveClass.teacher_id === user.id || isAssignedTeacher)) {
       return NextResponse.json({ error: 'Unauthorized to view attendance for this live class' }, { status: 403 });
     }
 
@@ -87,8 +105,8 @@ export async function GET(
       return isActive && isNotExpired && hasLiveClasses;
     }) || [];
 
-    // Get existing attendance records
-    const { data: attendanceRecords, error: attendanceError } = await supabase
+    // Get existing attendance records using admin client
+    const { data: attendanceRecords, error: attendanceError } = await supabaseAdmin
       .from('attendance')
       .select('*')
       .eq('live_class_id', id);
@@ -143,10 +161,10 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify user owns this live class
-    const { data: liveClass, error: liveClassError } = await supabase
+    // Load class and user role using admin client (bypass RLS)
+    const { data: liveClass, error: liveClassError } = await supabaseAdmin
       .from('live_classes')
-      .select('teacher_id')
+      .select('teacher_id, course_id')
       .eq('id', id)
       .single();
 
@@ -154,7 +172,25 @@ export async function POST(
       return NextResponse.json({ error: 'Live class not found' }, { status: 404 });
     }
 
-    if (liveClass.teacher_id !== user.id) {
+    const { data: userProfile } = await supabaseAdmin
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'superadmin';
+    let isAssignedTeacher = false;
+    if (userProfile?.role === 'teacher') {
+      const { data: tc } = await supabaseAdmin
+        .from('teacher_courses')
+        .select('teacher_id')
+        .eq('teacher_id', user.id)
+        .eq('course_id', liveClass.course_id)
+        .maybeSingle();
+      isAssignedTeacher = !!tc;
+    }
+
+    if (!(isAdmin || liveClass.teacher_id === user.id || isAssignedTeacher)) {
       return NextResponse.json({ error: 'Unauthorized to mark attendance for this live class' }, { status: 403 });
     }
 

@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,14 +28,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user role to determine what live classes they can see
-    const { data: userProfile } = await supabase
+    const { data: userProfile } = await supabaseAdmin
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single();
 
-    // Build query
-    let query = supabase
+    // Build query using admin client to avoid RLS blocking legitimate views
+    let query = supabaseAdmin
       .from('live_classes')
       .select(`
         *,
@@ -53,7 +59,7 @@ export async function GET(request: NextRequest) {
 
     // For students, only show live classes for courses they're enrolled in
     if (userProfile?.role === 'student') {
-      const { data: enrollments } = await supabase
+      const { data: enrollments } = await supabaseAdmin
         .from('student_enrollments')
         .select('course_id')
         .eq('student_id', user.id);
@@ -67,19 +73,19 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // For teachers, only show live classes for courses they're assigned to
+    // For teachers: show classes they created OR classes for courses they are assigned to
     if (userProfile?.role === 'teacher') {
-      const { data: teacherCourses } = await supabase
+      const { data: teacherCourses } = await supabaseAdmin
         .from('teacher_courses')
         .select('course_id')
         .eq('teacher_id', user.id);
 
       if (teacherCourses && teacherCourses.length > 0) {
-        const assignedCourseIds = teacherCourses.map(tc => tc.course_id);
-        query = query.in('course_id', assignedCourseIds);
+        const assignedCourseIds = teacherCourses.map(tc => tc.course_id).join(',');
+        // Use OR filter: teacher_id == user OR course_id IN (assigned)
+        query = query.or(`teacher_id.eq.${user.id},course_id.in.(${assignedCourseIds})`);
       } else {
-        // Teacher has no assigned courses, return empty array
-        return NextResponse.json({ liveClasses: [] });
+        query = query.eq('teacher_id', user.id);
       }
     }
 
@@ -174,13 +180,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Admins and superadmins can create live classes for any course
+    const isSuperAdminOrAdmin = userProfile?.role === 'superadmin' || userProfile?.role === 'admin';
+    const client = isSuperAdminOrAdmin ? supabaseAdmin : supabase;
+
+    // Determine the teacher who should own this class
+    // - Teachers: themselves
+    // - Admin/Superadmin: default to course creator so the teacher can see it
+    const teacherIdForClass = isSuperAdminOrAdmin ? course.created_by : user.id;
 
     // Create live class
-    const { data: liveClass, error: createError } = await supabase
+    const { data: liveClass, error: createError } = await client
       .from('live_classes')
       .insert({
         course_id,
-        teacher_id: user.id,
+        teacher_id: teacherIdForClass,
         title,
         description: description || null,
         scheduled_date: scheduled_date,

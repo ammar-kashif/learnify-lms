@@ -61,7 +61,7 @@ export default async function CoursePage({ params, searchParams }: { params: { i
   }
 
   const tabParam = typeof searchParams?.tab === 'string' ? searchParams.tab : Array.isArray(searchParams?.tab) ? searchParams?.tab[0] : undefined;
-  const activeTab = (tabParam === 'lectures' || tabParam === 'quizzes' || tabParam === 'chapters' || tabParam === 'assignments') ? tabParam : 'chapters';
+  const activeTab = (tabParam === 'lectures' || tabParam === 'quizzes' || tabParam === 'chapters' || tabParam === 'assignments' || tabParam === 'live-classes') ? tabParam : 'chapters';
 
   return (
     <CoursePageClient 

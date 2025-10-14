@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(
   request: NextRequest,
@@ -21,7 +27,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify user owns this live class
+    // Load class and user role
     const { data: existingClass, error: fetchError } = await supabase
       .from('live_classes')
       .select('teacher_id, status, scheduled_date')
@@ -32,7 +38,15 @@ export async function POST(
       return NextResponse.json({ error: 'Live class not found' }, { status: 404 });
     }
 
-    if (existingClass.teacher_id !== user.id) {
+    const { data: userProfile } = await supabaseAdmin
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    const isSuperAdminOrAdmin = userProfile?.role === 'superadmin' || userProfile?.role === 'admin';
+    const isOwnerTeacher = existingClass.teacher_id === user.id;
+    if (!isOwnerTeacher && !isSuperAdminOrAdmin) {
       return NextResponse.json({ error: 'Unauthorized to start this live class' }, { status: 403 });
     }
 
@@ -42,7 +56,8 @@ export async function POST(
     }
 
     // Update status to live
-    const { data: liveClass, error: updateError } = await supabase
+    const client = isSuperAdminOrAdmin ? supabaseAdmin : supabase;
+    const { data: liveClass, error: updateError } = await client
       .from('live_classes')
       .update({ status: 'live' })
       .eq('id', id)

@@ -6,13 +6,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Calendar, Clock, Video, Save, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Calendar, Clock, Video, Save, X, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth-context';
 import { Tables } from '@/lib/supabase';
 
 type LiveClass = Tables<'live_classes'>;
+
+interface Course {
+  id: string;
+  title: string;
+  description: string | null;
+  created_at: string;
+}
 
 interface LiveClassFormProps {
   open: boolean;
@@ -20,6 +27,7 @@ interface LiveClassFormProps {
   courseId: string;
   liveClass?: LiveClass | null;
   onSuccess?: (liveClass: LiveClass) => void;
+  userRole?: string;
 }
 
 export default function LiveClassForm({ 
@@ -27,17 +35,28 @@ export default function LiveClassForm({
   onOpenChange, 
   courseId, 
   liveClass, 
-  onSuccess 
+  onSuccess,
+  userRole
 }: LiveClassFormProps) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     scheduled_date: '',
     duration_minutes: 60,
-    meeting_link: ''
+    meeting_link: '',
+    selected_course_id: courseId
   });
   const [loading, setLoading] = useState(false);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loadingCourses, setLoadingCourses] = useState(false);
   const { session } = useAuth();
+
+  // Fetch courses for superadmin
+  useEffect(() => {
+    if (userRole === 'superadmin' && open) {
+      fetchCourses();
+    }
+  }, [userRole, open]);
 
   // Initialize form data
   useEffect(() => {
@@ -47,7 +66,8 @@ export default function LiveClassForm({
         description: liveClass.description || '',
         scheduled_date: new Date(liveClass.scheduled_date).toISOString().slice(0, 16),
         duration_minutes: liveClass.duration_minutes,
-        meeting_link: liveClass.meeting_link || ''
+        meeting_link: liveClass.meeting_link || '',
+        selected_course_id: liveClass.course_id
       });
     } else {
       setFormData({
@@ -55,10 +75,36 @@ export default function LiveClassForm({
         description: '',
         scheduled_date: '',
         duration_minutes: 60,
-        meeting_link: ''
+        meeting_link: '',
+        selected_course_id: courseId
       });
     }
-  }, [liveClass, open]);
+  }, [liveClass, open, courseId]);
+
+  const fetchCourses = async () => {
+    if (!session?.access_token) return;
+    
+    setLoadingCourses(true);
+    try {
+      const response = await fetch('/api/courses', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCourses(data.courses || []);
+      } else {
+        toast.error('Failed to fetch courses');
+      }
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+      toast.error('Failed to fetch courses');
+    } finally {
+      setLoadingCourses(false);
+    }
+  };
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({
@@ -84,7 +130,7 @@ export default function LiveClassForm({
       }
 
       const requestData = {
-        course_id: courseId,
+        course_id: formData.selected_course_id,
         title: formData.title.trim(),
         description: formData.description.trim() || null,
         scheduled_date: new Date(formData.scheduled_date).toISOString(),
@@ -146,7 +192,8 @@ export default function LiveClassForm({
       description: '',
       scheduled_date: '',
       duration_minutes: 60,
-      meeting_link: ''
+      meeting_link: '',
+      selected_course_id: courseId
     });
   };
 
@@ -158,6 +205,9 @@ export default function LiveClassForm({
             <Calendar className="h-5 w-5" />
             <span>{liveClass ? 'Edit Live Class' : 'Create Live Class'}</span>
           </DialogTitle>
+          <DialogDescription>
+            {liveClass ? 'Update the details of your live class.' : 'Fill in the details to schedule a new live class.'}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -171,6 +221,37 @@ export default function LiveClassForm({
               required
             />
           </div>
+
+          {/* Course selection for superadmin */}
+          {userRole === 'superadmin' && (
+            <div className="space-y-2">
+              <Label htmlFor="course">Course *</Label>
+              <div className="relative">
+                <select
+                  id="course"
+                  value={formData.selected_course_id}
+                  onChange={(e) => handleInputChange('selected_course_id', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  required
+                  disabled={loadingCourses}
+                >
+                  {loadingCourses ? (
+                    <option value="">Loading courses...</option>
+                  ) : (
+                    <>
+                      <option value="">Select a course</option>
+                      {courses.map((course) => (
+                        <option key={course.id} value={course.id}>
+                          {course.title}
+                        </option>
+                      ))}
+                    </>
+                  )}
+                </select>
+                <BookOpen className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>

@@ -33,6 +33,8 @@ import {
   Settings,
   Calendar
 } from 'lucide-react';
+import LiveClassCalendar from '@/components/attendance/live-class-calendar';
+import LiveClassForm from '@/components/attendance/live-class-form';
 import { useTheme } from 'next-themes';
 import { formatDate } from '@/utils/date';
 
@@ -73,12 +75,14 @@ export default function AdminDashboard() {
   const [paymentVerifications, setPaymentVerifications] = useState<any[]>([]);
   const [enrollments, setEnrollments] = useState<any[]>([]);
   // const [enrollmentStats] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'assignments' | 'payments' | 'enrollments' | 'plans'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'assignments' | 'payments' | 'enrollments' | 'live-classes' | 'plans'>('users');
   const [dataLoading, setDataLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'student' | 'teacher' | 'admin' | 'superadmin'>('all');
   const [courseSearch, setCourseSearch] = useState('');
+  const [showCreateClass, setShowCreateClass] = useState(false);
+  const [liveClassRefreshKey, setLiveClassRefreshKey] = useState(0);
   
   // Form states
   const [showAddUser, setShowAddUser] = useState(false);
@@ -254,6 +258,8 @@ export default function AdminDashboard() {
       fetchEnrollments();
     }
   }, [activeTab, enrollments.length, fetchEnrollments]);
+
+  // No special fetch needed for live-classes; calendar component fetches on its own
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -706,7 +712,10 @@ export default function AdminDashboard() {
     { id: 'assignments', label: 'Assignments', icon: GraduationCap, count: teacherCourses.length },
     { id: 'payments', label: 'Payments', icon: CreditCard, count: paymentVerifications.length },
     { id: 'enrollments', label: 'Enrollments', icon: Users, count: enrollments.length },
-    ...(userRole === 'superadmin' ? [{ id: 'plans', label: 'Plans', icon: CreditCard, count: 0 }] : []),
+    ...(userRole === 'superadmin' ? [
+      { id: 'live-classes', label: 'Live Classes', icon: Calendar, count: 0 },
+      { id: 'plans', label: 'Plans', icon: CreditCard, count: 0 }
+    ] : []),
   ];
 
   if (loading) {
@@ -830,6 +839,7 @@ export default function AdminDashboard() {
                   {activeTab === 'assignments' && 'Teacher Assignments'}
                   {activeTab === 'payments' && 'Payment Verification'}
                   {activeTab === 'enrollments' && 'Enrollment Management'}
+                  {activeTab === 'live-classes' && 'All Live Classes Calendar'}
                   {activeTab === 'plans' && 'Subscription Plans'}
                 </h1>
                 <p className="text-gray-600 dark:text-gray-300">
@@ -1479,6 +1489,29 @@ export default function AdminDashboard() {
             {/* Plans Tab (Superadmin) */}
             {activeTab === 'plans' && userRole === 'superadmin' && (
               <PlansEditor />
+            )}
+
+            {/* Live Classes Tab (Superadmin) */}
+            {activeTab === 'live-classes' && userRole === 'superadmin' && (
+              <div className="mt-6">
+                <LiveClassCalendar
+                  key={liveClassRefreshKey}
+                  // No courseId passed -> shows all courses per API access
+                  onCreateClass={() => setShowCreateClass(true)}
+                />
+
+                {/* Create/Edit Live Class Modal */}
+                <LiveClassForm
+                  open={showCreateClass}
+                  onOpenChange={setShowCreateClass}
+                  courseId={''}
+                  userRole={userRole}
+                  onSuccess={() => {
+                    setShowCreateClass(false);
+                    setLiveClassRefreshKey((k) => k + 1);
+                  }}
+                />
+              </div>
             )}
 
           </div>

@@ -51,6 +51,7 @@ export default function LiveClassesList({
   onCreateClass
 }: LiveClassesListProps) {
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
   const [selectedLiveClass, setSelectedLiveClass] = useState<LiveClass | null>(null);
   const [showAttendance, setShowAttendance] = useState(false);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
@@ -74,8 +75,8 @@ export default function LiveClassesList({
   const handleClassSuccess = (liveClass: LiveClass) => {
     setShowCreateForm(false);
     setSelectedLiveClass(null);
-    // Refresh the calendar
-    window.location.reload();
+    // Refresh the calendar without full page reload
+    setCalendarRefreshKey((k) => k + 1);
   };
 
   const handleRequestDemoAccess = async () => {
@@ -165,6 +166,7 @@ export default function LiveClassesList({
 
       {/* Calendar View */}
       <LiveClassCalendar
+        key={calendarRefreshKey}
         courseId={courseId}
         onEventClick={(liveClass) => {
           // This will be called when "Edit Class" button is clicked in the details modal
@@ -188,6 +190,7 @@ export default function LiveClassesList({
         courseId={courseId}
         liveClass={selectedLiveClass}
         onSuccess={handleClassSuccess}
+        userRole={userRole}
       />
 
       {/* Attendance Interface */}

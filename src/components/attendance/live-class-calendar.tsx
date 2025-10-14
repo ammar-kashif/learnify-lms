@@ -9,7 +9,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Plus, Calendar, Clock, Users, Video } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth-context';
@@ -344,6 +344,9 @@ export default function LiveClassCalendar({
               <Video className="h-5 w-5" />
               <span>Live Class Details</span>
             </DialogTitle>
+            <DialogDescription>
+              View details and manage the selected live class.
+            </DialogDescription>
           </DialogHeader>
           
           {selectedEvent && (
