@@ -62,13 +62,12 @@ export async function GET(
     }
 
 
-    // Get students with live class subscriptions for this course using admin client
+    // Get students enrolled in the course WITH their subscription for filtering
     const { data: enrolledStudents, error: studentsError } = await supabaseAdmin
       .from('student_enrollments')
       .select(`
         student_id,
         subscription_id,
-        enrollment_type,
         users!student_enrollments_student_id_fkey(id, full_name, email, avatar_url),
         user_subscriptions!student_enrollments_subscription_id_fkey(
           id,
@@ -89,24 +88,16 @@ export async function GET(
       return NextResponse.json({ error: 'Failed to fetch enrolled students' }, { status: 500 });
     }
 
-    // Filter students with active live class subscriptions
-    const liveClassStudents = enrolledStudents?.filter(enrollment => {
-      const subscriptions = enrollment.user_subscriptions;
-      if (!subscriptions || !Array.isArray(subscriptions)) return false;
-      
-      // Check if any subscription is active and not expired
-      return subscriptions.some(subscription => {
-        // Check if subscription is active and not expired
-        const isActive = subscription.status === 'active';
-        const isNotExpired = new Date(subscription.expires_at) > new Date();
-        
-        // Check if subscription plan includes live classes
-        const planType = subscription.subscription_plans?.[0]?.type;
-        const hasLiveClasses = planType === 'live_classes_only' || planType === 'recordings_and_live';
-        
-        return isActive && isNotExpired && hasLiveClasses;
-      });
-    }) || [];
+    // Filter students with an active plan that includes live classes
+    const liveClassStudents = (enrolledStudents || []).filter((enrollment: any) => {
+      const sub = enrollment.user_subscriptions; // FK join → single object
+      if (!sub) return false;
+      const isActive = sub.status === 'active';
+      const isNotExpired = !sub.expires_at || new Date(sub.expires_at) > new Date();
+      const planType = sub.subscription_plans?.type;
+      const hasLive = planType === 'live_classes_only' || planType === 'recordings_and_live';
+      return isActive && isNotExpired && hasLive;
+    });
 
     // Get existing attendance records using admin client
     const { data: attendanceRecords, error: attendanceError } = await supabaseAdmin
@@ -121,7 +112,7 @@ export async function GET(
 
     // Combine student data with attendance records
     const attendanceData = liveClassStudents.map(enrollment => {
-      const student = enrollment.users?.[0];
+      const student = (enrollment as any).users; // FK join returns an object
       if (!student) return null;
       
       const attendanceRecord = attendanceRecords?.find(record => record.student_id === student.id);

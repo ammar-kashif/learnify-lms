@@ -422,11 +422,11 @@ export default function LiveClassCalendar({
               )}
 
               {/* Action Buttons */}
-              <div className="flex space-x-2 pt-4 border-t">
+              <div className="flex flex-wrap gap-2 pt-4 border-t">
                 {(
                   <Button 
                     onClick={() => handleStartClass(selectedEvent)}
-                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    className="w-full sm:flex-1 bg-green-600 hover:bg-green-700"
                   >
                     Start Class
                   </Button>
@@ -437,7 +437,7 @@ export default function LiveClassCalendar({
                     <Button 
                       onClick={() => handleEndClass(selectedEvent)}
                       variant="destructive"
-                      className="flex-1"
+                      className="w-full sm:flex-1"
                     >
                       End Class
                     </Button>
@@ -449,7 +449,7 @@ export default function LiveClassCalendar({
                           setShowEventModal(false);
                           onMarkAttendance(selectedEvent);
                         }}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700"
+                        className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700"
                       >
                         Mark Attendance
                       </Button>
@@ -465,7 +465,7 @@ export default function LiveClassCalendar({
                       onEventClick(selectedEvent);
                     }}
                     variant="outline"
-                    className="flex-1"
+                    className="w-full sm:flex-1"
                   >
                     Edit Class
                   </Button>
@@ -476,7 +476,7 @@ export default function LiveClassCalendar({
                   <Button 
                     onClick={() => handleDeleteClass(selectedEvent)}
                     variant="destructive"
-                    className="flex-1"
+                    className="w-full sm:flex-1"
                   >
                     Delete Class
                   </Button>

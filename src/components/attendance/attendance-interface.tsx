@@ -185,7 +185,7 @@ export default function AttendanceInterface({ liveClass, onClose }: AttendanceIn
       {/* Statistics */}
       <Card>
         <CardContent className="p-4">
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-gray-900 dark:text-white">
                 {stats.total}
@@ -217,14 +217,14 @@ export default function AttendanceInterface({ liveClass, onClose }: AttendanceIn
       {/* Bulk Actions */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Label className="text-sm font-medium">Bulk Actions:</Label>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => handleBulkAction('present')}
-                className="text-green-600 border-green-600 hover:bg-green-50"
+                className="text-green-600 border-green-600 hover:bg-green-50 w-full sm:w-auto"
               >
                 <UserCheck className="h-4 w-4 mr-1" />
                 Mark All Present
@@ -233,7 +233,7 @@ export default function AttendanceInterface({ liveClass, onClose }: AttendanceIn
                 variant="outline"
                 size="sm"
                 onClick={() => handleBulkAction('absent')}
-                className="text-red-600 border-red-600 hover:bg-red-50"
+                className="text-red-600 border-red-600 hover:bg-red-50 w-full sm:w-auto"
               >
                 <UserX className="h-4 w-4 mr-1" />
                 Mark All Absent
@@ -242,7 +242,7 @@ export default function AttendanceInterface({ liveClass, onClose }: AttendanceIn
             <Button
               onClick={saveAttendance}
               disabled={saving}
-              className="bg-primary hover:bg-primary-600"
+              className="bg-primary hover:bg-primary-600 w-full sm:w-auto"
             >
               {saving ? (
                 <div className="flex items-center space-x-2">
@@ -269,7 +269,7 @@ export default function AttendanceInterface({ liveClass, onClose }: AttendanceIn
           <div className="divide-y">
             {attendance.map((student) => (
               <div key={student.student_id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="flex items-center space-x-3">
                     <Avatar 
                       src={student.avatar_url} 
@@ -285,9 +285,9 @@ export default function AttendanceInterface({ liveClass, onClose }: AttendanceIn
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-4">
+                  <div className="flex flex-wrap items-center gap-2 sm:space-x-4">
                     {/* Status Selection */}
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2">
                       <Button
                         variant={student.status === 'present' ? 'default' : 'outline'}
                         size="sm"
@@ -330,7 +330,7 @@ export default function AttendanceInterface({ liveClass, onClose }: AttendanceIn
                     </div>
 
                     {/* Notes */}
-                    <div className="w-48">
+                    <div className="w-full sm:w-48">
                       <Textarea
                         placeholder="Add notes..."
                         value={student.notes || ''}
@@ -361,16 +361,16 @@ export default function AttendanceInterface({ liveClass, onClose }: AttendanceIn
       </Card>
 
       {/* Footer Actions */}
-      <div className="flex justify-end space-x-2">
+      <div className="flex flex-col sm:flex-row justify-end gap-2">
         {onClose && (
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
             Close
           </Button>
         )}
         <Button
           onClick={saveAttendance}
           disabled={saving}
-          className="bg-primary hover:bg-primary-600"
+          className="bg-primary hover:bg-primary-600 w-full sm:w-auto"
         >
           {saving ? (
             <div className="flex items-center space-x-2">
