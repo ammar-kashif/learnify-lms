@@ -8,6 +8,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Explicit admin client (same service role) for writes that must bypass RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
 // GET /api/demo-access - Check if user has demo access for a course
 export async function GET(request: NextRequest) {
   try {
@@ -127,52 +133,83 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user already has demo access for this course and access type
+    // Check if a demo access row exists (unique on user_id, course_id, access_type)
     const { data: existingAccess } = await supabase
       .from('demo_access')
-      .select('id')
+      .select('id, expires_at')
       .eq('user_id', user.id)
       .eq('course_id', courseId)
       .eq('access_type', accessType)
-      .gt('expires_at', new Date().toISOString())
       .single();
 
-    if (existingAccess) {
+    const nowIso = new Date().toISOString();
+    const isActive = existingAccess && existingAccess.expires_at && existingAccess.expires_at > nowIso;
+
+    if (existingAccess && isActive) {
+      // Ensure demo enrollment exists even if access already active
+      const { data: existingEnroll } = await supabaseAdmin
+        .from('student_enrollments')
+        .select('student_id, course_id, enrollment_type')
+        .eq('student_id', user.id)
+        .eq('course_id', courseId)
+        .maybeSingle();
+
+      if (!existingEnroll) {
+        const { error: enrollErr } = await supabaseAdmin
+          .from('student_enrollments')
+          .insert({ student_id: user.id, course_id: courseId, enrollment_type: 'demo' });
+        if (enrollErr) {
+          console.error('Error ensuring demo enrollment (active path):', enrollErr);
+        }
+      }
+
+      // Already active demo – report success without creating a duplicate
       return NextResponse.json(
-        { error: 'User already has demo access for this course and access type' },
-        { status: 400 }
+        { message: 'Demo access already active', demoAccess: existingAccess },
+        { status: 200 }
       );
     }
 
-    // Check if user has used demo before (global check)
-    const { data: userProfile } = await supabase
-      .from('users')
-      .select('demo_used')
-      .eq('id', user.id)
-      .single();
-
-    if (userProfile?.demo_used) {
-      return NextResponse.json(
-        { error: 'User has already used their demo access' },
-        { status: 400 }
-      );
-    }
+    // Note: Demo access is now per-course, not global
+    // Users can get demo access for multiple courses
 
     // Create demo access
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours from now
 
-    const { data: demoAccess, error: insertError } = await supabase
-      .from('demo_access')
-      .insert({
-        user_id: user.id,
-        course_id: courseId,
-        access_type: accessType,
-        resource_id: resourceId || null,
-        expires_at: expiresAt.toISOString()
-      })
-      .select()
-      .single();
+    let demoAccess: any = null;
+    let insertError: any = null;
+
+    if (existingAccess) {
+      // Row exists but is expired – update expiry instead of inserting to satisfy unique constraint
+      const { data, error } = await supabase
+        .from('demo_access')
+        .update({
+          expires_at: expiresAt.toISOString(),
+          resource_id: resourceId || null,
+          used_at: nowIso,
+        })
+        .eq('id', existingAccess.id)
+        .select()
+        .single();
+      demoAccess = data;
+      insertError = error;
+    } else {
+      const { data, error } = await supabase
+        .from('demo_access')
+        .insert({
+          user_id: user.id,
+          course_id: courseId,
+          access_type: accessType,
+          resource_id: resourceId || null,
+          expires_at: expiresAt.toISOString(),
+          used_at: nowIso,
+        })
+        .select()
+        .single();
+      demoAccess = data;
+      insertError = error;
+    }
 
     if (insertError) {
       console.error('Error creating demo access:', insertError);
@@ -182,25 +219,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Mark user as having used demo
-    const { error: updateError } = await supabase
-      .from('users')
-      .update({ demo_used: true })
-      .eq('id', user.id);
+    // Note: No longer marking user as having used demo globally
+    // Demo access is now tracked per-course in the demo_access table
 
-    if (updateError) {
-      console.error('Error updating user demo status:', updateError);
-      // Don't fail the request, just log the error
-    }
-
-    // Create demo enrollment if it doesn't exist
-    const { error: enrollmentError } = await supabase
+    // Ensure demo enrollment exists; create if missing
+    const { data: existingEnroll } = await supabaseAdmin
       .from('student_enrollments')
-      .upsert({
-        student_id: user.id,
-        course_id: courseId,
-        enrollment_type: 'demo'
-      });
+      .select('student_id, course_id, enrollment_type')
+      .eq('student_id', user.id)
+      .eq('course_id', courseId)
+      .maybeSingle();
+
+    let enrollRow = existingEnroll;
+    let enrollmentError = null as any;
+    if (!existingEnroll) {
+      const { data, error } = await supabaseAdmin
+        .from('student_enrollments')
+        .insert({
+          student_id: user.id,
+          course_id: courseId,
+          enrollment_type: 'demo'
+        })
+        .select('student_id, course_id, enrollment_type')
+        .single();
+      enrollRow = data as any;
+      enrollmentError = error;
+    }
 
     if (enrollmentError) {
       console.error('Error creating demo enrollment:', enrollmentError);
@@ -209,6 +253,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ 
       demoAccess,
+      enrollment: enrollRow,
       message: 'Demo access granted successfully'
     }, { status: 201 });
   } catch (error) {

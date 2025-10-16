@@ -58,6 +58,8 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
   const { user, userRole } = useAuth();
   const [chaptersList, setChaptersList] = useState<ChapterItem[]>(chapters);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [hasRecordingDemo, setHasRecordingDemo] = useState(false);
+  const [hasLiveDemo, setHasLiveDemo] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [quizResults] = useState<any[]>([]);
   const [showQuizResults, setShowQuizResults] = useState(false);
@@ -66,10 +68,30 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
   const [showRecordingUploadModal, setShowRecordingUploadModal] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showDemoModal, setShowDemoModal] = useState(false);
+  const [showChoiceModal, setShowChoiceModal] = useState(false);
 
   useEffect(() => {
     setIsAdmin(userRole === 'admin' || userRole === 'superadmin');
   }, [userRole]);
+
+  // Load per-course demo access to toggle sidebar options
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token || userRole !== 'student') return;
+        const res = await fetch(`/api/demo-access?courseId=${courseId}`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` },
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        const list = (json?.demoAccess ?? []) as any[];
+        setHasRecordingDemo(list.some(a => a.access_type === 'lecture_recording'));
+        setHasLiveDemo(list.some(a => a.access_type === 'live_class'));
+      } catch {}
+    };
+    run();
+  }, [courseId, userRole, user]);
 
   // Debug logging for LectureRecordingsList props
   useEffect(() => {
@@ -251,12 +273,14 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                     <BookOpen className="h-4 w-4" /> Chapters
                   </Link>
                 </li>
-                <li>
-                  <Link href={{ pathname: `/courses/${courseId}`, query: { tab: 'lectures' } }} className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='lectures' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}>
-                    <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='lectures' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
-                    <Play className="h-4 w-4" /> Recorded Lectures
-                  </Link>
-                </li>
+                {!(userRole === 'student' && !isAdmin && hasLiveDemo) && (
+                  <li>
+                    <Link href={{ pathname: `/courses/${courseId}`, query: { tab: 'lectures' } }} className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='lectures' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}>
+                      <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='lectures' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
+                      <Play className="h-4 w-4" /> Recorded Lectures
+                    </Link>
+                  </li>
+                )}
                 <li>
                   <Link href={{ pathname: `/courses/${courseId}`, query: { tab: 'quizzes' } }} className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='quizzes' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}>
                     <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='quizzes' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
@@ -269,12 +293,14 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                     <FileText className="h-4 w-4" /> Assignments
                   </Link>
                 </li>
-                <li>
-                  <Link href={{ pathname: `/courses/${courseId}`, query: { tab: 'live-classes' } }} className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='live-classes' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}>
-                    <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='live-classes' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
-                    <Calendar className="h-4 w-4" /> Live Classes
-                  </Link>
-                </li>
+                {!(userRole === 'student' && !isAdmin && hasRecordingDemo) && (
+                  <li>
+                    <Link href={{ pathname: `/courses/${courseId}`, query: { tab: 'live-classes' } }} className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='live-classes' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}>
+                      <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='live-classes' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
+                      <Calendar className="h-4 w-4" /> Live Classes
+                    </Link>
+                  </li>
+                )}
               </ul>
             </div>
             <div className="mt-auto pt-2 pb-3">
@@ -751,6 +777,48 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                   window.location.reload();
                 }}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Choice Modal - Demo or Direct Subscription */}
+      {showChoiceModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">Choose Your Path</h3>
+                <button onClick={() => setShowChoiceModal(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <button
+                  className="rounded-lg border p-6 text-left hover:border-indigo-400"
+                  onClick={() => {
+                    // Open demo picker explicitly and ensure plans modal is closed
+                    setShowSubscriptionModal(false);
+                    setShowChoiceModal(false);
+                    setShowDemoModal(true);
+                  }}
+                >
+                  <div className="text-lg font-semibold mb-2">Try Demo First</div>
+                  <div className="text-sm text-muted-foreground">Get 24-hour free access to experience the content before subscribing</div>
+                </button>
+                <button
+                  className="rounded-lg border p-6 text-left hover:border-amber-400"
+                  onClick={() => {
+                    // Open plans explicitly and ensure demo modal is closed
+                    setShowDemoModal(false);
+                    setShowChoiceModal(false);
+                    setShowSubscriptionModal(true);
+                  }}
+                >
+                  <div className="text-lg font-semibold mb-2">Subscribe Now</div>
+                  <div className="text-sm text-muted-foreground">Get immediate full access with our flexible subscription plans</div>
+                </button>
+              </div>
             </div>
           </div>
         </div>

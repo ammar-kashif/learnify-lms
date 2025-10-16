@@ -66,9 +66,10 @@ export default function LectureRecordingsList({
   const [openRecordingId, setOpenRecordingId] = useState<string | null>(null);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [demoAccess, setDemoAccess] = useState<any>(null);
-  const [hasUsedDemo, setHasUsedDemo] = useState(false);
+  const [hasUsedDemoForCourse, setHasUsedDemoForCourse] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [watchedVideos, setWatchedVideos] = useState<Set<string>>(new Set());
+  const [demoVideoId, setDemoVideoId] = useState<string | null>(null);
 
   // Load demo video restriction state from localStorage on component mount
   useEffect(() => {
@@ -96,6 +97,51 @@ export default function LectureRecordingsList({
       demoAccess: !!demoAccess
     });
   }, [isDemoMode, watchedVideos, demoAccess]);
+
+  // Check if user has demo access for this course
+  useEffect(() => {
+    const checkDemoAccess = async () => {
+      try {
+        if (!session?.access_token) return; // require auth token
+        const response = await fetch(`/api/demo-access?courseId=${courseId}&accessType=lecture_recording`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` },
+        });
+        const data = await response.json();
+        
+        if (data.hasAccess && data.demoAccess && data.demoAccess.length > 0) {
+          setHasUsedDemoForCourse(true);
+          setDemoAccess(data.demoAccess[0]);
+          setHasAccess(true);
+          setIsDemoMode(true);
+          
+          // Set demo video ID if recordings are already loaded
+          if (recordings.length > 0) {
+            const sortedRecordings = [...recordings].sort((a, b) => 
+              new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            );
+            setDemoVideoId(sortedRecordings[0].id);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking demo access:', error);
+      }
+    };
+
+    if (showAccessControls && userRole === 'student') {
+      checkDemoAccess();
+    }
+  }, [courseId, showAccessControls, userRole, recordings]);
+
+  // Set demo video ID when demo mode is activated and recordings are loaded
+  useEffect(() => {
+    if (isDemoMode && recordings.length > 0 && !demoVideoId) {
+      const sortedRecordings = [...recordings].sort((a, b) => 
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+      setDemoVideoId(sortedRecordings[0].id);
+      console.log('🎬 Demo video set to (via useEffect):', sortedRecordings[0].id, sortedRecordings[0].title);
+    }
+  }, [isDemoMode, recordings, demoVideoId]);
 
   const checkAccess = async () => {
     console.log('🔍 checkAccess called:', { 
@@ -202,7 +248,7 @@ export default function LectureRecordingsList({
     }
   };
 
-  const fetchRecordings = async () => {
+  const fetchRecordings = async (inDemoMode = false) => {
     if (!session?.access_token) return;
 
     try {
@@ -221,8 +267,41 @@ export default function LectureRecordingsList({
         throw new Error(result.error || 'Failed to fetch recordings');
       }
 
-      setRecordings(result.lectureRecordings || []);
+      const recordingsList = result.lectureRecordings || [];
+      setRecordings(recordingsList);
       setHasLoadedOnce(true);
+      
+      // Prefer explicit demo, else local override (superadmin), else oldest in demo mode
+      if (recordingsList.length > 0) {
+        // 1) Server-side explicit demo
+        const explicitDemo = recordingsList.find((r: any) => r.is_demo);
+        if (explicitDemo) {
+          setDemoVideoId(explicitDemo.id);
+          console.log('🎬 Demo video set to explicit is_demo:', explicitDemo.id, explicitDemo.title);
+        } else {
+          // 2) Local override (used by superadmin immediately after change, until DB column exists/propagates)
+          if (typeof window !== 'undefined') {
+            const overrideId = localStorage.getItem(`demo-override-${courseId}`);
+            if (overrideId && recordingsList.some((r: any) => r.id === overrideId)) {
+              setDemoVideoId(overrideId);
+              console.log('🎬 Demo video set via local override:', overrideId);
+              return;
+            }
+          }
+
+          // 3) Fallback to oldest only if in demo mode
+          if (!inDemoMode) {
+            console.log('🚫 Not in demo mode and no explicit demo/override; leaving demoVideoId null');
+            setDemoVideoId(null);
+            return;
+          }
+          const sortedRecordings = [...recordingsList].sort((a, b) =>
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+          setDemoVideoId(sortedRecordings[0].id);
+          console.log('🎬 Demo video set to oldest (fallback):', sortedRecordings[0].id, sortedRecordings[0].title);
+        }
+      }
     } catch (error) {
       console.error('Error fetching recordings:', error);
       setError(error instanceof Error ? error.message : 'Failed to fetch recordings');
@@ -240,7 +319,7 @@ export default function LectureRecordingsList({
       userRole 
     });
     
-    fetchRecordings();
+    fetchRecordings(false);
     if (showAccessControls && userRole === 'student') {
       console.log('🚀 Calling checkAccess from useEffect');
       checkAccess();
@@ -372,14 +451,14 @@ export default function LectureRecordingsList({
       if (response.ok) {
         setDemoAccess(data.demoAccess);
         setHasAccess(true);
-        setHasUsedDemo(true);
+        setHasUsedDemoForCourse(true);
         setIsDemoMode(true);
-        toast.success('Demo access granted! You now have 24 hours of access.');
-        fetchRecordings();
+        toast.success('Demo access granted! You now have 24 hours of access for this course.');
+        fetchRecordings(true);
       } else {
         if (data.error.includes('already used')) {
-          setHasUsedDemo(true);
-          toast.error('You have already used your demo access');
+          setHasUsedDemoForCourse(true);
+          toast.error('You have already used your demo access for this course');
         } else {
           toast.error(data.error || 'Failed to grant demo access');
         }
@@ -394,17 +473,32 @@ export default function LectureRecordingsList({
     console.log('🎬 handleVideoPlay called:', {
       recordingId,
       isDemoMode,
+      demoVideoId,
       watchedVideosCount: watchedVideos.size,
       hasWatchedThisVideo: watchedVideos.has(recordingId),
       watchedVideosArray: Array.from(watchedVideos)
     });
 
-    // Check if this is a demo user trying to watch a second video
-    if (isDemoMode && watchedVideos.size >= 1 && !watchedVideos.has(recordingId)) {
-      console.log('🚫 Demo limit reached - blocking video');
-      console.log('🚫 Current watched videos:', Array.from(watchedVideos));
+    // Superadmin/teacher/admin should never be locked by demo rules
+    if (userRole !== 'student') {
+      setOpenRecordingId(recordingId);
+      return;
+    }
+
+    // Check if this is a demo user trying to watch a non-demo video
+    if (isDemoMode && demoVideoId && recordingId !== demoVideoId) {
+      console.log('🚫 Demo video restriction - blocking non-demo video');
+      console.log('🚫 Demo video ID:', demoVideoId);
       console.log('🚫 Trying to watch:', recordingId);
-      toast.error('Demo access allows only 1 video. Subscribe for unlimited access.');
+      toast.error('Demo access allows only the first video. Subscribe for unlimited access.');
+      return;
+    }
+
+    // If in demo mode but demoVideoId is not set yet, block all videos
+    if (isDemoMode && !demoVideoId) {
+      console.log('🚫 Demo mode active but demo video not set yet - blocking video');
+      console.log('🚫 Trying to watch:', recordingId);
+      toast.error('Demo access is being set up. Please wait a moment and try again.');
       return;
     }
 
@@ -521,7 +615,7 @@ export default function LectureRecordingsList({
         return shouldShow;
       })() && (
         <div className="space-y-4">
-          {hasAccess === false && !hasUsedDemo && (
+          {hasAccess === false && !hasUsedDemoForCourse && (
             <Alert>
               <Lock className="h-4 w-4" />
               <AlertDescription>
@@ -536,7 +630,7 @@ export default function LectureRecordingsList({
             </Alert>
           )}
 
-          {hasAccess === false && hasUsedDemo && (
+          {hasAccess === false && hasUsedDemoForCourse && (
             <Alert variant="destructive">
               <Lock className="h-4 w-4" />
               <AlertDescription>
@@ -589,6 +683,12 @@ export default function LectureRecordingsList({
                         Published
                       </Badge>
                     ) : null}
+                    {(recording as any).is_demo || (isDemoMode && demoVideoId && demoVideoId === recording.id) ? (
+                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                        <Star className="h-3 w-3 mr-1" />
+                        Demo Video
+                      </Badge>
+                    ) : null}
                     {isDemoMode && watchedVideos.has(recording.id) && (
                       <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
                         <Star className="h-3 w-3 mr-1" />
@@ -611,6 +711,39 @@ export default function LectureRecordingsList({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      {userRole === 'superadmin' && (
+                        <DropdownMenuItem
+                          onClick={async () => {
+                            try {
+                              const res = await fetch('/api/lecture-recordings/set-demo', {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                  'Authorization': `Bearer ${session?.access_token}`,
+                                },
+                                body: JSON.stringify({ courseId, recordingId: recording.id }),
+                              });
+                              const data = await res.json();
+                              if (!res.ok) throw new Error(data.error || 'Failed to set demo');
+                              // Immediately reflect change locally
+                              setDemoVideoId(recording.id);
+                              setRecordings(prev => prev.map(r => ({ ...r, is_demo: r.id === recording.id })));
+                              if (typeof window !== 'undefined') {
+                                localStorage.setItem(`demo-override-${courseId}`, recording.id);
+                              }
+                              // Force refresh from server to avoid any stale data
+                              await fetchRecordings(isDemoMode);
+                              toast.success('Set as demo video');
+                            } catch (e) {
+                              console.error(e);
+                              toast.error('Failed to set demo video');
+                            }
+                          }}
+                        >
+                          <Star className="h-4 w-4 mr-2" />
+                          {recording.id === demoVideoId ? 'Demo Selected' : 'Set as Demo'}
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem
                         onClick={() => handleTogglePublish(recording.id, recording.is_published)}
                       >
@@ -642,10 +775,10 @@ export default function LectureRecordingsList({
                   size="sm"
                   onClick={() => handleVideoPlay(recording.id)}
                   className="ml-2"
-                  disabled={isDemoMode && watchedVideos.size >= 1 && !watchedVideos.has(recording.id)}
+                  disabled={userRole === 'student' && isDemoMode && (demoVideoId === null || recording.id !== demoVideoId)}
                 >
                   {openRecordingId === recording.id ? 'Hide' : 
-                   (isDemoMode && watchedVideos.size >= 1 && !watchedVideos.has(recording.id) ? 'Locked' : 'Play')}
+                   (userRole === 'student' && isDemoMode && (demoVideoId === null || recording.id !== demoVideoId) ? 'Locked' : 'Play')}
                 </Button>
               </div>
             </CardHeader>

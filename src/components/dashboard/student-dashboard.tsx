@@ -909,9 +909,7 @@ export default function StudentDashboard() {
                 courseTitle={selectedCourse.title}
                 onAccessGranted={() => {
                   setShowDemoModal(false);
-                  // After demo, show subscription plans
-                  fetchSubscriptionPlans();
-                  setShowSubscriptionPlans(true);
+                  // Keep old flow: close the modal; enrolled list will reflect after refresh
                 }}
               />
             </div>

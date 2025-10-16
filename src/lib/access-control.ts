@@ -162,23 +162,26 @@ export async function canAccessLiveClasses(
 }
 
 /**
- * Check if user has used demo access globally
+ * Check if user has used demo access for a specific course
+ * Note: Demo access is now per-course, not global
  */
-export async function hasUsedDemoAccess(userId: string): Promise<boolean> {
+export async function hasUsedDemoAccessForCourse(userId: string, courseId: string): Promise<boolean> {
   try {
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('demo_used')
-      .eq('id', userId)
+    const { data: demoAccess, error } = await supabase
+      .from('demo_access')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('course_id', courseId)
+      .gt('expires_at', new Date().toISOString())
       .single();
 
-    if (error || !user) {
+    if (error || !demoAccess) {
       return false;
     }
 
-    return user.demo_used || false;
+    return true;
   } catch (error) {
-    console.error('Error checking demo access usage:', error);
+    console.error('Error checking demo access for course:', error);
     return false;
   }
 }

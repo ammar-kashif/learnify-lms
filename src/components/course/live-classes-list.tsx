@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -39,7 +39,29 @@ export default function LiveClassesList({
   const [showAttendance, setShowAttendance] = useState(false);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [demoAccess, setDemoAccess] = useState<any>(null);
-  const [hasUsedDemo, setHasUsedDemo] = useState(false);
+  const [hasUsedDemoForCourse, setHasUsedDemoForCourse] = useState(false);
+
+  // Check if user has demo access for this course
+  useEffect(() => {
+    const checkDemoAccess = async () => {
+      try {
+        const response = await fetch(`/api/demo-access?courseId=${courseId}&accessType=live_class`);
+        const data = await response.json();
+        
+        if (data.hasAccess && data.demoAccess && data.demoAccess.length > 0) {
+          setHasUsedDemoForCourse(true);
+          setDemoAccess(data.demoAccess[0]);
+          setHasAccess(true);
+        }
+      } catch (error) {
+        console.error('Error checking demo access:', error);
+      }
+    };
+
+    if (showAccessControls && userRole === 'student') {
+      checkDemoAccess();
+    }
+  }, [courseId, showAccessControls, userRole]);
 
   const handleCreateClass = () => {
     setShowCreateForm(true);
@@ -80,12 +102,12 @@ export default function LiveClassesList({
       if (response.ok) {
         setDemoAccess(data.demoAccess);
         setHasAccess(true);
-        setHasUsedDemo(true);
-        toast.success('Demo access granted! You now have 24 hours to join live classes.');
+        setHasUsedDemoForCourse(true);
+        toast.success('Demo access granted! You now have 24 hours to join live classes for this course.');
       } else {
         if (data.error.includes('already used')) {
-          setHasUsedDemo(true);
-          toast.error('You have already used your demo access');
+          setHasUsedDemoForCourse(true);
+          toast.error('You have already used your demo access for this course');
         } else {
           toast.error(data.error || 'Failed to grant demo access');
         }
@@ -101,7 +123,7 @@ export default function LiveClassesList({
       {/* Access Control for Students */}
       {showAccessControls && userRole === 'student' && (
         <div className="space-y-4">
-          {hasAccess === false && !hasUsedDemo && (
+          {hasAccess === false && !hasUsedDemoForCourse && (
             <Alert>
               <Lock className="h-4 w-4" />
               <AlertDescription>
@@ -116,7 +138,7 @@ export default function LiveClassesList({
             </Alert>
           )}
 
-          {hasAccess === false && hasUsedDemo && (
+          {hasAccess === false && hasUsedDemoForCourse && (
             <Alert variant="destructive">
               <Lock className="h-4 w-4" />
               <AlertDescription>

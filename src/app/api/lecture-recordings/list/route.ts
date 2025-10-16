@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
         file_size,
         thumbnail_url,
         is_published,
+        is_demo,
         created_at,
         updated_at,
         teacher_id

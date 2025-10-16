@@ -112,6 +112,7 @@ export default function DemoAccessRequest({
       if (data.hasAccess && data.demoAccess.length > 0) {
         setCurrentAccess(data.demoAccess[0]);
         setHasUsedDemo(true);
+        // Do not auto-close; let user press Get Demo or continue
       }
     } catch (error) {
       console.error('Error checking current access:', error);
@@ -143,32 +144,7 @@ export default function DemoAccessRequest({
     );
   }
 
-  if (currentAccess) {
-    const expiresAt = new Date(currentAccess.expires_at);
-    const timeLeft = Math.max(0, expiresAt.getTime() - Date.now());
-    const hoursLeft = Math.ceil(timeLeft / (1000 * 60 * 60));
-
-    return (
-      <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-3">
-            <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
-            <div className="flex-1">
-              <h3 className="font-semibold text-green-900 dark:text-green-100">
-                Demo Access Active
-              </h3>
-              <p className="text-sm text-green-700 dark:text-green-300">
-                You have {hoursLeft} hours left of demo access
-              </p>
-              <Badge variant="secondary" className="mt-2">
-                {currentAccess.access_type === 'lecture_recording' ? 'Lecture Recording' : 'Live Class'}
-              </Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Show the request UI even if access exists; POST handler will succeed quickly
 
   return (
     <Card>
