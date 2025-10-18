@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET(
   request: NextRequest,
@@ -51,7 +57,7 @@ export async function PUT(
   try {
     const { id } = params;
     const body = await request.json();
-    const { title, description, scheduled_date, duration_minutes, meeting_link, status } = body;
+    const { title, description, scheduled_date, duration_minutes, meeting_link, status, is_demo } = body;
 
     // Get session
     const authHeader = request.headers.get('authorization');
@@ -66,7 +72,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify user owns this live class
+    // Verify user owns this live class (we may allow admins to override below)
     const { data: existingClass, error: fetchError } = await supabase
       .from('live_classes')
       .select('teacher_id')
@@ -77,7 +83,17 @@ export async function PUT(
       return NextResponse.json({ error: 'Live class not found' }, { status: 404 });
     }
 
-    if (existingClass.teacher_id !== user.id) {
+    // Determine user role
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    const isAdminOrSuper = userProfile?.role === 'admin' || userProfile?.role === 'superadmin';
+    const isTeacher = userProfile?.role === 'teacher';
+
+    if (!isAdminOrSuper && existingClass.teacher_id !== user.id) {
       return NextResponse.json({ error: 'Unauthorized to update this live class' }, { status: 403 });
     }
 
@@ -89,8 +105,11 @@ export async function PUT(
     if (duration_minutes !== undefined) updateData.duration_minutes = duration_minutes;
     if (meeting_link !== undefined) updateData.meeting_link = meeting_link;
     if (status !== undefined) updateData.status = status;
+    // Allow teacher/admin/superadmin to toggle is_demo when provided
+    if (is_demo !== undefined && (isTeacher || isAdminOrSuper)) updateData.is_demo = !!is_demo;
 
-    const { data: liveClass, error: updateError } = await supabase
+    const client = isAdminOrSuper ? supabaseAdmin : supabase;
+    const { data: liveClass, error: updateError } = await client
       .from('live_classes')
       .update(updateData)
       .eq('id', id)

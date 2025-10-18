@@ -505,6 +505,7 @@ export interface Database {
           duration_minutes: number;
           max_participants: number | null;
           is_published: boolean;
+          is_demo: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -520,6 +521,7 @@ export interface Database {
           duration_minutes?: number;
           max_participants?: number | null;
           is_published?: boolean;
+          is_demo?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -531,10 +533,11 @@ export interface Database {
           description?: string | null;
           meeting_url?: string | null;
           meeting_id?: string | null;
-          scheduled_at?: string;
+          scheduled_date?: string;
           duration_minutes?: number;
           max_participants?: number | null;
           is_published?: boolean;
+          is_demo?: boolean;
           created_at?: string;
           updated_at?: string;
         };

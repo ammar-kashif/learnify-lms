@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const courseId = searchParams.get('course_id');
     const teacherId = searchParams.get('teacher_id');
     const status = searchParams.get('status');
+    const demoOnly = searchParams.get('demo_only');
 
     // Get session
     const authHeader = request.headers.get('authorization');
@@ -61,16 +62,33 @@ export async function GET(request: NextRequest) {
     if (userProfile?.role === 'student') {
       const { data: enrollments } = await supabaseAdmin
         .from('student_enrollments')
-        .select('course_id')
+        .select('course_id, enrollment_type')
         .eq('student_id', user.id);
 
       if (enrollments && enrollments.length > 0) {
         const enrolledCourseIds = enrollments.map(e => e.course_id);
         query = query.in('course_id', enrolledCourseIds);
+        
+        // Check if student has demo access for the SPECIFIC course being viewed
+        const courseEnrollment = enrollments.find(e => e.course_id === courseId);
+        const hasDemoAccessForThisCourse = courseEnrollment?.enrollment_type === 'demo';
+        
+        if (hasDemoAccessForThisCourse) {
+          // Student has demo access for this course - only show demo classes
+          query = query.eq('is_demo', true);
+        } else {
+          // Regular student or no demo access for this course - exclude demo classes
+          query = query.eq('is_demo', false);
+        }
       } else {
         // Student has no enrollments, return empty array
         return NextResponse.json({ liveClasses: [] });
       }
+    }
+
+    // Optional demo-only filter (used for student demo mode views)
+    if (demoOnly === '1' || demoOnly === 'true') {
+      query = query.eq('is_demo', true);
     }
 
     // For teachers: show classes they created OR classes for courses they are assigned to
@@ -109,7 +127,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { course_id, title, description, scheduled_date, duration_minutes, meeting_link } = body;
+    const { course_id, title, description, scheduled_date, duration_minutes, meeting_link, is_demo } = body;
+    console.log('[LIVE_CLASSES][POST] incoming:', { course_id, title, is_demo });
 
     // Get session
     const authHeader = request.headers.get('authorization');
@@ -140,12 +159,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     }
 
-    // Get user role from database
-    const { data: userProfile } = await supabase
+    // Get user role from database (use admin client to bypass RLS)
+    const { data: userProfile } = await supabaseAdmin
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single();
+    console.log('[LIVE_CLASSES][POST] role:', userProfile?.role);
 
     // Check if user is authorized to create live classes for this course
     if (userProfile?.role === 'student') {
@@ -198,7 +218,9 @@ export async function POST(request: NextRequest) {
         description: description || null,
         scheduled_date: scheduled_date,
         duration_minutes: duration_minutes || 60,
-        meeting_link: meeting_link || null
+        meeting_link: meeting_link || null,
+        // Only superadmin/admin/teacher can set demo flag; otherwise force false
+        is_demo: (userProfile?.role === 'superadmin' || userProfile?.role === 'admin' || userProfile?.role === 'teacher') ? !!is_demo : false
       })
       .select(`
         *,

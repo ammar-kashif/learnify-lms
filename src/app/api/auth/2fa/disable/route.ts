@@ -21,15 +21,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // In production, you would:
-    // 1. Verify the user's password or require additional verification
-    // 2. Remove the 2FA secret from your database
-    // 3. Invalidate all backup codes
-    // 4. Log the 2FA disable event for security monitoring
-    // 5. Send a security alert email
+    // Disable 2FA by setting enabled to false and clearing the secret
+    const { error: disableError } = await supabase
+      .from('user_2fa_settings')
+      .update({ 
+        enabled: false,
+        secret: '', // Use empty string instead of null due to NOT NULL constraint
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', user.id);
 
-    // For now, we'll just return success
-    // You should implement proper database operations here
+    if (disableError) {
+      console.error('Error disabling 2FA:', disableError);
+      return NextResponse.json(
+        { error: 'Failed to disable 2FA' },
+        { status: 500 }
+      );
+    }
+
+    // Invalidate all backup codes by marking them as used
+    const { error: backupError } = await supabase
+      .from('user_backup_codes')
+      .update({ used: true })
+      .eq('user_id', user.id)
+      .eq('used', false);
+
+    if (backupError) {
+      console.error('Error invalidating backup codes:', backupError);
+      // Don't fail the request if backup code cleanup fails
+    }
 
     return NextResponse.json({
       success: true,

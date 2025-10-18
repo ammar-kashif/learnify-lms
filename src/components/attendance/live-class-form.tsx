@@ -44,7 +44,8 @@ export default function LiveClassForm({
     scheduled_date: '',
     duration_minutes: 60,
     meeting_link: '',
-    selected_course_id: courseId
+    selected_course_id: courseId,
+    is_demo: false
   });
   const [loading, setLoading] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -67,7 +68,8 @@ export default function LiveClassForm({
         scheduled_date: new Date(liveClass.scheduled_date).toISOString().slice(0, 16),
         duration_minutes: liveClass.duration_minutes,
         meeting_link: liveClass.meeting_id || '',
-        selected_course_id: liveClass.course_id
+        selected_course_id: liveClass.course_id,
+        is_demo: (liveClass as any).is_demo ?? false
       });
     } else {
       setFormData({
@@ -76,7 +78,8 @@ export default function LiveClassForm({
         scheduled_date: '',
         duration_minutes: 60,
         meeting_link: '',
-        selected_course_id: courseId
+        selected_course_id: courseId,
+        is_demo: false
       });
     }
   }, [liveClass, open, courseId]);
@@ -129,13 +132,14 @@ export default function LiveClassForm({
         return;
       }
 
-      const requestData = {
+      const requestData: any = {
         course_id: formData.selected_course_id,
         title: formData.title.trim(),
         description: formData.description.trim() || null,
         scheduled_date: new Date(formData.scheduled_date).toISOString(),
         duration_minutes: formData.duration_minutes,
-        meeting_link: formData.meeting_link.trim() || null
+        meeting_link: formData.meeting_link.trim() || null,
+        is_demo: !!formData.is_demo
       };
 
       const url = liveClass 
@@ -176,7 +180,8 @@ export default function LiveClassForm({
         scheduled_date: '',
         duration_minutes: 60,
         meeting_link: '',
-        selected_course_id: courseId
+        selected_course_id: courseId,
+        is_demo: false
       });
     } catch (error) {
       console.error('Error saving live class:', error);
@@ -194,7 +199,8 @@ export default function LiveClassForm({
       scheduled_date: '',
       duration_minutes: 60,
       meeting_link: '',
-      selected_course_id: courseId
+      selected_course_id: courseId,
+      is_demo: false
     });
   };
 
@@ -264,6 +270,22 @@ export default function LiveClassForm({
               rows={3}
             />
           </div>
+
+          {/* Demo toggle for admin/superadmin/teacher */}
+          {(userRole === 'admin' || userRole === 'superadmin' || userRole === 'teacher') && (
+            <div className="space-y-2">
+              <Label htmlFor="is_demo">Is this a demo class?</Label>
+              <div className="flex items-center gap-3">
+                <input
+                  id="is_demo"
+                  type="checkbox"
+                  checked={!!formData.is_demo}
+                  onChange={(e) => setFormData(prev => ({ ...prev, is_demo: e.target.checked }))}
+                />
+                <span className="text-sm text-gray-600">Only shown to students with live-class demo access</span>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

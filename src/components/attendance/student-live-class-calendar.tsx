@@ -37,6 +37,7 @@ export default function StudentLiveClassCalendar({ courseId }: StudentLiveClassC
   const [selectedClass, setSelectedClass] = useState<LiveClass | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
   const fetchLiveClasses = async () => {
     if (!session?.access_token) {
@@ -46,7 +47,7 @@ export default function StudentLiveClassCalendar({ courseId }: StudentLiveClassC
     }
 
     try {
-      const response = await fetch(`/api/live-classes?course_id=${courseId}`, {
+      const response = await fetch(`/api/live-classes?course_id=${courseId}${isDemoMode ? '&demo_only=1' : ''}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
         },
@@ -68,7 +69,24 @@ export default function StudentLiveClassCalendar({ courseId }: StudentLiveClassC
 
   useEffect(() => {
     fetchLiveClasses();
-  }, [courseId, session, refreshKey]);
+  }, [courseId, session, refreshKey, isDemoMode]);
+
+  // Determine if user has demo access for live classes on this course
+  useEffect(() => {
+    const checkDemoAccess = async () => {
+      if (!session?.access_token) return;
+      try {
+        const res = await fetch(`/api/demo-access?courseId=${courseId}&accessType=live_class`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+        const data = await res.json();
+        setIsDemoMode(!!(data?.hasAccess));
+      } catch (e) {
+        // ignore
+      }
+    };
+    checkDemoAccess();
+  }, [courseId, session]);
 
   // Light auto-refresh: on window focus and every 10s
   useEffect(() => {
