@@ -47,6 +47,7 @@ export default function StudentDashboard() {
   const [showSubscriptionPlans, setShowSubscriptionPlans] = useState(false);
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [showChoiceModal, setShowChoiceModal] = useState(false);
+  const [selectedSubscriptionPlan, setSelectedSubscriptionPlan] = useState<any>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -227,6 +228,14 @@ export default function StudentDashboard() {
     // Show choice modal - demo or direct subscription
     setSelectedCourse(course);
     setShowChoiceModal(true);
+  };
+
+  const handleSubscriptionPlanSelect = (planId: string, plan: any) => {
+    // Store the selected plan and close subscription modal
+    setSelectedSubscriptionPlan(plan);
+    setShowSubscriptionPlans(false);
+    // Open payment popup directly with the selected plan
+    setPaymentPopupOpen(true);
   };
 
   const handleCompletePayment = async (courseId: string, amount: number, subscriptionPlanId?: string) => {
@@ -760,10 +769,13 @@ export default function StudentDashboard() {
           onClose={() => {
             setPaymentPopupOpen(false);
             setSelectedCourse(null);
+            setSelectedSubscriptionPlan(null);
           }}
           course={selectedCourse}
           onCompletePayment={handleCompletePayment}
           loading={paymentLoading}
+          isSubscription={!!selectedSubscriptionPlan}
+          selectedSubscriptionPlan={selectedSubscriptionPlan}
         />
       )}
 
@@ -777,6 +789,7 @@ export default function StudentDashboard() {
           }}
           course={selectedCourse}
           onCompletePayment={handleCompletePayment}
+          onSelectPlan={handleSubscriptionPlanSelect}
           loading={paymentLoading}
           isSubscription={true}
           subscriptionPlans={subscriptionPlans}

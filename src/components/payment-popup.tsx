@@ -13,6 +13,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { CreditCard, Copy, Check, AlertCircle, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import ModernSubscriptionModal from './modern-subscription-modal';
 
 interface PaymentPopupProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ interface PaymentPopupProps {
     amount?: number;
   };
   onCompletePayment: (courseId: string, amount: number, subscriptionPlanId?: string) => Promise<void>;
+  onSelectPlan?: (planId: string, plan: any) => void;
   loading?: boolean;
   isSubscription?: boolean;
   subscriptionPlans?: Array<{
@@ -34,6 +36,7 @@ interface PaymentPopupProps {
     duration_months?: number;
     duration_until_date?: string;
   }>;
+  selectedSubscriptionPlan?: any;
 }
 
 export default function PaymentPopup({
@@ -41,16 +44,17 @@ export default function PaymentPopup({
   onClose,
   course,
   onCompletePayment,
+  onSelectPlan,
   loading = false,
   isSubscription = false,
   subscriptionPlans = [],
+  selectedSubscriptionPlan = null,
 }: PaymentPopupProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   // Plan selection state
   type PlanId = 'oneMonth' | 'threeMonth' | 'untilCIES';
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('oneMonth');
   const [addonSelected, setAddonSelected] = useState<boolean>(false);
-  const [selectedSubscriptionPlan, setSelectedSubscriptionPlan] = useState<string>('');
 
   // Pricing config (PKR) - Legacy system
   const pricing = {
@@ -115,7 +119,14 @@ export default function PaymentPopup({
   }
   
   const openWhatsApp = () => {
-    const amount = payableAmount || course.amount || 5000;
+    // Use the correct amount based on context
+    let amount;
+    if (isSubscription && selectedSubscriptionPlan) {
+      amount = selectedSubscriptionPlan.price_pkr;
+    } else {
+      amount = payableAmount || course.amount || 5000;
+    }
+    
     const phone = '923005299693';
     const message = `Hi, I have completed the payment for ${course.title}.\nAmount: PKR ${amount}.\nI will share the screenshot here.`;
     const encoded = encodeURIComponent(message);
@@ -137,7 +148,13 @@ export default function PaymentPopup({
   };
 
   const openWhatsAppDesktop = () => {
-    const amount = payableAmount || course.amount || 5000;
+    // Use the correct amount based on context
+    let amount;
+    if (isSubscription && selectedSubscriptionPlan) {
+      amount = selectedSubscriptionPlan.price_pkr;
+    } else {
+      amount = payableAmount || course.amount || 5000;
+    }
     const phone = '923005299693';
     const message = `Hi, I have completed the payment for ${course.title}.\nAmount: PKR ${amount}.\nI will share the screenshot here.`;
     const encoded = encodeURIComponent(message);
@@ -175,6 +192,226 @@ export default function PaymentPopup({
   };
   // Two-step view state
   const [step, setStep] = useState<1 | 2>(1);
+
+  // If it's a subscription and no plan is selected, show the modern modal
+  if (isSubscription && !selectedSubscriptionPlan) {
+    const processedPlans = subscriptionPlans.map((plan) => ({
+      ...plan,
+      features: [
+        plan.type === 'recordings_only' ? 'Access to all recordings' : 
+        plan.type === 'live_classes_only' ? 'Access to live classes' :
+        'Access to recordings + live classes',
+        '24/7 Student Support',
+        'Mobile App Access',
+        'Progress Tracking',
+        'Certificate of Completion'
+      ],
+      limitations: plan.type === 'recordings_only' ? ['No live class access'] : 
+                  plan.type === 'live_classes_only' ? ['No recording access'] : []
+    }));
+
+    return (
+      <ModernSubscriptionModal
+        isOpen={isOpen}
+        onClose={onClose}
+        course={course}
+        onSelectPlan={async (planId, plan) => {
+          // Call the parent's onSelectPlan to handle the flow
+          if (onSelectPlan) {
+            onSelectPlan(planId, plan);
+          }
+        }}
+        subscriptionPlans={processedPlans}
+        loading={loading}
+      />
+    );
+  }
+
+  // If it's a subscription and a plan is selected, show payment details
+  if (isSubscription && selectedSubscriptionPlan) {
+    const plan = selectedSubscriptionPlan;
+    const amount = plan.price_pkr;
+    
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+              <CreditCard className="h-5 w-5 text-primary" />
+              Payment Details - {plan.name}
+            </DialogTitle>
+            <DialogDescription className="text-gray-600 dark:text-gray-300">
+              Complete your subscription for <strong>{course.title}</strong>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Selected Plan Summary */}
+            <Card className="border-gray-200 dark:border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-base text-gray-900 dark:text-white">
+                  Selected Plan
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-lg">{plan.name}</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {plan.type === 'recordings_only' ? 'Recordings Only' : 
+                       plan.type === 'live_classes_only' ? 'Live Classes Only' :
+                       'Recordings + Live Classes'}
+                    </p>
+                    {plan.duration_months && (
+                      <p className="text-sm text-gray-500">
+                        Duration: {plan.duration_months} month{plan.duration_months > 1 ? 's' : ''}
+                      </p>
+                    )}
+                    {plan.duration_until_date && (
+                      <p className="text-sm text-gray-500">
+                        Valid until: {new Date(plan.duration_until_date).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-primary">
+                      PKR {amount.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Payment Instructions */}
+            <Card className="border-gray-200 dark:border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-base text-gray-900 dark:text-white">
+                  Payment Instructions
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-4">
+                  {/* Bank Name */}
+                  <div className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        Bank Name
+                      </p>
+                      <p className="text-lg font-mono text-gray-700 dark:text-gray-300">
+                        {bankDetails.bankName}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(bankDetails.bankName, 'Bank Name')}
+                      className="h-8 w-8 p-0"
+                    >
+                      {copiedField === 'Bank Name' ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Copy className="h-4 w-4 text-gray-500" />
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Account Number */}
+                  <div className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        Account Number
+                      </p>
+                      <p className="text-lg font-mono text-gray-700 dark:text-gray-300">
+                        {bankDetails.accountNumber}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(bankDetails.accountNumber, 'Account Number')}
+                      className="h-8 w-8 p-0"
+                    >
+                      {copiedField === 'Account Number' ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Copy className="h-4 w-4 text-gray-500" />
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Account Name */}
+                  <div className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        Account Name
+                      </p>
+                      <p className="text-lg font-mono text-gray-700 dark:text-gray-300">
+                        {bankDetails.accountName}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(bankDetails.accountName, 'Account Name')}
+                      className="h-8 w-8 p-0"
+                    >
+                      {copiedField === 'Account Name' ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Copy className="h-4 w-4 text-gray-500" />
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Amount */}
+                  <div className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        Amount to Transfer
+                      </p>
+                      <p className="text-lg font-mono text-gray-700 dark:text-gray-300">
+                        PKR {amount.toLocaleString()}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(`PKR ${amount.toLocaleString()}`, 'Amount')}
+                      className="h-8 w-8 p-0"
+                    >
+                      {copiedField === 'Amount' ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Copy className="h-4 w-4 text-gray-500" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button
+                    onClick={openWhatsApp}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    Send via WhatsApp
+                  </Button>
+                  <Button
+                    onClick={() => onCompletePayment(course.id, amount, plan.id)}
+                    disabled={loading}
+                    className="flex-1"
+                  >
+                    {loading ? 'Processing...' : 'Mark as Paid'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -236,7 +473,7 @@ export default function PaymentPopup({
                           name="subscriptionPlan"
                           className="sr-only"
                           checked={isSelected}
-                          onChange={() => setSelectedSubscriptionPlan(plan.id)}
+                          onChange={() => {}}
                         />
                         <label 
                           htmlFor={`plan-${plan.id}`} 
