@@ -37,6 +37,7 @@ interface PaymentPopupProps {
     duration_until_date?: string;
   }>;
   selectedSubscriptionPlan?: any;
+  isUpgrade?: boolean; // New prop to indicate if this is an upgrade from demo
 }
 
 export default function PaymentPopup({
@@ -49,6 +50,7 @@ export default function PaymentPopup({
   isSubscription = false,
   subscriptionPlans = [],
   selectedSubscriptionPlan = null,
+  isUpgrade = false,
 }: PaymentPopupProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   // Plan selection state
@@ -238,10 +240,10 @@ export default function PaymentPopup({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
               <CreditCard className="h-5 w-5 text-primary" />
-              Payment Details - {plan.name}
+              {isUpgrade ? 'Upgrade to' : 'Payment Details -'} {plan.name}
             </DialogTitle>
             <DialogDescription className="text-gray-600 dark:text-gray-300">
-              Complete your subscription for <strong>{course.title}</strong>
+              {isUpgrade ? 'Upgrade your demo access to full subscription for' : 'Complete your subscription for'} <strong>{course.title}</strong>
             </DialogDescription>
           </DialogHeader>
 
@@ -418,10 +420,10 @@ export default function PaymentPopup({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
             <CreditCard className="h-5 w-5 text-primary" />
-            Payment Details
+            {isUpgrade ? 'Upgrade to Full Access' : 'Payment Details'}
           </DialogTitle>
           <DialogDescription className="text-gray-600 dark:text-gray-300">
-            Complete your enrollment for <strong>{course.title}</strong>
+            {isUpgrade ? 'Upgrade your demo access to full enrollment for' : 'Complete your enrollment for'} <strong>{course.title}</strong>
           </DialogDescription>
         </DialogHeader>
 

@@ -215,8 +215,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({
           email: email,
           password: password,
-          fullName: fullName,
-          role: 'student' // Default all new users to student role
+          fullName: fullName
+          // All signups are automatically student role
         })
       });
 
@@ -228,6 +228,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       console.log('✅ User created successfully:', result.user);
+      
+      // Now sign in the user to establish a session
+      console.log('🔐 Signing in user to establish session...');
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+
+      if (signInError) {
+        console.error('❌ Sign in failed after signup:', signInError);
+        return { error: signInError };
+      }
+
+      console.log('✅ User signed in successfully, session established');
       
       // Set the user role immediately to student
       setUserRole('student');

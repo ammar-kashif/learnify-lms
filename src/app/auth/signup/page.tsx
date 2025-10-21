@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,7 @@ import {
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 import {
   Eye,
   EyeOff,
@@ -37,6 +38,20 @@ export default function SignUpPage() {
 
   const { signUp } = useAuth();
   const router = useRouter();
+
+  // Check for stored course data on component mount
+  useEffect(() => {
+    const checkStoredCourse = () => {
+      const demoCourse = localStorage.getItem('selectedCourseForDemo');
+      const subscriptionCourse = localStorage.getItem('selectedCourseForSubscription');
+      
+      if (demoCourse || subscriptionCourse) {
+        console.log('📚 Found stored course data:', { demoCourse, subscriptionCourse });
+      }
+    };
+
+    checkStoredCourse();
+  }, []);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -70,7 +85,89 @@ export default function SignUpPage() {
       if (error) {
         setError(error.message);
       } else {
-        router.push('/dashboard');
+        // Check for stored course data and redirect accordingly
+        const demoCourse = localStorage.getItem('selectedCourseForDemo');
+        const subscriptionCourse = localStorage.getItem('selectedCourseForSubscription');
+        
+        if (demoCourse) {
+          // Clear the stored course data
+          localStorage.removeItem('selectedCourseForDemo');
+          
+          // Get the selected demo type
+          const selectedDemoType = localStorage.getItem('selectedDemoType');
+          localStorage.removeItem('selectedDemoType');
+          
+          // Parse the course data
+          const course = JSON.parse(demoCourse);
+          console.log('🎯 Redirecting to course page for demo:', course, 'type:', selectedDemoType);
+          
+          // If there's a demo type, create the demo access immediately after signup
+          if (selectedDemoType) {
+            console.log('🔐 Creating demo access immediately after signup...');
+            try {
+              // Get the current session
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session?.access_token) {
+                console.log('✅ Session found, creating demo access...');
+                const response = await fetch('/api/demo-access', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                  },
+                  body: JSON.stringify({
+                    courseId: course.id,
+                    accessType: selectedDemoType
+                  }),
+                });
+
+                const responseData = await response.json();
+                console.log('📡 Demo access API response:', { status: response.status, data: responseData });
+
+                if (response.ok) {
+                  console.log('✅ Demo access created successfully during signup');
+                } else {
+                  console.error('❌ Failed to create demo access during signup:', responseData);
+                  // Store for fallback
+                  localStorage.setItem('pendingDemoType', selectedDemoType);
+                }
+              } else {
+                console.error('❌ No session found during signup, storing for fallback');
+                // Store for fallback
+                localStorage.setItem('pendingDemoType', selectedDemoType);
+              }
+            } catch (error) {
+              console.error('❌ Error creating demo access during signup:', error);
+              // Store for fallback
+              localStorage.setItem('pendingDemoType', selectedDemoType);
+            }
+          }
+          
+          router.push(`/courses/${course.id}`);
+        } else if (subscriptionCourse) {
+          // Clear the stored course data
+          localStorage.removeItem('selectedCourseForSubscription');
+          
+          // Check if there's a selected subscription plan
+          const selectedPlan = localStorage.getItem('selectedSubscriptionPlan');
+          if (selectedPlan) {
+            // Clear the stored plan data
+            localStorage.removeItem('selectedSubscriptionPlan');
+            
+            // Parse the plan data and redirect to dashboard with plan info
+            const plan = JSON.parse(selectedPlan);
+            console.log('🎯 Redirecting to dashboard with selected plan:', plan);
+            // Store plan info for the dashboard to use
+            localStorage.setItem('pendingSubscriptionPlan', JSON.stringify(plan));
+          }
+          
+          // Redirect to dashboard for normal subscription flow
+          console.log('🎯 Redirecting to dashboard for subscription');
+          router.push('/dashboard');
+        } else {
+          // Default redirect to dashboard
+          router.push('/dashboard');
+        }
       }
     } catch (err) {
       setError('An unexpected error occurred');

@@ -63,49 +63,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if this video has already been tracked
-    const { data: existingUsage, error: usageError } = await supabase
+    // Update the existing demo access record with the resource_id (video being watched)
+    const { data: updatedUsage, error: updateError } = await supabase
       .from('demo_access')
-      .select('resource_id')
-      .eq('user_id', user.id)
-      .eq('course_id', courseId)
-      .eq('access_type', accessType)
-      .eq('resource_id', recordingId)
-      .maybeSingle();
-
-    if (usageError) {
-      console.error('Error checking existing usage:', usageError);
-      return NextResponse.json(
-        { error: 'Failed to check existing usage' },
-        { status: 500 }
-      );
-    }
-
-    if (existingUsage) {
-      // Video already tracked, return success
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Video usage already tracked',
-        alreadyTracked: true 
-      });
-    }
-
-    // Create a new demo access record for this specific video
-    const { data: newUsage, error: insertError } = await supabase
-      .from('demo_access')
-      .insert({
-        user_id: user.id,
-        course_id: courseId,
-        access_type: accessType,
+      .update({
         resource_id: recordingId,
-        used_at: new Date().toISOString(),
-        expires_at: demoAccess.expires_at // Same expiration as the original demo access
+        used_at: new Date().toISOString()
       })
+      .eq('id', demoAccess.id)
       .select()
       .single();
 
-    if (insertError) {
-      console.error('Error tracking video usage:', insertError);
+    if (updateError) {
+      console.error('Error tracking video usage:', updateError);
       return NextResponse.json(
         { error: 'Failed to track video usage' },
         { status: 500 }
@@ -122,7 +92,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       success: true, 
       message: 'Video usage tracked successfully',
-      usage: newUsage
+      usage: updatedUsage
     });
 
   } catch (error) {

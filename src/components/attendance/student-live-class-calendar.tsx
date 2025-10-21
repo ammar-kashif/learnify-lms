@@ -38,11 +38,17 @@ export default function StudentLiveClassCalendar({ courseId }: StudentLiveClassC
   const [showModal, setShowModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [demoAccessChecked, setDemoAccessChecked] = useState(false);
 
   const fetchLiveClasses = async () => {
     if (!session?.access_token) {
       setError('Please log in to view live classes');
       setLoading(false);
+      return;
+    }
+
+    // Wait for demo access check to complete
+    if (!demoAccessChecked) {
       return;
     }
 
@@ -68,21 +74,36 @@ export default function StudentLiveClassCalendar({ courseId }: StudentLiveClassC
   };
 
   useEffect(() => {
-    fetchLiveClasses();
-  }, [courseId, session, refreshKey, isDemoMode]);
+    if (demoAccessChecked) {
+      fetchLiveClasses();
+    }
+  }, [courseId, session, refreshKey, isDemoMode, demoAccessChecked]);
 
   // Determine if user has demo access for live classes on this course
   useEffect(() => {
     const checkDemoAccess = async () => {
-      if (!session?.access_token) return;
+      console.log('🔍 StudentLiveClassCalendar checking demo access:', { courseId, hasSession: !!session?.access_token });
+      
+      if (!session?.access_token) {
+        console.log('❌ No session, setting demoAccessChecked to true');
+        setDemoAccessChecked(true);
+        return;
+      }
       try {
+        console.log('📡 Fetching demo access for live_class...');
         const res = await fetch(`/api/demo-access?courseId=${courseId}&accessType=live_class`, {
           headers: { 'Authorization': `Bearer ${session.access_token}` }
         });
         const data = await res.json();
-        setIsDemoMode(!!(data?.hasAccess));
+        console.log('📊 Demo access response:', data);
+        const hasAccess = !!(data?.hasAccess);
+        console.log('🎯 Setting isDemoMode to:', hasAccess);
+        setIsDemoMode(hasAccess);
       } catch (e) {
-        // ignore
+        console.error('❌ Error checking demo access:', e);
+      } finally {
+        console.log('✅ Demo access check complete');
+        setDemoAccessChecked(true);
       }
     };
     checkDemoAccess();

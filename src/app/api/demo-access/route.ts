@@ -46,18 +46,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Use the most efficient query possible - only get access_type with limit
+    console.log('🔍 Checking demo access for user:', user.id, 'course:', courseId);
+    const startTime = Date.now();
+    
     let query = supabase
       .from('demo_access')
-      .select('*')
+      .select('access_type')
       .eq('user_id', user.id)
       .eq('course_id', courseId)
-      .gt('expires_at', new Date().toISOString());
+      .gt('expires_at', new Date().toISOString())
+      .limit(2); // Only need to know if any exist
 
     if (accessType) {
       query = query.eq('access_type', accessType);
     }
 
     const { data: demoAccess, error } = await query;
+    console.log('⚡ Demo access query completed in:', Date.now() - startTime, 'ms', 'Result:', demoAccess);
 
     if (error) {
       console.error('Error fetching demo access:', error);
@@ -67,10 +73,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ 
+    // Add cache headers for better performance
+    const response = NextResponse.json({ 
       hasAccess: demoAccess && demoAccess.length > 0,
       demoAccess: demoAccess || []
     });
+
+    // Cache for 10 seconds to reduce API calls but keep it fresh
+    response.headers.set('Cache-Control', 'private, max-age=10');
+    
+    return response;
   } catch (error) {
     console.error('Error in demo access API:', error);
     return NextResponse.json(
@@ -173,43 +185,24 @@ export async function POST(request: NextRequest) {
     // Note: Demo access is now per-course, not global
     // Users can get demo access for multiple courses
 
-    // Create demo access
+    // Create or update demo access using upsert to avoid duplicate key errors
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours from now
 
-    let demoAccess: any = null;
-    let insertError: any = null;
-
-    if (existingAccess) {
-      // Row exists but is expired – update expiry instead of inserting to satisfy unique constraint
-      const { data, error } = await supabase
-        .from('demo_access')
-        .update({
-          expires_at: expiresAt.toISOString(),
-          resource_id: resourceId || null,
-          used_at: nowIso,
-        })
-        .eq('id', existingAccess.id)
-        .select()
-        .single();
-      demoAccess = data;
-      insertError = error;
-    } else {
-      const { data, error } = await supabase
-        .from('demo_access')
-        .insert({
-          user_id: user.id,
-          course_id: courseId,
-          access_type: accessType,
-          resource_id: resourceId || null,
-          expires_at: expiresAt.toISOString(),
-          used_at: nowIso,
-        })
-        .select()
-        .single();
-      demoAccess = data;
-      insertError = error;
-    }
+    const { data: demoAccess, error: insertError } = await supabase
+      .from('demo_access')
+      .upsert({
+        user_id: user.id,
+        course_id: courseId,
+        access_type: accessType,
+        resource_id: resourceId || null,
+        expires_at: expiresAt.toISOString(),
+        used_at: nowIso,
+      }, {
+        onConflict: 'user_id,course_id,access_type'
+      })
+      .select()
+      .single();
 
     if (insertError) {
       console.error('Error creating demo access:', insertError);

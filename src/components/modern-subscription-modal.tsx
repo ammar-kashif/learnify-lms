@@ -178,7 +178,7 @@ export default function ModernSubscriptionModal({
                   <Card
                     key={plan.id}
                     className={cn(
-                      "relative group transition-all duration-300 cursor-pointer transform hover:scale-105",
+                      "relative group transition-all duration-300 cursor-pointer transform hover:scale-105 flex flex-col h-full",
                       isSelected && "ring-2 ring-primary shadow-xl scale-105",
                       "hover:shadow-xl"
                     )}
@@ -221,7 +221,7 @@ export default function ModernSubscriptionModal({
                       </div>
                     </CardHeader>
 
-                    <CardContent className="pt-0">
+                    <CardContent className="pt-0 flex flex-col flex-grow">
                       {/* Features */}
                       <div className="space-y-3 mb-6">
                         <h4 className="font-semibold text-gray-900 dark:text-white text-sm mb-3">
@@ -258,10 +258,13 @@ export default function ModernSubscriptionModal({
                         </div>
                       )}
 
+                      {/* Spacer to push button to bottom */}
+                      <div className="flex-grow"></div>
+
                       {/* Select Button */}
                       <Button
                         className={cn(
-                          "w-full py-3 text-base font-semibold transition-all duration-300",
+                          "w-full py-3 text-base font-semibold transition-all duration-300 mt-auto",
                           isSelected
                             ? "bg-primary text-white"
                             : "bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100"

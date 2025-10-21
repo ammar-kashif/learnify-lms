@@ -117,11 +117,8 @@ export default function SubscriptionPlans({
     fetchPlans();
   }, [selectedType]);
 
-  useEffect(() => {
-    if (plans.length > 0) {
-      setPlans(sortPlans(plans));
-    }
-  }, [sortBy, plans]);
+  // Remove this useEffect to prevent infinite loop
+  // The plans are already sorted when fetched
 
   const handleSubscribe = async (planId: string) => {
     if (!user) {

@@ -707,14 +707,14 @@ export default function AdminDashboard() {
   });
 
   const navigationItems = [
-    { id: 'users', label: 'Users', icon: Users, count: users.length },
-    { id: 'courses', label: 'Courses', icon: BookOpen, count: courses.length },
-    { id: 'assignments', label: 'Assignments', icon: GraduationCap, count: teacherCourses.length },
-    { id: 'payments', label: 'Payments', icon: CreditCard, count: paymentVerifications.length },
-    { id: 'enrollments', label: 'Enrollments', icon: Users, count: enrollments.length },
+    { id: 'users', label: 'Users', icon: Users },
+    { id: 'courses', label: 'Courses', icon: BookOpen },
+    { id: 'assignments', label: 'Assignments', icon: GraduationCap },
+    { id: 'payments', label: 'Payments', icon: CreditCard },
+    { id: 'enrollments', label: 'Enrollments', icon: Users },
     ...(userRole === 'superadmin' ? [
-      { id: 'live-classes', label: 'Live Classes', icon: Calendar, count: 0 },
-      { id: 'plans', label: 'Plans', icon: CreditCard, count: 0 }
+      { id: 'live-classes', label: 'Live Classes', icon: Calendar },
+      { id: 'plans', label: 'Plans', icon: CreditCard }
     ] : []),
   ];
 
@@ -761,25 +761,21 @@ export default function AdminDashboard() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className={`flex-1 space-y-2 ${sidebarOpen ? 'p-4' : 'p-2'}`}>
           {navigationItems.map((item) => (
             <Button
               key={item.id}
               variant={activeTab === item.id ? 'default' : 'ghost'}
-              className={`w-full justify-start ${activeTab === item.id 
+              className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center'} ${activeTab === item.id 
                 ? 'bg-orange-600 text-white hover:bg-orange-700' 
                 : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
               onClick={() => setActiveTab(item.id as any)}
+              title={!sidebarOpen ? item.label : undefined}
             >
-              <item.icon className="h-4 w-4 mr-3" />
+              <item.icon className={`${sidebarOpen ? 'h-5 w-5 mr-3' : 'h-4 w-4'}`} />
               {sidebarOpen && (
-                <div className="flex items-center justify-between w-full">
-                  <span>{item.label}</span>
-                  <Badge variant="secondary" className="ml-2 text-xs bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                    {item.count}
-                  </Badge>
-                </div>
+                <span>{item.label}</span>
               )}
             </Button>
           ))}
@@ -788,30 +784,33 @@ export default function AdminDashboard() {
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+        <div className={`border-t border-gray-200 dark:border-gray-700 space-y-2 ${sidebarOpen ? 'p-4' : 'p-2'}`}>
           <Button
             variant="ghost"
-            className="w-full justify-start text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center'} text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700`}
             onClick={() => router.push('/dashboard')}
+            title={!sidebarOpen ? 'Dashboard' : undefined}
           >
-            <Home className="h-4 w-4 mr-3" />
+            <Home className={`${sidebarOpen ? 'h-5 w-5 mr-3' : 'h-4 w-4'}`} />
             {sidebarOpen && <span>Dashboard</span>}
           </Button>
           <Button
             variant="ghost"
-            className="w-full justify-start text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center'} text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700`}
             onClick={toggleTheme}
             disabled={!mounted}
+            title={!sidebarOpen ? 'Theme' : undefined}
           >
-            {mounted && theme === 'dark' ? <Sun className="h-4 w-4 mr-3" /> : <Moon className="h-4 w-4 mr-3" />}
+            {mounted && theme === 'dark' ? <Sun className={`${sidebarOpen ? 'h-5 w-5 mr-3' : 'h-4 w-4'}`} /> : <Moon className={`${sidebarOpen ? 'h-5 w-5 mr-3' : 'h-4 w-4'}`} />}
             {sidebarOpen && <span>Theme</span>}
           </Button>
           <Button
             variant="ghost"
-            className="w-full justify-start text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+            className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center'} text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20`}
             onClick={handleSignOut}
+            title={!sidebarOpen ? 'Sign Out' : undefined}
           >
-            <LogOut className="h-4 w-4 mr-3" />
+            <LogOut className={`${sidebarOpen ? 'h-5 w-5 mr-3' : 'h-4 w-4'}`} />
             {sidebarOpen && <span>Sign Out</span>}
           </Button>
         </div>

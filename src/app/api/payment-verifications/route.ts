@@ -107,16 +107,22 @@ export async function POST(request: NextRequest) {
     // Check if student is already enrolled in this course
     const { data: existingEnrollment } = await supabaseAdmin
       .from('student_enrollments')
-      .select('id')
+      .select('id, enrollment_type')
       .eq('student_id', user.id)
       .eq('course_id', courseId)
       .single();
 
+    // Allow demo users to upgrade to paid, but block if already paid
     if (existingEnrollment) {
-      return NextResponse.json(
-        { error: 'You are already enrolled in this course' },
-        { status: 400 }
-      );
+      if (existingEnrollment.enrollment_type === 'paid') {
+        return NextResponse.json(
+          { error: 'You are already enrolled in this course with full access' },
+          { status: 400 }
+        );
+      } else if (existingEnrollment.enrollment_type === 'demo') {
+        console.log('✅ Demo user upgrading to paid subscription');
+        // Allow demo users to proceed with payment verification
+      }
     }
 
     // Check if there's already a pending payment verification for this course

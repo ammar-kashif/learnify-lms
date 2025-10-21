@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Lock, Star, Crown, Users } from 'lucide-react';
-// import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/contexts/auth-context';
 import { toast } from 'sonner';
 import LiveClassCalendar from '@/components/attendance/live-class-calendar';
 import LiveClassForm from '@/components/attendance/live-class-form';
@@ -33,6 +33,7 @@ export default function LiveClassesList({
   showAccessControls = false,
   onAccessRequired
 }: LiveClassesListProps) {
+  const { user, session } = useAuth();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
   const [selectedLiveClass, setSelectedLiveClass] = useState<LiveClass | null>(null);
@@ -44,24 +45,36 @@ export default function LiveClassesList({
   // Check if user has demo access for this course
   useEffect(() => {
     const checkDemoAccess = async () => {
+      if (!session?.access_token) {
+        setHasAccess(false);
+        return;
+      }
+
       try {
-        const response = await fetch(`/api/demo-access?courseId=${courseId}&accessType=live_class`);
+        const response = await fetch(`/api/demo-access?courseId=${courseId}&accessType=live_class`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        });
         const data = await response.json();
         
         if (data.hasAccess && data.demoAccess && data.demoAccess.length > 0) {
           setHasUsedDemoForCourse(true);
           setDemoAccess(data.demoAccess[0]);
           setHasAccess(true);
+        } else {
+          setHasAccess(false);
         }
       } catch (error) {
         console.error('Error checking demo access:', error);
+        setHasAccess(false);
       }
     };
 
     if (showAccessControls && userRole === 'student') {
       checkDemoAccess();
     }
-  }, [courseId, showAccessControls, userRole]);
+  }, [courseId, showAccessControls, userRole, session?.access_token]);
 
   const handleCreateClass = () => {
     setShowCreateForm(true);
@@ -85,11 +98,17 @@ export default function LiveClassesList({
   };
 
   const handleRequestDemoAccess = async () => {
+    if (!session?.access_token) {
+      toast.error('Please log in to request demo access');
+      return;
+    }
+
     try {
       const response = await fetch('/api/demo-access', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           courseId,
@@ -138,15 +157,16 @@ export default function LiveClassesList({
             </Alert>
           )}
 
-          {hasAccess === false && hasUsedDemoForCourse && (
-            <Alert variant="destructive">
-              <Lock className="h-4 w-4" />
-              <AlertDescription>
+          {/* Show upgrade button for any demo user */}
+          {hasUsedDemoForCourse && (
+            <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+              <Crown className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <AlertDescription className="text-blue-800 dark:text-blue-200">
                 <div className="flex items-center justify-between">
-                  <span>You have used your demo access. Subscribe to continue joining live classes.</span>
+                  <span>Want unlimited access? Upgrade to full subscription now!</span>
                   <Button size="sm" onClick={() => onAccessRequired?.()}>
                     <Crown className="h-4 w-4 mr-2" />
-                    View Plans
+                    Upgrade Now
                   </Button>
                 </div>
               </AlertDescription>

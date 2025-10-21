@@ -16,7 +16,7 @@ const supabaseAdmin = createClient(
 export async function POST(request: NextRequest) {
   try {
     // Get the request body
-    const { email, password, fullName, role = 'student' } = await request.json();
+    const { email, password, fullName } = await request.json();
 
     // Validate input
     if (!email || !password || !fullName) {
@@ -26,14 +26,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate role (default to student if not provided)
-    const userRole = role || 'student';
-    if (!['student', 'teacher', 'admin', 'superadmin'].includes(userRole)) {
-      return NextResponse.json(
-        { error: 'Invalid role' },
-        { status: 400 }
-      );
-    }
+    // Force all signups to be student role only
+    const userRole = 'student';
 
     console.log('🚀 Creating user via signup API:', { email, fullName, role: userRole });
 

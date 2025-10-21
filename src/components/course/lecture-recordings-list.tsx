@@ -610,6 +610,9 @@ export default function LectureRecordingsList({
           userRole,
           hasSession: !!session?.access_token,
           hasAccess,
+          hasUsedDemoForCourse,
+          isDemoMode,
+          demoAccess: !!demoAccess,
           shouldShow
         });
         return shouldShow;
@@ -630,15 +633,16 @@ export default function LectureRecordingsList({
             </Alert>
           )}
 
-          {hasAccess === false && hasUsedDemoForCourse && (
-            <Alert variant="destructive">
-              <Lock className="h-4 w-4" />
-              <AlertDescription>
+          {/* Show upgrade button for any demo user */}
+          {(isDemoMode || hasUsedDemoForCourse) && (
+            <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+              <Crown className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <AlertDescription className="text-blue-800 dark:text-blue-200">
                 <div className="flex items-center justify-between">
-                  <span>You have used your demo access. Subscribe to continue viewing recordings.</span>
+                  <span>Want unlimited access? Upgrade to full subscription now!</span>
                   <Button size="sm" onClick={() => onAccessRequired?.()}>
                     <Crown className="h-4 w-4 mr-2" />
-                    View Plans
+                    Upgrade Now
                   </Button>
                 </div>
               </AlertDescription>

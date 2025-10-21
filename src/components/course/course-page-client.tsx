@@ -5,12 +5,14 @@ import { useAuth } from '@/contexts/auth-context';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import ThemeToggle from '@/components/theme-toggle';
+import { Button } from '@/components/ui/button';
 import QuizSection from '@/components/quiz/quiz-section';
 import FileUpload from '@/components/ui/file-upload';
 import LectureRecordingsList from '@/components/course/lecture-recordings-list';
 import LectureRecordingUpload from '@/components/course/lecture-recording-upload';
 import DemoAccessRequest from '@/components/course/demo-access-request';
-import SubscriptionPlans from '@/components/course/subscription-plans';
+import ModernSubscriptionModal from '@/components/modern-subscription-modal';
+import PaymentPopup from '@/components/payment-popup';
 import AssignmentManagement from '@/components/assignments/assignment-management';
 import StudentLiveClassCalendar from '@/components/attendance/student-live-class-calendar';
 import { uploadToS3 } from '@/lib/s3';
@@ -28,6 +30,7 @@ import {
   Download,
   Calendar,
   X,
+  Crown,
 } from 'lucide-react';
 
 type ChapterItem = {
@@ -55,11 +58,13 @@ interface CoursePageClientProps {
 }
 
 export default function CoursePageClient({ course, chapters, courseId, activeTab }: CoursePageClientProps) {
-  const { user, userRole } = useAuth();
+  const { user, userRole, loading: authLoading } = useAuth();
   const [chaptersList, setChaptersList] = useState<ChapterItem[]>(chapters);
   const [isAdmin, setIsAdmin] = useState(false);
   const [hasRecordingDemo, setHasRecordingDemo] = useState(false);
   const [hasLiveDemo, setHasLiveDemo] = useState(false);
+  const [demoAccessLoading, setDemoAccessLoading] = useState(false); // Start as false to show tabs immediately
+  const [demoCheckComplete, setDemoCheckComplete] = useState(false); // Track if demo check is done
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [quizResults] = useState<any[]>([]);
   const [showQuizResults, setShowQuizResults] = useState(false);
@@ -69,27 +74,241 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [showChoiceModal, setShowChoiceModal] = useState(false);
+  const [isUpgrade, setIsUpgrade] = useState(false);
+  const [selectedSubscriptionPlan, setSelectedSubscriptionPlan] = useState<any>(null);
+  const [subscriptionPlans, setSubscriptionPlans] = useState<any[]>([]);
+  const [subscriptionPlansLoading, setSubscriptionPlansLoading] = useState(false);
+  const [showPaymentPopup, setShowPaymentPopup] = useState(false);
 
   useEffect(() => {
     setIsAdmin(userRole === 'admin' || userRole === 'superadmin');
   }, [userRole]);
 
+  // Fetch subscription plans when modal opens
+  useEffect(() => {
+    if (showSubscriptionModal) {
+      fetchSubscriptionPlans();
+    }
+  }, [showSubscriptionModal]);
+
+  // Handle pending demo type after signup
+  useEffect(() => {
+    const handlePendingDemo = async () => {
+      const pendingDemoType = localStorage.getItem('pendingDemoType');
+      console.log('🔍 Checking for pending demo:', { pendingDemoType, user: !!user, userRole, authLoading });
+      
+      // Wait for auth to finish loading and user to be available
+      if (pendingDemoType && !authLoading && user && userRole === 'student') {
+        console.log('🎯 Creating demo access for:', { pendingDemoType, courseId });
+        // Clear the pending demo type
+        localStorage.removeItem('pendingDemoType');
+        
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            console.log('🔐 Session found, creating demo access...');
+            // Create the demo access
+            const response = await fetch('/api/demo-access', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                courseId,
+                accessType: pendingDemoType
+              }),
+            });
+
+            const responseData = await response.json();
+            console.log('📡 Demo access API response:', { status: response.status, data: responseData });
+
+            if (response.ok) {
+              console.log('✅ Demo access created after signup:', pendingDemoType);
+              // Refresh the page to show the demo access
+              window.location.reload();
+            } else {
+              console.error('❌ Failed to create demo access after signup:', responseData);
+            }
+          } else {
+            console.error('❌ No session found for demo access creation');
+          }
+        } catch (error) {
+          console.error('Error creating demo access after signup:', error);
+        }
+      }
+    };
+
+    handlePendingDemo();
+  }, [user, userRole, courseId, authLoading]);
+
+  // Fallback: Try to create demo access after a delay if user still isn't loaded
+  useEffect(() => {
+    const pendingDemoType = localStorage.getItem('pendingDemoType');
+    console.log('🔄 Fallback check:', { pendingDemoType, user: !!user, authLoading });
+    
+    if (pendingDemoType && !authLoading) {
+      console.log('⏰ Setting up fallback demo creation...');
+      const timeoutId = setTimeout(async () => {
+        console.log('🔄 Fallback: Attempting to create demo access...');
+        try {
+          // Try multiple ways to get the session
+          console.log('🔍 Fallback: Trying to get session...');
+          
+          // Method 1: Get current session
+          let { data: { session } } = await supabase.auth.getSession();
+          console.log('🔍 Method 1 - getSession:', { hasSession: !!session, hasToken: !!session?.access_token });
+          
+          // Method 2: If no session, try to refresh
+          if (!session?.access_token) {
+            console.log('🔄 Method 2 - Trying to refresh session...');
+            const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
+            session = refreshedSession;
+            console.log('🔍 Method 2 - refreshSession:', { hasSession: !!session, hasToken: !!session?.access_token });
+          }
+          
+          // Method 3: If still no session, try to get from storage
+          if (!session?.access_token) {
+            console.log('🔄 Method 3 - Checking localStorage for session...');
+            const storedSession = localStorage.getItem('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0] + '-auth-token');
+            if (storedSession) {
+              try {
+                const parsedSession = JSON.parse(storedSession);
+                session = parsedSession;
+                console.log('🔍 Method 3 - localStorage session:', { hasSession: !!session, hasToken: !!session?.access_token });
+              } catch (e) {
+                console.log('❌ Method 3 - Failed to parse stored session');
+              }
+            }
+          }
+          
+          if (session?.access_token) {
+            console.log('🔐 Fallback: Session found, creating demo access...');
+            const response = await fetch('/api/demo-access', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                courseId,
+                accessType: pendingDemoType
+              }),
+            });
+
+            const responseData = await response.json();
+            console.log('📡 Fallback: Demo access API response:', { status: response.status, data: responseData });
+
+            if (response.ok) {
+              console.log('✅ Fallback: Demo access created successfully');
+              localStorage.removeItem('pendingDemoType');
+              window.location.reload();
+            } else {
+              console.error('❌ Fallback: Failed to create demo access:', responseData);
+            }
+          } else {
+            console.error('❌ Fallback: No session found after trying all methods');
+            // As a last resort, try to create demo access without auth (this might work if the API allows it)
+            console.log('🔄 Last resort: Trying to create demo access without auth...');
+            const response = await fetch('/api/demo-access', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                courseId,
+                accessType: pendingDemoType
+              }),
+            });
+
+            const responseData = await response.json();
+            console.log('📡 Last resort: Demo access API response:', { status: response.status, data: responseData });
+
+            if (response.ok) {
+              console.log('✅ Last resort: Demo access created successfully');
+              localStorage.removeItem('pendingDemoType');
+              window.location.reload();
+            } else {
+              console.error('❌ Last resort: Failed to create demo access:', responseData);
+            }
+          }
+        } catch (error) {
+          console.error('❌ Fallback: Error creating demo access:', error);
+        }
+      }, 3000); // Wait 3 seconds
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [courseId, authLoading]);
+
   // Load per-course demo access to toggle sidebar options
   useEffect(() => {
     const run = async () => {
+      // Skip demo check for non-students entirely
+      if (userRole !== 'student') {
+        setDemoAccessLoading(false);
+        setDemoCheckComplete(true);
+        return;
+      }
+      
+      setDemoAccessLoading(true);
+      
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token || userRole !== 'student') return;
-        const res = await fetch(`/api/demo-access?courseId=${courseId}`, {
+        if (!session?.access_token) {
+          setDemoAccessLoading(false);
+          setDemoCheckComplete(true);
+          return;
+        }
+        
+        // Use a reasonable timeout for the API call
+        console.log('🚀 Starting demo access check for course:', courseId);
+        const startTime = Date.now();
+        
+        const fetchPromise = fetch(`/api/demo-access?courseId=${courseId}`, {
           headers: { 'Authorization': `Bearer ${session.access_token}` },
         });
-        if (!res.ok) return;
+        
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), 1500) // More reasonable timeout
+        );
+        
+        const res = await Promise.race([fetchPromise, timeoutPromise]) as Response;
+        console.log('✅ Demo access check completed in:', Date.now() - startTime, 'ms');
+        
+        if (!res.ok) {
+          // On error, assume no demo access
+          setHasRecordingDemo(false);
+          setHasLiveDemo(false);
+          setDemoAccessLoading(false);
+          return;
+        }
+        
         const json = await res.json();
         const list = (json?.demoAccess ?? []) as any[];
         setHasRecordingDemo(list.some(a => a.access_type === 'lecture_recording'));
         setHasLiveDemo(list.some(a => a.access_type === 'live_class'));
-      } catch {}
+      } catch (error) {
+        console.error('Demo access check failed:', error);
+        // Set defaults on error - assume no demo access
+        setHasRecordingDemo(false);
+        setHasLiveDemo(false);
+        
+        // If it's a timeout, try a simpler approach
+        if (error instanceof Error && error.message === 'Timeout') {
+          console.log('⏰ Demo access check timed out, using fallback');
+          // Set a timeout to try again later
+          setTimeout(() => {
+            console.log('🔄 Retrying demo access check...');
+            run();
+          }, 2000);
+        }
+      } finally {
+        setDemoAccessLoading(false);
+      }
     };
+    
+    // Run immediately without delay
     run();
   }, [courseId, userRole, user]);
 
@@ -98,12 +317,26 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
     console.log('📋 LectureRecordingsList props:', {
       courseId,
       finalUserRole: isAdmin ? (userRole === 'superadmin' ? "superadmin" : "admin") : "student",
-      showAccessControls: userRole === 'student' && !!user,
+      showAccessControls: !authLoading && userRole === 'student' && !!user,
       isAdmin,
       originalUserRole: userRole,
-      hasUser: !!user
+      hasUser: !!user,
+      authLoading,
+      userRole,
+      user: user ? { id: user.id, email: user.email } : null
     });
-  }, [courseId, isAdmin, userRole, user]);
+  }, [courseId, isAdmin, userRole, user, authLoading]);
+
+  // Debug auth state changes
+  useEffect(() => {
+    console.log('🔐 Auth state debug:', {
+      user: !!user,
+      userRole,
+      authLoading,
+      userId: user?.id,
+      userEmail: user?.email
+    });
+  }, [user, userRole, authLoading]);
 
   const handleDeleteChapter = async (chapterId: string) => {
     if (!isAdmin) return;
@@ -237,6 +470,78 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
     }
   };
 
+  const fetchSubscriptionPlans = async () => {
+    try {
+      setSubscriptionPlansLoading(true);
+      const response = await fetch('/api/subscription-plans');
+      const data = await response.json();
+      
+      if (response.ok) {
+        setSubscriptionPlans(data.plans || []);
+      } else {
+        console.error('Failed to fetch subscription plans:', data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching subscription plans:', error);
+    } finally {
+      setSubscriptionPlansLoading(false);
+    }
+  };
+
+  const handleSubscriptionPlanSelect = async (planId: string, plan: any) => {
+    setSelectedSubscriptionPlan(plan);
+    setShowSubscriptionModal(false);
+    // Open payment popup with selected plan
+    // For now, we'll use the direct API approach like the old subscription plans
+    try {
+      console.log('🔐 Checking authentication for subscription...');
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('🔐 Session data:', { hasSession: !!session, hasToken: !!session?.access_token });
+      
+      if (!session?.access_token) {
+        console.error('❌ No authentication token found');
+        alert('Please log in to subscribe');
+        return;
+      }
+
+      console.log('📤 Making subscription request:', { courseId, subscriptionPlanId: planId });
+      
+      const response = await fetch('/api/user-subscriptions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          courseId,
+          subscriptionPlanId: planId
+        }),
+      });
+
+      console.log('📥 Subscription response status:', response.status);
+      const data = await response.json();
+      console.log('📥 Subscription response data:', data);
+
+      if (response.ok) {
+        if (data.requiresApproval) {
+          alert('Payment verification request submitted! Please wait for admin approval. You will be notified once approved.');
+        } else {
+          alert('Subscription created successfully!');
+        }
+        window.location.reload();
+      } else {
+        if (data.error.includes('already has an active subscription')) {
+          alert('You already have an active subscription for this course');
+        } else {
+          alert(data.error || 'Failed to create subscription');
+        }
+      }
+    } catch (error) {
+      console.error('Error creating subscription:', error);
+      alert('Failed to create subscription');
+    }
+  };
+
   return (
     <div className="space-y-0">
       {/* Header bar */}
@@ -250,6 +555,29 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
             </span>
           )}
         </div>
+        
+        {/* Upgrade button for demo users */}
+        {(hasRecordingDemo || hasLiveDemo) && userRole === 'student' && !isAdmin && (
+          <Button 
+            size="sm" 
+            onClick={() => {
+              console.log('🔐 Upgrade button clicked - checking auth state:', { 
+                user: !!user, 
+                userRole, 
+                isAdmin,
+                hasRecordingDemo,
+                hasLiveDemo 
+              });
+              setIsUpgrade(true);
+              setShowSubscriptionModal(true);
+            }}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white mr-2"
+          >
+            <Crown className="h-4 w-4 mr-2" />
+            Upgrade Now
+          </Button>
+        )}
+        
         <ThemeToggle />
       </div>
       <div className="px-0 h-[calc(100vh-56px)] overflow-hidden flex gap-6">
@@ -278,6 +606,11 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                     <Link href={{ pathname: `/courses/${courseId}`, query: { tab: 'lectures' } }} className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='lectures' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}>
                       <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='lectures' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
                       <Play className="h-4 w-4" /> Recorded Lectures
+                      {demoAccessLoading && userRole === 'student' && !isAdmin && (
+                        <div className="ml-auto">
+                          <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                      )}
                     </Link>
                   </li>
                 )}
@@ -298,6 +631,11 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                     <Link href={{ pathname: `/courses/${courseId}`, query: { tab: 'live-classes' } }} className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='live-classes' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}>
                       <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='live-classes' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
                       <Calendar className="h-4 w-4" /> Live Classes
+                      {demoAccessLoading && userRole === 'student' && !isAdmin && (
+                        <div className="ml-auto">
+                          <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                      )}
                     </Link>
                   </li>
                 )}
@@ -459,8 +797,11 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
               <LectureRecordingsList
                 courseId={courseId}
                 userRole={isAdmin ? (userRole === 'superadmin' ? "superadmin" : "admin") : "student"}
-                showAccessControls={userRole === 'student' && !!user}
-                onAccessRequired={() => setShowSubscriptionModal(true)}
+                showAccessControls={!authLoading && userRole === 'student' && !!user}
+                onAccessRequired={() => {
+                  setIsUpgrade(true);
+                  setShowSubscriptionModal(true);
+                }}
               />
             </section>
           )}
@@ -731,22 +1072,39 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                  Choose Your Plan
+                  {isUpgrade ? 'Upgrade to Full Access' : 'Choose Your Plan'}
                 </h3>
                 <button
-                  onClick={() => setShowSubscriptionModal(false)}
+                  onClick={() => {
+                    setShowSubscriptionModal(false);
+                    setIsUpgrade(false);
+                  }}
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                 >
                   <X className="h-6 w-6" />
                 </button>
               </div>
-              <SubscriptionPlans
-                courseId={courseId}
-                courseTitle={course.title}
-                onSubscriptionCreated={() => {
+              {isUpgrade && (
+                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-blue-800 dark:text-blue-200 text-sm">
+                    <strong>Upgrade from Demo:</strong> You've used your demo access. Choose a plan below to get full access to all content.
+                  </p>
+                </div>
+              )}
+              <ModernSubscriptionModal
+                isOpen={showSubscriptionModal}
+                onClose={() => {
                   setShowSubscriptionModal(false);
-                  window.location.reload();
+                  setIsUpgrade(false);
                 }}
+                course={{
+                  id: courseId,
+                  title: course.title,
+                  subject: course.title
+                }}
+                onSelectPlan={handleSubscriptionPlanSelect}
+                subscriptionPlans={subscriptionPlans}
+                loading={subscriptionPlansLoading}
               />
             </div>
           </div>
@@ -821,6 +1179,30 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Floating Upgrade Button for Demo Users */}
+      {(hasRecordingDemo || hasLiveDemo) && userRole === 'student' && !isAdmin && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <Button 
+            size="lg"
+            onClick={() => {
+              console.log('🔐 Floating upgrade button clicked - checking auth state:', { 
+                user: !!user, 
+                userRole, 
+                isAdmin,
+                hasRecordingDemo,
+                hasLiveDemo 
+              });
+              setIsUpgrade(true);
+              setShowSubscriptionModal(true);
+            }}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+          >
+            <Crown className="h-5 w-5 mr-2" />
+            Upgrade to Full Access
+          </Button>
         </div>
       )}
     </div>

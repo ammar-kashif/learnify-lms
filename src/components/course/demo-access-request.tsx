@@ -57,7 +57,14 @@ export default function DemoAccessRequest({
 
   const handleRequestDemo = async (accessType: AccessType) => {
     if (!user || !session?.access_token) {
-      toast.error('Please log in to request demo access');
+      // User is not authenticated, store demo selection and redirect to signup
+      localStorage.setItem('selectedCourseForDemo', JSON.stringify({
+        id: courseId,
+        title: courseTitle
+      }));
+      localStorage.setItem('selectedDemoType', accessType);
+      toast.success('Demo selection saved! Please sign up to access your demo.');
+      onAccessGranted?.();
       return;
     }
 
