@@ -12,7 +12,7 @@ import LectureRecordingsList from '@/components/course/lecture-recordings-list';
 import LectureRecordingUpload from '@/components/course/lecture-recording-upload';
 import DemoAccessRequest from '@/components/course/demo-access-request';
 import ModernSubscriptionModal from '@/components/modern-subscription-modal';
-import PaymentPopup from '@/components/payment-popup';
+// PaymentPopup is not currently used
 import AssignmentManagement from '@/components/assignments/assignment-management';
 import StudentLiveClassCalendar from '@/components/attendance/student-live-class-calendar';
 import { uploadToS3 } from '@/lib/s3';
@@ -64,7 +64,6 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
   const [hasRecordingDemo, setHasRecordingDemo] = useState(false);
   const [hasLiveDemo, setHasLiveDemo] = useState(false);
   const [demoAccessLoading, setDemoAccessLoading] = useState(false); // Start as false to show tabs immediately
-  const [demoCheckComplete, setDemoCheckComplete] = useState(false); // Track if demo check is done
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [quizResults] = useState<any[]>([]);
   const [showQuizResults, setShowQuizResults] = useState(false);
@@ -75,10 +74,9 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [showChoiceModal, setShowChoiceModal] = useState(false);
   const [isUpgrade, setIsUpgrade] = useState(false);
-  const [selectedSubscriptionPlan, setSelectedSubscriptionPlan] = useState<any>(null);
+  // Selected plan is handled via localStorage in signup flow; keep local state minimal
   const [subscriptionPlans, setSubscriptionPlans] = useState<any[]>([]);
   const [subscriptionPlansLoading, setSubscriptionPlansLoading] = useState(false);
-  const [showPaymentPopup, setShowPaymentPopup] = useState(false);
 
   useEffect(() => {
     setIsAdmin(userRole === 'admin' || userRole === 'superadmin');
@@ -247,7 +245,7 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
       // Skip demo check for non-students entirely
       if (userRole !== 'student') {
         setDemoAccessLoading(false);
-        setDemoCheckComplete(true);
+        
         return;
       }
       
@@ -257,7 +255,7 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.access_token) {
           setDemoAccessLoading(false);
-          setDemoCheckComplete(true);
+          
           return;
         }
         
@@ -488,8 +486,7 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
     }
   };
 
-  const handleSubscriptionPlanSelect = async (planId: string, plan: any) => {
-    setSelectedSubscriptionPlan(plan);
+  const handleSubscriptionPlanSelect = async (planId: string, _plan: any) => {
     setShowSubscriptionModal(false);
     // Open payment popup with selected plan
     // For now, we'll use the direct API approach like the old subscription plans
@@ -1087,7 +1084,7 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
               {isUpgrade && (
                 <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
                   <p className="text-blue-800 dark:text-blue-200 text-sm">
-                    <strong>Upgrade from Demo:</strong> You've used your demo access. Choose a plan below to get full access to all content.
+                    <strong>Upgrade from Demo:</strong> You&apos;ve used your demo access. Choose a plan below to get full access to all content.
                   </p>
                 </div>
               )}

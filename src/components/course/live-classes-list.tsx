@@ -33,7 +33,7 @@ export default function LiveClassesList({
   showAccessControls = false,
   onAccessRequired
 }: LiveClassesListProps) {
-  const { user, session } = useAuth();
+  const { session } = useAuth();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
   const [selectedLiveClass, setSelectedLiveClass] = useState<LiveClass | null>(null);

@@ -81,7 +81,7 @@ export async function PATCH(
     // Get the payment verification details
     const { data: paymentVerification, error: fetchError } = await supabaseAdmin
       .from('payment_verifications')
-      .select('id, student_id, course_id, status')
+      .select('id, student_id, course_id, status, subscription_plan_id, amount')
       .eq('id', paymentId)
       .single();
 
@@ -148,19 +148,35 @@ export async function PATCH(
           .eq('id', paymentId)
           .single();
 
-        if (!paymentDetails?.subscription_plans) {
+        // subscription_plans relation can return an object (1:1) or array depending on query shape
+        let plan: any = (paymentDetails as any).subscription_plans;
+        if (Array.isArray(plan)) {
+          plan = plan[0];
+        }
+        // Fallback: fetch by subscription_plan_id if relation is missing
+        if (!plan && (paymentDetails as any).subscription_plan_id) {
+          const { data: fetchedPlan } = await supabaseAdmin
+            .from('subscription_plans')
+            .select('id, name, type, price_pkr, duration_months, duration_until_date')
+            .eq('id', (paymentDetails as any).subscription_plan_id)
+            .single();
+          plan = fetchedPlan;
+        }
+        // Fallback 2: infer plan by exact amount match if provided
+        if (!plan && (paymentVerification as any).amount) {
+          const { data: plansByAmount } = await supabaseAdmin
+            .from('subscription_plans')
+            .select('id, name, type, price_pkr, duration_months, duration_until_date')
+            .eq('price_pkr', (paymentVerification as any).amount)
+            .eq('is_active', true)
+            .limit(1)
+            .maybeSingle();
+          plan = plansByAmount || plan;
+        }
+        if (!plan) {
           console.error('❌ No subscription plan found for payment verification');
           return NextResponse.json(
             { error: 'Subscription plan not found' },
-            { status: 400 }
-          );
-        }
-
-        const plan = paymentDetails.subscription_plans?.[0];
-        if (!plan) {
-          console.error('❌ No subscription plan found');
-          return NextResponse.json(
-            { error: 'No subscription plan found' },
             { status: 400 }
           );
         }
@@ -200,14 +216,15 @@ export async function PATCH(
           );
         }
 
-        // Create student enrollment
+        // Create student enrollment (record enrollment date at approval time)
         const { error: enrollmentError } = await supabaseAdmin
           .from('student_enrollments')
           .upsert({
             student_id: paymentVerification.student_id,
             course_id: paymentVerification.course_id,
             subscription_id: subscription.id,
-            enrollment_type: 'paid'
+            enrollment_type: 'paid',
+            enrollment_date: new Date().toISOString()
           });
 
         if (enrollmentError) {

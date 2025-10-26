@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Check, X, Star, Clock, Calendar, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -110,7 +109,11 @@ export default function ModernSubscriptionModal({
       {/* Semi-transparent dark overlay */}
       <div 
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        role="button"
+        tabIndex={0}
+        aria-label="Close subscription modal"
         onClick={onClose}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { onClose(); } }}
       />
       
       {/* Modal Content */}
@@ -169,7 +172,7 @@ export default function ModernSubscriptionModal({
 
             {/* Plans Grid - 3 cards side by side */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {currentPlans.map((plan, index) => {
+              {currentPlans.map((plan) => {
                 const isSelected = selectedPlan === plan.id;
                 const planTypeColor = getPlanTypeColor(plan);
                 const planTypeLabel = getPlanTypeLabel(plan);
@@ -225,7 +228,7 @@ export default function ModernSubscriptionModal({
                       {/* Features */}
                       <div className="space-y-3 mb-6">
                         <h4 className="font-semibold text-gray-900 dark:text-white text-sm mb-3">
-                          What's included:
+                          What&apos;s included:
                         </h4>
                         <ul className="space-y-2">
                           {plan.features.map((feature, featureIndex) => (

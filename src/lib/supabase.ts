@@ -137,18 +137,21 @@ export interface Database {
           course_id: string;
           subscription_id: string | null;
           enrollment_type: 'paid' | 'demo';
+          enrollment_date: string; // timestamptz
         };
         Insert: {
           student_id: string;
           course_id: string;
           subscription_id?: string | null;
           enrollment_type?: 'paid' | 'demo';
+          enrollment_date?: string;
         };
         Update: {
           student_id?: string;
           course_id?: string;
           subscription_id?: string | null;
           enrollment_type?: 'paid' | 'demo';
+          enrollment_date?: string;
         };
       };
       payment_verifications: {

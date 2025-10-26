@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse request body
-    const { courseId, amount } = await request.json();
+    const { courseId, amount, subscriptionPlanId } = await request.json();
 
     if (!courseId || !amount || amount <= 0) {
       return NextResponse.json(
@@ -154,7 +154,8 @@ export async function POST(request: NextRequest) {
         student_id: user.id,
         course_id: courseId,
         amount: amount,
-        status: 'pending'
+        status: 'pending',
+        subscription_plan_id: subscriptionPlanId || null
       })
       .select()
       .single();

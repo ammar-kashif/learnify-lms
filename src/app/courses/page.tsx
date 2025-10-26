@@ -32,7 +32,7 @@ export default function CoursesPage() {
   const [error, setError] = useState<string | null>(null);
   const [showChoiceModal, setShowChoiceModal] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
-  const [courseEnrollments, setCourseEnrollments] = useState<Record<string, any>>({});
+  // Removed unused courseEnrollments state to satisfy build
   const [checkingEnrollment, setCheckingEnrollment] = useState<string | null>(null);
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);

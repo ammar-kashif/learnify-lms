@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +32,8 @@ import {
   Eye,
   FileText,
   Settings,
-  Calendar
+  Calendar,
+  Edit
 } from 'lucide-react';
 import LiveClassCalendar from '@/components/attendance/live-class-calendar';
 import LiveClassForm from '@/components/attendance/live-class-form';
@@ -76,6 +78,11 @@ export default function AdminDashboard() {
   const [enrollments, setEnrollments] = useState<any[]>([]);
   // const [enrollmentStats] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'assignments' | 'payments' | 'enrollments' | 'live-classes' | 'plans'>('users');
+  
+  // Enrollment management states
+  const [showEditEnrollment, setShowEditEnrollment] = useState(false);
+  const [selectedEnrollment, setSelectedEnrollment] = useState<any>(null);
+  const [subscriptionPlans, setSubscriptionPlans] = useState<any[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userSearch, setUserSearch] = useState('');
@@ -210,7 +217,16 @@ export default function AdminDashboard() {
       console.log('🔄 Fetching enrollment data...');
       setDataLoading(true);
       
-      const response = await fetch('/api/admin/enrollments-simple');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await fetch('/api/admin/enrollments', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
       const data = await response.json();
       
       if (!response.ok) {
@@ -224,6 +240,21 @@ export default function AdminDashboard() {
       setError('Failed to fetch enrollment data');
     } finally {
       setDataLoading(false);
+    }
+  }, []);
+
+  const fetchSubscriptionPlans = useCallback(async () => {
+    try {
+      const response = await fetch('/api/subscription-plans');
+      const data = await response.json();
+      
+      if (response.ok) {
+        setSubscriptionPlans(data.plans || []);
+      } else {
+        console.error('Failed to fetch subscription plans:', data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching subscription plans:', error);
     }
   }, []);
 
@@ -624,6 +655,112 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleEditEnrollment = (enrollment: any) => {
+    console.log('🔍 Editing enrollment:', enrollment);
+    if (!enrollment.student_id || !enrollment.course_id) {
+      console.error('❌ Enrollment missing required fields:', enrollment);
+      alert('Error: Enrollment data is incomplete. Cannot edit this enrollment.');
+      return;
+    }
+    // Create a composite ID for the enrollment
+    const enrollmentId = `${enrollment.student_id}-${enrollment.course_id}`;
+    setSelectedEnrollment({ ...enrollment, id: enrollmentId });
+    setShowEditEnrollment(true);
+    fetchSubscriptionPlans();
+  };
+
+  const handleUpdateEnrollment = async (action: 'promote_to_paid' | 'change_plan', subscriptionPlanId: string) => {
+    try {
+      console.log('🔄 Updating enrollment:', selectedEnrollment?.id, 'action:', action);
+      
+      if (!selectedEnrollment?.student_id || !selectedEnrollment?.course_id) {
+        throw new Error('No enrollment selected or enrollment data is incomplete');
+      }
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await fetch('/api/admin/enrollments', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          studentId: selectedEnrollment.student_id,
+          courseId: selectedEnrollment.course_id,
+          action,
+          subscriptionPlanId
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update enrollment');
+      }
+
+      console.log('✅ Enrollment updated successfully');
+      alert(`Enrollment ${action === 'promote_to_paid' ? 'promoted to paid' : 'plan changed'} successfully!`);
+      
+      setShowEditEnrollment(false);
+      setSelectedEnrollment(null);
+      await fetchEnrollments();
+    } catch (error) {
+      console.error('❌ Error updating enrollment:', error);
+      alert(`Failed to update enrollment: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleDeleteEnrollment = async (enrollment: any) => {
+    if (confirm('Are you sure you want to delete this enrollment? This action cannot be undone and will also delete any associated subscription.')) {
+      try {
+        console.log('🗑️ Deleting enrollment:', enrollment);
+        
+        if (!enrollment.student_id || !enrollment.course_id) {
+          throw new Error('Enrollment data is incomplete');
+        }
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error('No authentication token found');
+        }
+
+        const response = await fetch('/api/admin/enrollments', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ 
+            studentId: enrollment.student_id,
+            courseId: enrollment.course_id
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to delete enrollment');
+        }
+
+        console.log('✅ Enrollment deleted successfully');
+        alert('Enrollment deleted successfully!');
+        
+        await fetchEnrollments();
+      } catch (error) {
+        console.error('❌ Error deleting enrollment:', error);
+        alert(`Failed to delete enrollment: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+  };
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -631,10 +768,6 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Error signing out:', error);
     }
-  };
-
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
   const handleDeleteCourse = async (courseId: string) => {
@@ -1011,67 +1144,99 @@ export default function AdminDashboard() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Subscription
                         </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Enrollment Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                      {enrollments.map((enrollment) => (
-                        <tr key={enrollment.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      {enrollments.map((enrollment, index) => (
+                        <tr key={`${enrollment.student_id}-${enrollment.course_id}` || `enrollment-${index}`} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <div className="flex-shrink-0 h-10 w-10">
-                                {enrollment.studentAvatar ? (
+                                {enrollment.users?.avatar_url ? (
                                   <img
                                     className="h-10 w-10 rounded-full"
-                                    src={enrollment.studentAvatar}
-                                    alt={enrollment.studentName}
+                                    src={enrollment.users.avatar_url}
+                                    alt={enrollment.users.full_name}
                                   />
                                 ) : (
                                   <div className="h-10 w-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
                                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                      {enrollment.studentName.charAt(0).toUpperCase()}
+                                      {enrollment.users?.full_name?.charAt(0).toUpperCase() || 'U'}
                                     </span>
                                   </div>
                                 )}
                               </div>
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                  {enrollment.studentName}
+                                  {enrollment.users?.full_name || 'Unknown'}
                                 </div>
                                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                                  {enrollment.studentEmail}
+                                  {enrollment.users?.email || 'Unknown'}
                                 </div>
                               </div>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900 dark:text-white">
-                              {enrollment.courseTitle}
+                              {enrollment.courses?.title || 'Unknown'}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center">
                             <Badge 
-                              variant={enrollment.enrollmentType === 'paid' ? 'default' : 'secondary'}
-                              className={enrollment.enrollmentType === 'paid' 
+                              variant={enrollment.enrollment_type === 'paid' ? 'default' : 'secondary'}
+                              className={enrollment.enrollment_type === 'paid' 
                                 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
                                 : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
                               }
                             >
-                              {enrollment.enrollmentType === 'paid' ? 'Paid' : 'Demo'}
+                              {enrollment.enrollment_type === 'paid' ? 'Paid' : 'Demo'}
                             </Badge>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            {enrollment.subscription ? (
+                            {enrollment.user_subscriptions ? (
                               <div className="text-sm">
                                 <div className="font-medium text-gray-900 dark:text-white">
-                                  {enrollment.subscription.planName}
+                                  {enrollment.user_subscriptions.subscription_plans?.name || 'Unknown Plan'}
                                 </div>
                                 <div className="text-gray-500 dark:text-gray-400">
-                                  {enrollment.subscription.planType} - PKR {enrollment.subscription.price}
+                                  {enrollment.user_subscriptions.subscription_plans?.type?.replace('_', ' ').toUpperCase()} - PKR {enrollment.user_subscriptions.subscription_plans?.price_pkr}
+                                </div>
+                                <div className="text-xs text-gray-400 dark:text-gray-500">
+                                  Expires: {formatDate(enrollment.user_subscriptions.expires_at)}
                                 </div>
                               </div>
                             ) : (
                               <span className="text-gray-400 dark:text-gray-500">No subscription</span>
                             )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {enrollment.enrollment_date ? formatDate(enrollment.enrollment_date) : 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEditEnrollment(enrollment)}
+                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDeleteEnrollment(enrollment)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1648,12 +1813,14 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <Label htmlFor="description" className="text-gray-900 dark:text-white">Description</Label>
-                  <Input
+                  <Textarea
                     id="description"
                     value={courseForm.description}
                     onChange={(e) => setCourseForm({ ...courseForm, description: e.target.value })}
                     required
-                    className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                    rows={4}
+                    className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white resize-y"
+                    placeholder="Write a short course description..."
                   />
                 </div>
               </div>
@@ -1733,6 +1900,81 @@ export default function AdminDashboard() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Enrollment Modal */}
+      {showEditEnrollment && selectedEnrollment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md border border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">
+              Edit Enrollment
+            </h3>
+            
+            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Student:</strong> {selectedEnrollment.users?.full_name} ({selectedEnrollment.users?.email})
+              </p>
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Course:</strong> {selectedEnrollment.courses?.title}
+              </p>
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Current Type:</strong> {selectedEnrollment.enrollment_type}
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {selectedEnrollment.enrollment_type === 'demo' && (
+                <div>
+                  <Label className="text-gray-900 dark:text-white">Promote to Paid</Label>
+                  <Select onValueChange={(value) => handleUpdateEnrollment('promote_to_paid', value)}>
+                    <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                      <SelectValue placeholder="Select a subscription plan" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600">
+                      {subscriptionPlans.map((plan) => (
+                        <SelectItem key={plan.id} value={plan.id} className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600">
+                          {plan.name} - PKR {plan.price_pkr} ({plan.type.replace('_', ' ').toUpperCase()})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {selectedEnrollment.enrollment_type === 'paid' && (
+                <div>
+                  <Label className="text-gray-900 dark:text-white">Change Subscription Plan</Label>
+                  <Select onValueChange={(value) => handleUpdateEnrollment('change_plan', value)}>
+                    <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                      <SelectValue placeholder="Select a new subscription plan" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600">
+                      {subscriptionPlans.map((plan) => (
+                        <SelectItem key={plan.id} value={plan.id} className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600">
+                          {plan.name} - PKR {plan.price_pkr} ({plan.type.replace('_', ' ').toUpperCase()})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowEditEnrollment(false);
+                  setSelectedEnrollment(null);
+                }}
+                className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         </div>
       )}

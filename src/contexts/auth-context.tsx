@@ -231,7 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Now sign in the user to establish a session
       console.log('🔐 Signing in user to establish session...');
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email: email,
         password: password
       });

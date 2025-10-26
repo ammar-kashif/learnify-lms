@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     // Query the student_enrollments table with correct columns
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('student_enrollments')
-      .select('student_id, course_id, subscription_id, enrollment_type')
+      .select('student_id, course_id, subscription_id, enrollment_type, enrollment_date')
       .eq('student_id', authedUserId)
       .eq('course_id', courseId)
       .maybeSingle();
@@ -76,6 +76,7 @@ export async function GET(request: NextRequest) {
       isPaidEnrollment: enrollment?.enrollment_type === 'paid',
       isDemoEnrollment: enrollment?.enrollment_type === 'demo',
       subscriptionId: enrollment?.subscription_id || null,
+      enrollmentDate: enrollment?.enrollment_date || null,
       // Include the actual enrollment data for debugging
       enrollmentData: enrollment
     });
@@ -156,7 +157,7 @@ export async function POST(request: NextRequest) {
 
     const { error: insertError } = await supabase
       .from('student_enrollments')
-      .insert({ student_id: authedUserId, course_id: courseId });
+      .insert({ student_id: authedUserId, course_id: courseId, enrollment_date: new Date().toISOString() });
     if (insertError) throw insertError;
 
     return NextResponse.json({ success: true });
