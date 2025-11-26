@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import BugReportForm from '@/components/bug-reports/bug-report-form';
 
 interface ErrorFallbackProps {
   error: Error;
@@ -47,6 +48,15 @@ export function ErrorFallback({
             >
               Go Home
             </Button>
+            <BugReportForm
+              initialError={error.message}
+              initialUrl={typeof window !== 'undefined' ? window.location.href : ''}
+              trigger={
+                <Button variant="outline" className="flex-1">
+                  Report Bug
+                </Button>
+              }
+            />
           </div>
         </CardContent>
       </Card>

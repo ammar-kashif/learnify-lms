@@ -22,6 +22,8 @@ import ThemeToggle from '@/components/theme-toggle';
 import AvatarUpload from '@/components/ui/avatar-upload';
 import Avatar from '@/components/ui/avatar';
 import TwoFactorSettings from '@/components/auth/two-factor-settings';
+import FeedbackForm from '@/components/feedback/feedback-form';
+import BugReportForm from '@/components/bug-reports/bug-report-form';
 
 export default function SettingsPage() {
   const { user, userProfile, signOut, updateUserProfile } = useAuth();
@@ -323,6 +325,43 @@ export default function SettingsPage() {
                     <Shield className="h-4 w-4 mr-2" />
                     Manage 2FA
                   </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Feedback & Support */}
+            <Card className="border-gray-200 dark:border-gray-700">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Mail className="h-5 w-5" />
+                  <span>Feedback & Support</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                        Send Feedback
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                        Share your thoughts, suggestions, or feature requests.
+                      </p>
+                    </div>
+                    <FeedbackForm />
+                  </div>
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                        Report a Bug
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                        Found an issue? Help us fix it by reporting bugs.
+                      </p>
+                    </div>
+                    <BugReportForm />
+                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,8 +29,18 @@ export default function SignInPage() {
   const [backupLoading, setBackupLoading] = useState(false);
   const [backupError, setBackupError] = useState('');
 
-  const { signIn } = useAuth();
+  const { signIn, user, loading } = useAuth();
   const router = useRouter();
+
+  // If a valid session already exists, don't show the sign-in form at all.
+  // This makes the persisted Supabase session actually useful: opening /auth/signin
+  // while already logged in will immediately take you to the dashboard instead of
+  // asking for credentials again.
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace('/dashboard');
+    }
+  }, [loading, user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,6 +199,16 @@ export default function SignInPage() {
     );
   }
 
+  // While we check existing auth state, avoid flashing the form
+  if (loading) {
+    return null;
+  }
+
+  // If user is already logged in, we rely on the redirect above; render nothing
+  if (user) {
+    return null;
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-white to-primary-50 p-4 dark:from-gray-900 dark:via-gray-950 dark:to-black">
       <div className="w-full max-w-md">
@@ -196,9 +216,9 @@ export default function SignInPage() {
         <div className="mb-6">
           <Link
             href="/"
-            className="inline-flex items-center text-charcoal-600 transition-colors hover:text-charcoal-800 dark:text-gray-300 dark:hover:text-white"
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
           >
-            <ArrowLeft className="mr-2 h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" />
             Back to Home
           </Link>
         </div>

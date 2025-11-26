@@ -319,10 +319,6 @@ export default function HomePage() {
         </div>
 
         <div className={`relative mx-auto max-w-4xl will-change-transform transition-transform duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
-          <div className="mb-4 inline-flex items-center rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary dark:bg-primary/20">
-            <Sparkles className="mr-2 h-4 w-4" />
-            New: AI-Powered Learning Analytics
-          </div>
           
           <h1 className="mb-6 text-5xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-6xl lg:text-7xl animate-slide-up">
             Welcome to{' '}

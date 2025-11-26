@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
+// Progress bar removed as per request
 import { useEffect, useState } from 'react';
 import {
   BookOpen,
@@ -33,6 +33,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { toast } from 'sonner';
 import PaymentPopup from '@/components/payment-popup';
 import DemoAccessRequest from '@/components/course/demo-access-request';
+import CourseGradeCard from '@/components/course/course-grade-card';
 
 export default function StudentDashboard() {
   const { user, session, loading: authLoading, userRole } = useAuth();
@@ -554,17 +555,7 @@ export default function StudentDashboard() {
                           </div>
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                            <span className="text-gray-600 dark:text-gray-400">
-                            Progress
-                          </span>
-                        </div>
-                        <Progress
-                            value={progress}
-                          className="h-2"
-                        />
-                      </div>
+                      {/* Progress removed */}
                       <div className="flex space-x-2">
                         <Button
                           size="sm"
@@ -680,38 +671,35 @@ export default function StudentDashboard() {
             </CardContent>
           </Card>
 
-          {/* Recent Activities */}
+          {/* Course Grades */}
           <Card className="border-gray-200 dark:border-gray-700">
             <CardHeader>
               <CardTitle className="text-lg text-gray-900 dark:text-white">
-                Recent Activities
+                Course Grades
               </CardTitle>
               <CardDescription className="text-gray-600 dark:text-gray-300">
-                Your latest learning milestones
+                Track your progress across all courses
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="max-h-64 overflow-y-auto pr-2">
-              <div className="space-y-3">
-                {recentActivities.map(activity => (
-                  <div
-                    key={activity.id}
-                      className="flex items-start space-x-3 rounded-lg p-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
-                  >
-                    <div className="mt-1">{getStatusIcon(activity.status)}</div>
-                    <div className="flex-1 space-y-1">
-                        <p className="text-sm font-medium leading-none text-gray-900 dark:text-white">
-                        {activity.message}
-                      </p>
-                      <p
-                        className={`text-xs ${getStatusColor(activity.status)}`}
-                      >
-                        {activity.time}
-                      </p>
+              <div className="max-h-96 overflow-y-auto pr-2 space-y-3">
+                {enrolledCourses.length > 0 ? (
+                  enrolledCourses.map(course => (
+                    <div key={course.id}>
+                      <h4 className="mb-2 text-base font-semibold text-gray-900 dark:text-white">
+                        {course.title}
+                      </h4>
+                      <CourseGradeCard courseId={course.id} />
                     </div>
+                  ))
+                ) : (
+                  <div className="py-8 text-center">
+                    <AlertCircle className="mx-auto mb-2 h-8 w-8 text-gray-400 dark:text-gray-500" />
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      No enrolled courses yet
+                    </p>
                   </div>
-                ))}
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>

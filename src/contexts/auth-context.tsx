@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { PostgrestError } from '@supabase/postgrest-js';
 import { supabase } from '@/lib/supabase';
@@ -43,6 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const lastRoleUserIdRef = useRef<string | null>(null);
 
   // Function to fetch user role from profile
   const fetchUserRole = useCallback(async (userId: string) => {
@@ -91,12 +92,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         setSession(session);
         setUser(session?.user ?? null);
-        
-        // Fetch user role if we have a user
-        if (session?.user) {
-          const role = await fetchUserRole(session.user.id);
-          setUserRole(role);
-        }
       } catch (error) {
         console.error('Error getting initial session:', error);
       } finally {
@@ -110,16 +105,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session);
+      // Avoid logging raw tokens in the console
+      console.log('Auth state changed:', event, {
+        userId: session?.user?.id ?? null,
+        expires_at: session?.expires_at ?? null,
+      });
       setSession(session);
       setUser(session?.user ?? null);
       
       // Fetch user role if we have a user
       if (session?.user) {
-        const role = await fetchUserRole(session.user.id);
-        setUserRole(role);
+        // Prevent duplicate role fetches for the same user (helps with StrictMode double effects)
+        if (lastRoleUserIdRef.current !== session.user.id || !userRole) {
+          lastRoleUserIdRef.current = session.user.id;
+          const role = await fetchUserRole(session.user.id);
+          setUserRole(role);
+        }
       } else {
         setUserRole(null);
+        lastRoleUserIdRef.current = null;
       }
       
       setLoading(false);

@@ -250,8 +250,8 @@ export async function GET(request: NextRequest) {
     if (userProfile.role === 'student') {
       // Students can only see their own payment verifications
       paymentQuery = paymentQuery.eq('student_id', user.id);
-    } else if (userProfile.role === 'superadmin') {
-      // Superadmins can see all payment verifications
+    } else if (userProfile.role === 'admin' || userProfile.role === 'superadmin') {
+      // Admins and superadmins can see all payment verifications
       if (status) {
         paymentQuery = paymentQuery.eq('status', status);
       }

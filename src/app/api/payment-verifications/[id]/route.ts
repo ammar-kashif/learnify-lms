@@ -57,10 +57,10 @@ export async function PATCH(
       );
     }
 
-    // Only superadmins can update payment verification status
-    if (userProfile.role !== 'superadmin') {
+    // Only admins and superadmins can update payment verification status
+    if (!['admin', 'superadmin'].includes(userProfile.role)) {
       return NextResponse.json(
-        { error: 'Only superadmins can update payment verification status' },
+        { error: 'Only admins and superadmins can update payment verification status' },
         { status: 403 }
       );
     }

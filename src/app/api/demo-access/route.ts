@@ -46,24 +46,88 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Use the most efficient query possible - only get access_type with limit
-    console.log('🔍 Checking demo access for user:', user.id, 'course:', courseId);
+    // RUTHLESS CHECK: Query demo_access table with all necessary fields and strict validation
+    console.log('🔍 Checking demo access for user:', user.id, 'course:', courseId, 'accessType:', accessType);
     const startTime = Date.now();
+    const nowISO = new Date().toISOString();
+    const currentDate = new Date();
+    console.log('⏰ Current time:', nowISO);
     
+    // Query ALL records (including expired) so we can clean up expired ones
     let query = supabase
       .from('demo_access')
-      .select('access_type')
+      .select('id, access_type, expires_at, used_at, resource_id, user_id, course_id')
       .eq('user_id', user.id)
-      .eq('course_id', courseId)
-      .gt('expires_at', new Date().toISOString())
-      .limit(2); // Only need to know if any exist
+      .eq('course_id', courseId);
 
     if (accessType) {
       query = query.eq('access_type', accessType);
     }
 
     const { data: demoAccess, error } = await query;
-    console.log('⚡ Demo access query completed in:', Date.now() - startTime, 'ms', 'Result:', demoAccess);
+    const queryTime = Date.now() - startTime;
+    
+    console.log('⚡ Demo access query completed in:', queryTime, 'ms');
+    console.log('📊 Query result:', { 
+      found: demoAccess?.length || 0, 
+      records: demoAccess,
+      error: error?.message 
+    });
+    
+    // Separate valid and expired records
+    const validAccess: typeof demoAccess = [];
+    const expiredAccess: typeof demoAccess = [];
+    
+    if (demoAccess) {
+      for (const access of demoAccess) {
+        const expiresAt = new Date(access.expires_at);
+        if (expiresAt > currentDate) {
+          validAccess.push(access);
+        } else {
+          expiredAccess.push(access);
+          console.log('🚫 Found expired access:', access.id, 'expires_at:', access.expires_at);
+        }
+      }
+    }
+    
+    console.log('✅ Valid demo access after filtering:', validAccess.length, 'records');
+    
+    // Cleanup: Delete expired demo enrollments
+    if (expiredAccess.length > 0) {
+      console.log('🧹 Cleaning up expired demo access records:', expiredAccess.length);
+      
+      for (const expired of expiredAccess) {
+        try {
+          // Delete the demo enrollment from student_enrollments
+          const { error: enrollmentError } = await supabaseAdmin
+            .from('student_enrollments')
+            .delete()
+            .eq('student_id', expired.user_id)
+            .eq('course_id', expired.course_id)
+            .eq('enrollment_type', 'demo');
+          
+          if (enrollmentError) {
+            console.error('❌ Error deleting expired demo enrollment:', enrollmentError);
+          } else {
+            console.log('✅ Deleted expired demo enrollment for user:', expired.user_id, 'course:', expired.course_id);
+          }
+          
+          // Also delete the expired demo_access record itself
+          const { error: demoAccessError } = await supabaseAdmin
+            .from('demo_access')
+            .delete()
+            .eq('id', expired.id);
+          
+          if (demoAccessError) {
+            console.error('❌ Error deleting expired demo_access record:', demoAccessError);
+          } else {
+            console.log('✅ Deleted expired demo_access record:', expired.id);
+          }
+        } catch (cleanupError) {
+          console.error('❌ Error during cleanup:', cleanupError);
+        }
+      }
+    }
 
     if (error) {
       console.error('Error fetching demo access:', error);
@@ -73,14 +137,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Add cache headers for better performance
+    // Return only valid (non-expired) access
+    const hasValidAccess = validAccess.length > 0;
+    console.log('🎯 Final result - hasAccess:', hasValidAccess);
+    
+    // Don't cache - ensure fresh data from database every time
     const response = NextResponse.json({ 
-      hasAccess: demoAccess && demoAccess.length > 0,
-      demoAccess: demoAccess || []
+      hasAccess: hasValidAccess,
+      demoAccess: validAccess
     });
 
-    // Cache for 10 seconds to reduce API calls but keep it fresh
-    response.headers.set('Cache-Control', 'private, max-age=10');
+    // No caching to ensure we always check the actual database state
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     
     return response;
   } catch (error) {

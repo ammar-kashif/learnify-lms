@@ -18,6 +18,7 @@ import StudentLiveClassCalendar from '@/components/attendance/student-live-class
 import { uploadToS3 } from '@/lib/s3';
 import { createChapterFromFile } from '@/lib/chapters';
 import { formatDate } from '@/utils/date';
+import { trackPageView, trackCourseView } from '@/lib/tracking';
 import {
   BookOpen,
   ChevronLeft,
@@ -81,6 +82,24 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
   useEffect(() => {
     setIsAdmin(userRole === 'admin' || userRole === 'superadmin');
   }, [userRole]);
+
+  // Track page view and course view
+  useEffect(() => {
+    const trackViews = async () => {
+      if (typeof window !== 'undefined') {
+        const { data: { session } } = await supabase.auth.getSession();
+        trackPageView(window.location.pathname, {
+          course_id: courseId,
+          course_title: course.title,
+        }, session?.access_token || null);
+        
+        trackCourseView(courseId, {
+          course_title: course.title,
+        }, session?.access_token || null);
+      }
+    };
+    trackViews();
+  }, [courseId, course.title]);
 
   // Fetch subscription plans when modal opens
   useEffect(() => {
@@ -263,12 +282,16 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
         console.log('🚀 Starting demo access check for course:', courseId);
         const startTime = Date.now();
         
-        const fetchPromise = fetch(`/api/demo-access?courseId=${courseId}`, {
-          headers: { 'Authorization': `Bearer ${session.access_token}` },
+        // Add cache-busting timestamp to ensure fresh data
+        const fetchPromise = fetch(`/api/demo-access?courseId=${courseId}&_t=${Date.now()}`, {
+          headers: { 
+            'Authorization': `Bearer ${session.access_token}`,
+            'Cache-Control': 'no-cache',
+          },
         });
         
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout')), 1500) // More reasonable timeout
+          setTimeout(() => reject(new Error('Timeout')), 4000) // Increased to avoid premature timeout
         );
         
         const res = await Promise.race([fetchPromise, timeoutPromise]) as Response;
@@ -793,11 +816,17 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
 
               <LectureRecordingsList
                 courseId={courseId}
-                userRole={isAdmin ? (userRole === 'superadmin' ? "superadmin" : "admin") : "student"}
+                userRole={isAdmin ? (userRole === 'superadmin' ? "superadmin" : "admin") : (user ? "student" : "guest")}
                 showAccessControls={!authLoading && userRole === 'student' && !!user}
                 onAccessRequired={() => {
-                  setIsUpgrade(true);
-                  setShowSubscriptionModal(true);
+                  if (!user) {
+                    // Guest - redirect to signup
+                    window.location.href = `/auth/signup?redirect=/courses/${courseId}`;
+                  } else {
+                    // Student - show upgrade modal
+                    setIsUpgrade(true);
+                    setShowSubscriptionModal(true);
+                  }
                 }}
               />
             </section>

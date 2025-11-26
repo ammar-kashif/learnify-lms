@@ -87,20 +87,76 @@ export default function StudentLiveClassCalendar({ courseId }: StudentLiveClassC
       if (!session?.access_token) {
         console.log('❌ No session, setting demoAccessChecked to true');
         setDemoAccessChecked(true);
+        setIsDemoMode(false);
         return;
       }
       try {
-        console.log('📡 Fetching demo access for live_class...');
-        const res = await fetch(`/api/demo-access?courseId=${courseId}&accessType=live_class`, {
+        // RUTHLESS CHECK: First check if they have demo enrollment
+        const enrollmentRes = await fetch(`/api/enrollments?courseId=${courseId}`, {
           headers: { 'Authorization': `Bearer ${session.access_token}` }
         });
+        
+        if (enrollmentRes.ok) {
+          const enrollmentData = await enrollmentRes.json();
+          
+          // If they have demo enrollment, we MUST verify they have live_class access
+          if (enrollmentData.isDemoEnrollment) {
+            console.log('🚫 User has demo enrollment - checking if it is live_class type...');
+            
+            // Add cache-busting timestamp to ensure fresh data
+            const res = await fetch(`/api/demo-access?courseId=${courseId}&accessType=live_class&_t=${Date.now()}`, {
+              headers: { 
+                'Authorization': `Bearer ${session.access_token}`,
+                'Cache-Control': 'no-cache',
+              }
+            });
+            const data = await res.json();
+            console.log('📊 Demo access response for live_class:', data);
+            
+            // RUTHLESS: Only allow if they explicitly have live_class demo access
+            if (data?.hasAccess && data?.demoAccess && data.demoAccess.length > 0) {
+              const demoAccessRecord = data.demoAccess[0];
+              if (demoAccessRecord.access_type === 'live_class') {
+                console.log('✅ Demo user has live_class access - allowing live classes ONLY');
+                setIsDemoMode(true);
+              } else {
+                console.log('🚫 Demo enrollment but NO live_class access - DENIED');
+                setIsDemoMode(false);
+              }
+            } else {
+              console.log('🚫 Demo enrollment but NO live_class access - DENIED');
+              setIsDemoMode(false);
+            }
+            setDemoAccessChecked(true);
+            return;
+          }
+          
+          // If paid enrollment, allow full access
+          if (enrollmentData.isPaidEnrollment) {
+            console.log('✅ User has paid enrollment - full access to live classes');
+            setIsDemoMode(false);
+            setDemoAccessChecked(true);
+            return;
+          }
+        }
+        
+        // If not enrolled, check standalone demo access
+        console.log('📡 Checking standalone demo access for live_class...');
+        // Add cache-busting timestamp to ensure fresh data
+        const res = await fetch(`/api/demo-access?courseId=${courseId}&accessType=live_class&_t=${Date.now()}`, {
+          headers: { 
+            'Authorization': `Bearer ${session.access_token}`,
+            'Cache-Control': 'no-cache',
+          }
+        });
         const data = await res.json();
-        console.log('📊 Demo access response:', data);
-        const hasAccess = !!(data?.hasAccess);
+        console.log('📊 Standalone demo access response:', data);
+        const hasAccess = !!(data?.hasAccess && data?.demoAccess && data.demoAccess.length > 0);
         console.log('🎯 Setting isDemoMode to:', hasAccess);
         setIsDemoMode(hasAccess);
       } catch (e) {
         console.error('❌ Error checking demo access:', e);
+        setIsDemoMode(false);
       } finally {
         console.log('✅ Demo access check complete');
         setDemoAccessChecked(true);
@@ -121,7 +177,14 @@ export default function StudentLiveClassCalendar({ courseId }: StudentLiveClassC
   }, []);
 
   const formatEvents = (classes: LiveClass[]) => {
-    return classes
+    // RUTHLESS: In demo mode, only show 1 live class (the first one)
+    let filteredClasses = classes;
+    if (isDemoMode) {
+      console.log('🚫 Demo mode: Filtering to show only 1 live class');
+      filteredClasses = classes.slice(0, 1);
+    }
+    
+    return filteredClasses
       .filter(liveClass => {
         // Filter out classes with invalid dates
         if (!liveClass.scheduled_date) {

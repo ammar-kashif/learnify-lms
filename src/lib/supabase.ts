@@ -16,9 +16,11 @@ export const supabase = createClient(
   supabaseAnonKey || 'placeholder-key',
   {
     auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true,
+      // Disable client-side session persistence so every new tab/refresh
+      // starts "logged out" unless you explicitly sign in again.
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
     },
   }
 );
@@ -700,6 +702,209 @@ export interface Database {
           marked_at?: string;
           marked_by?: string;
           notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      user_actions: {
+        Row: {
+          id: string;
+          user_id: string;
+          action_type: string;
+          resource_type: string;
+          resource_id: string | null;
+          course_id: string | null;
+          metadata: Record<string, any>;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          action_type: string;
+          resource_type: string;
+          resource_id?: string | null;
+          course_id?: string | null;
+          metadata?: Record<string, any>;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          action_type?: string;
+          resource_type?: string;
+          resource_id?: string | null;
+          course_id?: string | null;
+          metadata?: Record<string, any>;
+          created_at?: string;
+        };
+      };
+      feedback_messages: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          email: string;
+          name: string;
+          subject: string;
+          message: string;
+          message_type: string;
+          status: string;
+          admin_notes: string | null;
+          replied_at: string | null;
+          replied_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          email: string;
+          name: string;
+          subject: string;
+          message: string;
+          message_type?: string;
+          status?: string;
+          admin_notes?: string | null;
+          replied_at?: string | null;
+          replied_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          email?: string;
+          name?: string;
+          subject?: string;
+          message?: string;
+          message_type?: string;
+          status?: string;
+          admin_notes?: string | null;
+          replied_at?: string | null;
+          replied_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      bug_reports: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          email: string;
+          title: string;
+          description: string;
+          steps_to_reproduce: string | null;
+          expected_behavior: string | null;
+          actual_behavior: string | null;
+          browser_info: string;
+          device_info: string;
+          url: string | null;
+          screenshot_url: string | null;
+          severity: string;
+          status: string;
+          priority: number;
+          assigned_to: string | null;
+          admin_notes: string | null;
+          resolved_at: string | null;
+          resolved_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          email: string;
+          title: string;
+          description: string;
+          steps_to_reproduce?: string | null;
+          expected_behavior?: string | null;
+          actual_behavior?: string | null;
+          browser_info?: string;
+          device_info?: string;
+          url?: string | null;
+          screenshot_url?: string | null;
+          severity?: string;
+          status?: string;
+          priority?: number;
+          assigned_to?: string | null;
+          admin_notes?: string | null;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          email?: string;
+          title?: string;
+          description?: string;
+          steps_to_reproduce?: string | null;
+          expected_behavior?: string | null;
+          actual_behavior?: string | null;
+          browser_info?: string;
+          device_info?: string;
+          url?: string | null;
+          screenshot_url?: string | null;
+          severity?: string;
+          status?: string;
+          priority?: number;
+          assigned_to?: string | null;
+          admin_notes?: string | null;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      content_flags: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          flagged_by_email: string | null;
+          resource_type: string;
+          resource_id: string;
+          course_id: string | null;
+          flag_reason: string;
+          description: string | null;
+          status: string;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          admin_notes: string | null;
+          action_taken: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          flagged_by_email?: string | null;
+          resource_type: string;
+          resource_id: string;
+          course_id?: string | null;
+          flag_reason: string;
+          description?: string | null;
+          status?: string;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          admin_notes?: string | null;
+          action_taken?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          flagged_by_email?: string | null;
+          resource_type?: string;
+          resource_id?: string;
+          course_id?: string | null;
+          flag_reason?: string;
+          description?: string | null;
+          status?: string;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          admin_notes?: string | null;
+          action_taken?: string | null;
           created_at?: string;
           updated_at?: string;
         };

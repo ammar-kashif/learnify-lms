@@ -259,14 +259,14 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    if (userRole === 'superadmin') {
+    if (userRole === 'superadmin' || userRole === 'admin') {
       fetchData();
     }
   }, [userRole, fetchData]);
 
   // Auto-refresh payment verification data when payments tab is active
   useEffect(() => {
-    if (activeTab === 'payments' && userRole === 'superadmin') {
+    if (activeTab === 'payments' && (userRole === 'superadmin' || userRole === 'admin')) {
       const interval = setInterval(() => {
         console.log('🔄 Auto-refreshing payment verification data...');
         fetchData();

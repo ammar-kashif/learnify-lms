@@ -60,8 +60,8 @@ export default function ResetPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-950 dark:to-black p-4">
       <div className="w-full max-w-md">
         <div className="mb-6">
-          <Link href="/" className="inline-flex items-center text-charcoal-600 dark:text-gray-300 transition-colors hover:text-charcoal-800 dark:hover:text-white">
-            <ArrowLeft className="mr-2 h-4 w-4" />
+          <Link href="/" className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+            <ArrowLeft className="h-4 w-4" />
             Back to Home
           </Link>
         </div>
