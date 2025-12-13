@@ -44,13 +44,6 @@ export async function POST(request: NextRequest) {
     }
 
     const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'Authorization required' },
-        { status: 401 }
-      );
-    }
-
     const { recordingId } = await request.json();
 
     if (!recordingId) {
@@ -60,20 +53,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseAdmin.auth.getUser(token);
-
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     // Look up the recording (we need course + key + publish state)
     const { data: recording, error: recError } = await supabaseAdmin
       .from('lecture_recordings')
-      .select('id, course_id, teacher_id, is_published, video_key')
+      .select('id, course_id, teacher_id, is_published, video_key, created_at')
       .eq('id', recordingId)
       .maybeSingle();
 
@@ -90,6 +73,63 @@ export async function POST(request: NextRequest) {
         { error: 'Recording not found' },
         { status: 404 }
       );
+    }
+
+    // Check if this is a guest request (no auth header)
+    const isGuest = !authHeader;
+    
+    if (isGuest) {
+      // For guests, only allow access to the first published lecture of a course
+      // Check if this is the first lecture (oldest by created_at)
+      const { data: firstLecture } = await supabaseAdmin
+        .from('lecture_recordings')
+        .select('id')
+        .eq('course_id', recording.course_id)
+        .eq('is_published', true)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (!firstLecture || firstLecture.id !== recordingId) {
+        return NextResponse.json(
+          { error: 'Preview access only available for the first lecture' },
+          { status: 403 }
+        );
+      }
+
+      if (!recording.is_published) {
+        return NextResponse.json(
+          { error: 'Recording not published' },
+          { status: 403 }
+        );
+      }
+
+      // Generate guest token (use 'guest' as sub)
+      const now = Math.floor(Date.now() / 1000);
+      const payload: TokenPayload = {
+        sub: 'guest',
+        key: recording.video_key,
+        courseId: recording.course_id,
+        exp: now + 10 * 60, // 10 minutes
+      };
+
+      const accessToken = signToken(payload);
+
+      return NextResponse.json({
+        success: true,
+        token: accessToken,
+      });
+    }
+
+    // Authenticated user flow
+    const token = authHeader.replace('Bearer ', '');
+    const {
+      data: { user },
+      error: userError,
+    } = await supabaseAdmin.auth.getUser(token);
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Get role

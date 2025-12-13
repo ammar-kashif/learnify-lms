@@ -123,7 +123,7 @@ export default function FeedbackForm({ trigger, defaultType = 'general' }: Feedb
         <DialogHeader>
           <DialogTitle>Send Feedback</DialogTitle>
           <DialogDescription>
-            We'd love to hear from you! Share your thoughts, suggestions, or report issues.
+            We&apos;d love to hear from you! Share your thoughts, suggestions, or report issues.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">

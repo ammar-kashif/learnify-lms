@@ -25,7 +25,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (error) {
+      console.error('Error parsing request body:', error);
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
+    }
+    
     const { action_type, resource_type, resource_id, course_id, metadata } = body;
 
     // Validate required fields
@@ -100,6 +110,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // UUID regex pattern - accept any valid UUID (v1-v5)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    
+    // Helper to extract UUID from a string (could be path or raw UUID)
+    const extractUuid = (value: string | null | undefined): string | null => {
+      if (!value || typeof value !== 'string') return null;
+      // If it's already a valid UUID, return it
+      if (uuidRegex.test(value)) return value;
+      // Try to extract UUID from a path
+      const match = value.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+      return match ? match[0] : null;
+    };
+
+    // Validate and extract UUIDs
+    const validatedCourseId = extractUuid(course_id);
+    const validatedResourceId = extractUuid(resource_id);
+    
+    // For page_view, resource_id might be a path (not UUID) - store in metadata instead
+    const finalResourceId = resource_type === 'page' ? null : validatedResourceId;
+    const finalMetadata = {
+      ...(metadata || {}),
+      // Store original resource_id in metadata if it wasn't a valid UUID
+      ...(resource_id && !validatedResourceId ? { original_resource_id: resource_id } : {}),
+    };
+
     // Insert action into database
     const { data, error } = await supabaseAdmin
       .from('user_actions')
@@ -107,9 +142,9 @@ export async function POST(request: NextRequest) {
         user_id: userId,
         action_type,
         resource_type,
-        resource_id: resource_id || null,
-        course_id: course_id || null,
-        metadata: metadata || {},
+        resource_id: finalResourceId,
+        course_id: validatedCourseId,
+        metadata: finalMetadata,
       })
       .select()
       .single();

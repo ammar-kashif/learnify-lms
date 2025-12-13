@@ -92,6 +92,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         setSession(session);
         setUser(session?.user ?? null);
+        
+        // Fetch user role if we have a session
+        if (session?.user) {
+          const role = await fetchUserRole(session.user.id);
+          setUserRole(role);
+        }
       } catch (error) {
         console.error('Error getting initial session:', error);
       } finally {
@@ -118,8 +124,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Prevent duplicate role fetches for the same user (helps with StrictMode double effects)
         if (lastRoleUserIdRef.current !== session.user.id || !userRole) {
           lastRoleUserIdRef.current = session.user.id;
-          const role = await fetchUserRole(session.user.id);
-          setUserRole(role);
+        const role = await fetchUserRole(session.user.id);
+        setUserRole(role);
         }
       } else {
         setUserRole(null);

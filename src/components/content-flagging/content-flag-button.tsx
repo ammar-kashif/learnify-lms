@@ -41,7 +41,7 @@ export default function ContentFlagButton({
   variant = 'outline',
   size = 'sm',
 }: ContentFlagButtonProps) {
-  const { user, session } = useAuth();
+  const { session } = useAuth();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({

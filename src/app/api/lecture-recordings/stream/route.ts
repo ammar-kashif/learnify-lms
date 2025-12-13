@@ -61,7 +61,6 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const key = url.searchParams.get('key');
     const authHeader = request.headers.get('authorization');
-    const tokenFromQuery = url.searchParams.get('token'); // legacy, will be ignored for auth
     const accessToken = url.searchParams.get('accessToken');
     const secFetchDest = request.headers.get('sec-fetch-dest') || '';
     const range = request.headers.get('range') || undefined;
@@ -92,8 +91,8 @@ export async function GET(request: NextRequest) {
         data: { user },
         error: userError,
       } = await supabaseAdmin.auth.getUser(bearer);
-      if (userError || !user) {
-        return new NextResponse('Unauthorized', { status: 401 });
+    if (userError || !user) {
+      return new NextResponse('Unauthorized', { status: 401 });
       }
       userId = user.id;
     } else if (accessToken) {
@@ -111,7 +110,8 @@ export async function GET(request: NextRequest) {
       courseIdFromToken = payload.courseId;
       // We already did all access checks when issuing this token, so we can
       // skip hitting Supabase again here for faster startup.
-      requireAccessCheck = false;
+      // For guest tokens (sub === 'guest'), we skip access checks entirely
+      requireAccessCheck = payload.sub !== 'guest';
     } else {
       return new NextResponse('Authorization required', { status: 401 });
     }
@@ -132,56 +132,58 @@ export async function GET(request: NextRequest) {
       return new NextResponse('Invalid token for this course', { status: 403 });
     }
 
+    // For guests, we already verified access in the access-token route
+    // (ensured it's the first published lecture), so skip further checks
     if (requireAccessCheck) {
-      // Get user role
-      const { data: userProfile } = await supabaseAdmin
-        .from('users')
-        .select('role')
+    // Get user role
+    const { data: userProfile } = await supabaseAdmin
+      .from('users')
+      .select('role')
         .eq('id', userId!)
-        .single();
+      .single();
 
-      const role = userProfile?.role;
-      const isAdmin = role === 'admin' || role === 'superadmin';
+    const role = userProfile?.role;
+    const isAdmin = role === 'admin' || role === 'superadmin';
 
       // Permission checks (for direct bearer auth requests)
-      if (role === 'student') {
-        // Check if recording is published
-        if (!recording.is_published) {
-          return new NextResponse('Recording not published', { status: 403 });
-        }
+    if (role === 'student') {
+      // Check if recording is published
+      if (!recording.is_published) {
+        return new NextResponse('Recording not published', { status: 403 });
+      }
 
-        // Check subscription or demo access
+      // Check subscription or demo access
         const accessResult = await canAccessLectureRecordings(
           userId!,
           recording.course_id
         );
-        
-        if (!accessResult.hasAccess) {
-          return new NextResponse(
-            JSON.stringify({ 
-              error: 'Access denied', 
-              message: accessResult.message,
-              requiresSubscription: true 
-            }), 
-            { 
-              status: 403,
-              headers: { 'Content-Type': 'application/json' }
-            }
-          );
-        }
-      } else if (role === 'teacher') {
-        const { data: teacherCourse } = await supabaseAdmin
-          .from('teacher_courses')
-          .select('course_id')
+      
+      if (!accessResult.hasAccess) {
+        return new NextResponse(
+          JSON.stringify({ 
+            error: 'Access denied', 
+            message: accessResult.message,
+            requiresSubscription: true 
+          }), 
+          { 
+            status: 403,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        );
+      }
+    } else if (role === 'teacher') {
+      const { data: teacherCourse } = await supabaseAdmin
+        .from('teacher_courses')
+        .select('course_id')
           .eq('teacher_id', userId!)
-          .eq('course_id', recording.course_id)
-          .maybeSingle();
+        .eq('course_id', recording.course_id)
+        .maybeSingle();
         if (!teacherCourse && !isAdmin && userId !== recording.teacher_id) {
-          return new NextResponse('Forbidden', { status: 403 });
-        }
-      } else if (!isAdmin) {
-        // Unknown role
         return new NextResponse('Forbidden', { status: 403 });
+      }
+    } else if (!isAdmin) {
+      // Unknown role
+      return new NextResponse('Forbidden', { status: 403 });
       }
     }
 

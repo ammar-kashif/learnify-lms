@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 import DashboardLayout from '@/components/dashboard/dashboard-layout';
 import TeacherDashboard from '@/components/dashboard/teacher-dashboard';
 import StudentDashboard from '@/components/dashboard/student-dashboard';
@@ -19,16 +20,34 @@ export default function DashboardPage() {
   const { user, userRole, loading } = useAuth();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const redirectAttempted = useRef(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // Double-check session directly from Supabase before redirecting
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/');
+    const checkAuth = async () => {
+      if (!loading && !user && !redirectAttempted.current) {
+        // Before redirecting, double-check with Supabase directly
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          // Only redirect if Supabase also confirms no session
+          redirectAttempted.current = true;
+          router.replace('/');
+        }
+        // If session exists, the auth context will catch up
+      }
+      setAuthChecked(true);
+    };
+    
+    if (mounted) {
+      checkAuth();
     }
-  }, [loading, user, router]);
+  }, [loading, user, router, mounted]);
 
   // Redirect superadmin to admin panel
   useEffect(() => {
@@ -37,8 +56,8 @@ export default function DashboardPage() {
     }
   }, [userRole, router]);
 
-  // Show loading state while auth is loading
-  if (loading || !mounted) {
+  // Show loading state while auth is loading or checking
+  if (loading || !mounted || (!authChecked && !user)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Card className="w-96">
@@ -56,8 +75,8 @@ export default function DashboardPage() {
     );
   }
 
-  // Redirect to signin if not authenticated
-  if (!user) {
+  // Redirect to signin if not authenticated (after auth check completed)
+  if (!user && authChecked) {
     // Don't render anything to prevent flash
     return null;
   }

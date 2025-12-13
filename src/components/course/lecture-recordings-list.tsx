@@ -21,6 +21,7 @@ import {
   Flag
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
+import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { trackVideoPlay, trackVideoComplete } from '@/lib/tracking';
 import {
@@ -560,7 +561,8 @@ export default function LectureRecordingsList({
       watchedVideosCount: watchedVideos.size,
       hasWatchedThisVideo: watchedVideos.has(recordingId),
       watchedVideosArray: Array.from(watchedVideos),
-      hasSession: !!session
+      hasSession: !!session,
+      sessionToken: session?.access_token ? 'present' : 'missing'
     });
 
     // Check if lecture is locked (for guests or non-enrolled users)
@@ -607,17 +609,32 @@ export default function LectureRecordingsList({
     // Ensure we have a short‑lived access token for this recording before opening
     try {
       if (!videoTokens[recordingId]) {
-        if (!session?.access_token) {
-          console.error('No auth session for video access');
-          toast.error('You need to be signed in to play this video.');
-          return;
+        // Try to get fresh session if not available
+        let accessToken = session?.access_token;
+        if (!accessToken) {
+          console.log('🔄 No session in context, trying to get fresh session...');
+          try {
+            const { data: { session: freshSession } } = await supabase.auth.getSession();
+            if (freshSession?.access_token) {
+              accessToken = freshSession.access_token;
+              console.log('✅ Fresh session obtained');
+            } else {
+              console.error('No auth session for video access');
+              toast.error('You need to be signed in to play this video. Please sign in and try again.');
+              return;
+            }
+          } catch (error) {
+            console.error('Error getting session:', error);
+            toast.error('Authentication error. Please sign in again.');
+            return;
+          }
         }
 
         const res = await fetch('/api/lecture-recordings/access-token', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({ recordingId }),
         });
@@ -969,7 +986,7 @@ export default function LectureRecordingsList({
                     className="ml-2"
                     disabled={
                       (userRole === 'student' && isDemoMode && (demoVideoId === null || recording.id !== demoVideoId)) ||
-                      recording.is_accessible === false
+                      recording.is_accessible !== true
                     }
                   >
                     {openRecordingId === recording.id ? 'Hide' : 

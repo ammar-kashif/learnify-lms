@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { BookOpen, Clock, Users, Star, Loader2, X, CheckCircle, Crown } from 'lucide-react';
+import { BookOpen, Clock, Users, Star, Loader2, X, CheckCircle, Crown, Video } from 'lucide-react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import DemoAccessRequest from '@/components/course/demo-access-request';
 import ModernSubscriptionModal from '@/components/modern-subscription-modal';
@@ -238,7 +239,7 @@ export default function CoursesPage() {
             {courses.map(course => (
               <Card
                 key={course.id}
-                className="group border-gray-200 bg-white backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+                className="group border-gray-200 bg-white backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-2xl flex flex-col h-full"
               >
                 <CardHeader className="pb-4 text-center">
                   <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 transition-transform duration-300 group-hover:scale-110">
@@ -247,12 +248,12 @@ export default function CoursesPage() {
                   <CardTitle className="text-xl font-bold text-gray-900">
                     {course.title}
                   </CardTitle>
-                  <CardDescription className="text-gray-600 line-clamp-3">
+                  <CardDescription className="text-gray-600 line-clamp-3 min-h-[60px]">
                     {course.description}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4 text-center">
-                  <div className="space-y-2">
+                <CardContent className="flex flex-col flex-grow text-center p-6">
+                  <div className="space-y-2 mb-4">
                     <div className="flex items-center justify-center space-x-4 text-sm text-gray-600">
                       <div className="flex items-center space-x-1">
                         <Clock className="h-4 w-4" />
@@ -276,7 +277,7 @@ export default function CoursesPage() {
                     </div>
                   </div>
 
-                  <div className="border-t border-gray-200 pt-4">
+                  <div className="border-t border-gray-200 pt-4 -mx-6 px-6 mt-auto">
                     <div className="mb-4 flex items-center justify-center">
                       <Badge
                         variant="secondary"
@@ -285,15 +286,27 @@ export default function CoursesPage() {
                         O Level
                       </Badge>
                     </div>
-                    <Button 
-                      className="w-full bg-primary text-white hover:bg-primary-600"
-                      onClick={() => handleEnroll(course)}
-                      disabled={authLoading || checkingEnrollment === course.id}
-                    >
-                      <BookOpen className="mr-2 h-4 w-4" />
-                      {authLoading ? 'Loading...' : 
-                       checkingEnrollment === course.id ? 'Checking...' : 'Enroll Now'}
-                    </Button>
+                    <div className="flex flex-col gap-2 w-full max-w-full">
+                      <Button 
+                        className="w-full max-w-full bg-primary text-white hover:bg-primary-600 transition-colors h-10 px-4 flex items-center justify-center overflow-hidden"
+                        onClick={() => handleEnroll(course)}
+                        disabled={authLoading || checkingEnrollment === course.id}
+                      >
+                        <BookOpen className="mr-2 h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">
+                          {authLoading ? 'Loading...' : 
+                           checkingEnrollment === course.id ? 'Checking...' : 'Enroll Now'}
+                        </span>
+                      </Button>
+                      <Link href={`/courses/${course.id}/preview`} className="w-full max-w-full block">
+                        <Button 
+                          className="w-full max-w-full bg-blue-700 text-white hover:bg-blue-800 transition-colors h-10 px-4 flex items-center justify-center overflow-hidden"
+                        >
+                          <Video className="mr-2 h-4 w-4 flex-shrink-0" />
+                          <span className="truncate">Watch a Video</span>
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

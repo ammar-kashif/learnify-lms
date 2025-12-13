@@ -38,6 +38,7 @@ export type ResourceType =
   | 'quiz'
   | 'assignment'
   | 'course'
+  | 'chapter'
   | 'page'
   | 'live_class'
   | 'user_profile'
@@ -146,10 +147,14 @@ export function trackPageView(
   metadata?: TrackingMetadata,
   sessionToken?: string | null
 ): void {
+  // Extract course_id from metadata if present (for course pages)
+  const courseId = metadata?.course_id;
+  
   trackAction({
     action_type: 'page_view',
     resource_type: 'page',
     resource_id: pagePath,
+    course_id: courseId && typeof courseId === 'string' ? courseId : undefined,
     metadata: {
       page_url: typeof window !== 'undefined' ? window.location.href : pagePath,
       ...metadata,

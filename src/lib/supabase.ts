@@ -10,17 +10,33 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
+// Custom storage that uses sessionStorage (clears when browser closes)
+// instead of localStorage (persists forever)
+const customStorage = {
+  getItem: (key: string) => {
+    if (typeof window === 'undefined') return null;
+    return window.sessionStorage.getItem(key);
+  },
+  setItem: (key: string, value: string) => {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.setItem(key, value);
+  },
+  removeItem: (key: string) => {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.removeItem(key);
+  },
+};
+
 // Create Supabase client with fallback values for build time
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseAnonKey || 'placeholder-key',
   {
     auth: {
-      // Disable client-side session persistence so every new tab/refresh
-      // starts "logged out" unless you explicitly sign in again.
-      autoRefreshToken: false,
-      persistSession: false,
-      detectSessionInUrl: false,
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+      storage: customStorage, // Use sessionStorage instead of localStorage
     },
   }
 );

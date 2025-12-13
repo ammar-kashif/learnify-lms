@@ -104,9 +104,21 @@ export default function SignUpPage() {
           // If there's a demo type, create the demo access immediately after signup
           if (selectedDemoType) {
             console.log('🔐 Creating demo access immediately after signup...');
+            // Wait a bit for session to be established after signup
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             try {
-              // Get the current session
-              const { data: { session } } = await supabase.auth.getSession();
+              // Try to get session with retries
+              let session = null;
+              for (let i = 0; i < 3; i++) {
+                const { data } = await supabase.auth.getSession();
+                if (data?.session?.access_token) {
+                  session = data.session;
+                  break;
+                }
+                await new Promise(resolve => setTimeout(resolve, 300));
+              }
+              
               if (session?.access_token) {
                 console.log('✅ Session found, creating demo access...');
                 const response = await fetch('/api/demo-access', {

@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import {
   BookOpen,
-  Clock,
   CheckCircle,
   Play,
   Award,
@@ -124,64 +123,6 @@ export default function StudentDashboard() {
       (a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
     )
     .slice(0, 5);
-
-  // Get recent activities
-  const recentActivities = [
-    {
-      id: 1,
-      type: 'progress',
-      message: 'Completed Chapter 2 in Mathematics',
-      time: '2 hours ago',
-      status: 'success',
-    },
-    {
-      id: 2,
-      type: 'assignment',
-      message: 'Submitted Physics Lab Report',
-      time: '1 day ago',
-      status: 'success',
-    },
-    {
-      id: 3,
-      type: 'enrollment',
-      message: 'Enrolled in Chemistry course',
-      time: '3 days ago',
-      status: 'info',
-    },
-    {
-      id: 4,
-      type: 'achievement',
-      message: 'Earned "Math Master" badge',
-      time: '1 week ago',
-      status: 'success',
-    },
-  ];
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'success':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'warning':
-        return <AlertCircle className="h-4 w-4 text-yellow-500" />;
-      case 'info':
-        return <BookOpen className="h-4 w-4 text-blue-500" />;
-      default:
-        return <Clock className="h-4 w-4 text-charcoal-500" />;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'success':
-        return 'text-green-600';
-      case 'warning':
-        return 'text-yellow-600';
-      case 'info':
-        return 'text-blue-600';
-      default:
-        return 'text-charcoal-600';
-    }
-  };
 
   const fetchSubscriptionPlans = async () => {
     try {
@@ -534,7 +475,6 @@ export default function StudentDashboard() {
               <div className="max-h-[600px] overflow-y-auto pr-2">
               <div className="space-y-6">
                   {enrolledCourses.map(course => {
-                    const progress = course.enrollment?.progress_percentage ?? 0;
                   return (
                     <div
                         key={course.id}
