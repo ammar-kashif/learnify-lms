@@ -272,9 +272,6 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
           return;
         }
         
-        // Use a reasonable timeout for the API call
-        const startTime = Date.now();
-        
         // Add cache-busting timestamp to ensure fresh data
         const fetchPromise = fetch(`/api/demo-access?courseId=${courseId}&_t=${Date.now()}`, {
           headers: { 
@@ -600,9 +597,16 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
         {/* Sidebar (non-scrollable) */}
         <aside 
           className={`${sidebarOpen ? 'fixed inset-0 z-50 bg-black/50 lg:relative lg:bg-transparent' : 'hidden'} lg:block lg:w-[260px] lg:flex-shrink-0`}
+          role="presentation"
           onClick={(e) => {
             // Close sidebar when clicking on backdrop (but not on mobile sidebar content)
             if (e.target === e.currentTarget && sidebarOpen) {
+              setSidebarOpen(false);
+            }
+          }}
+          onKeyDown={(e) => {
+            // Close sidebar on Escape key
+            if (e.key === 'Escape' && sidebarOpen) {
               setSidebarOpen(false);
             }
           }}

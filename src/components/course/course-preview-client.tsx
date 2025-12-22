@@ -46,7 +46,7 @@ export default function CoursePreviewClient({ course, courseId }: CoursePreviewC
   const router = useRouter();
 
   // Prevent right-click on video
-  const handleContextMenu = (e: MouseEvent<HTMLDivElement>) => {
+  const handleContextMenu = (e: MouseEvent<HTMLElement>) => {
     e.preventDefault();
     return false;
   };
@@ -315,6 +315,7 @@ export default function CoursePreviewClient({ course, courseId }: CoursePreviewC
                           )}&accessToken=${encodeURIComponent(videoToken)}`}
                           type="video/mp4"
                         />
+                        <track kind="captions" />
                       </video>
                     </div>
                     <div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, MouseEvent, KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useState, useEffect, MouseEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -1143,6 +1143,7 @@ export default function LectureRecordingsList({
                         type="video/mp4"
                       />
                     )}
+                    <track kind="captions" />
                   </video>
                 </div>
               )}
