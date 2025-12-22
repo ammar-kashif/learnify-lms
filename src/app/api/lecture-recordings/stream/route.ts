@@ -199,7 +199,7 @@ export async function GET(request: NextRequest) {
     const headers: Record<string, string> = {
       'Content-Type': contentType,
       'Accept-Ranges': 'bytes',
-      'Cache-Control': 'no-store',
+      'Cache-Control': 'public, max-age=31536000, immutable',
       'Content-Disposition': 'inline',
       'X-Content-Type-Options': 'nosniff',
     };

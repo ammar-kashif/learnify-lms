@@ -22,7 +22,6 @@ export async function POST(request: NextRequest) {
       browserInfo,
       deviceInfo,
       url,
-      screenshotUrl,
       severity
     } = body;
 
@@ -76,7 +75,6 @@ export async function POST(request: NextRequest) {
         browser_info: browserInfoFinal,
         device_info: deviceInfoFinal,
         url: url || null,
-        screenshot_url: screenshotUrl || null,
         severity: severity || 'medium',
         status: 'open',
         priority: 3

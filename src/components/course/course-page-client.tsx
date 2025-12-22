@@ -32,6 +32,7 @@ import {
   Calendar,
   X,
   Crown,
+  Menu,
 } from 'lucide-react';
 
 type ChapterItem = {
@@ -78,6 +79,7 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
   // Selected plan is handled via localStorage in signup flow; keep local state minimal
   const [subscriptionPlans, setSubscriptionPlans] = useState<any[]>([]);
   const [subscriptionPlansLoading, setSubscriptionPlansLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     setIsAdmin(userRole === 'admin' || userRole === 'superadmin');
@@ -112,18 +114,15 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
   useEffect(() => {
     const handlePendingDemo = async () => {
       const pendingDemoType = localStorage.getItem('pendingDemoType');
-      console.log('🔍 Checking for pending demo:', { pendingDemoType, user: !!user, userRole, authLoading });
       
       // Wait for auth to finish loading and user to be available
       if (pendingDemoType && !authLoading && user && userRole === 'student') {
-        console.log('🎯 Creating demo access for:', { pendingDemoType, courseId });
         // Clear the pending demo type
         localStorage.removeItem('pendingDemoType');
         
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.access_token) {
-            console.log('🔐 Session found, creating demo access...');
             // Create the demo access
             const response = await fetch('/api/demo-access', {
               method: 'POST',
@@ -138,10 +137,8 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
             });
 
             const responseData = await response.json();
-            console.log('📡 Demo access API response:', { status: response.status, data: responseData });
 
             if (response.ok) {
-              console.log('✅ Demo access created after signup:', pendingDemoType);
               // Refresh the page to show the demo access
               window.location.reload();
             } else {
@@ -162,12 +159,9 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
   // Fallback: Try to create demo access after a delay if user still isn't loaded
   useEffect(() => {
     const pendingDemoType = localStorage.getItem('pendingDemoType');
-    console.log('🔄 Fallback check:', { pendingDemoType, user: !!user, authLoading });
     
     if (pendingDemoType && !authLoading) {
-      console.log('⏰ Setting up fallback demo creation...');
       const timeoutId = setTimeout(async () => {
-        console.log('🔄 Fallback: Attempting to create demo access...');
         try {
           // Try multiple ways to get the session
           console.log('🔍 Fallback: Trying to get session...');
@@ -279,7 +273,6 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
         }
         
         // Use a reasonable timeout for the API call
-        console.log('🚀 Starting demo access check for course:', courseId);
         const startTime = Date.now();
         
         // Add cache-busting timestamp to ensure fresh data
@@ -295,7 +288,6 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
         );
         
         const res = await Promise.race([fetchPromise, timeoutPromise]) as Response;
-        console.log('✅ Demo access check completed in:', Date.now() - startTime, 'ms');
         
         if (!res.ok) {
           // On error, assume no demo access
@@ -333,20 +325,6 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
     run();
   }, [courseId, userRole, user]);
 
-  // Debug logging for LectureRecordingsList props
-  useEffect(() => {
-    console.log('📋 LectureRecordingsList props:', {
-      courseId,
-      finalUserRole: isAdmin ? (userRole === 'superadmin' ? "superadmin" : "admin") : "student",
-      showAccessControls: !authLoading && userRole === 'student' && !!user,
-      isAdmin,
-      originalUserRole: userRole,
-      hasUser: !!user,
-      authLoading,
-      userRole,
-      user: user ? { id: user.id, email: user.email } : null
-    });
-  }, [courseId, isAdmin, userRole, user, authLoading]);
 
   // Debug auth state changes
   useEffect(() => {
@@ -562,11 +540,33 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
     }
   };
 
+  // Show loading screen while auth is initializing to prevent flashing
+  if (authLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-white dark:bg-gray-900">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 border-4 border-indigo-200 dark:border-indigo-800 border-t-indigo-600 dark:border-t-indigo-400 rounded-full animate-spin"></div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{course.title}</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Loading course content...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-0">
       {/* Header bar */}
       <div className="sticky top-0 z-20 flex items-center justify-between border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3">
         <div className="flex items-center gap-3">
+          {/* Hamburger menu button for mobile */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="lg:hidden p-2"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
           <h1 className="text-sm font-semibold text-gray-900 dark:text-white">{course.title}</h1>
           <span className="hidden md:inline text-xs text-gray-500 dark:text-gray-400">Course</span>
           {isAdmin && (
@@ -576,36 +576,50 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
           )}
         </div>
         
-        {/* Upgrade button for demo users */}
-        {(hasRecordingDemo || hasLiveDemo) && userRole === 'student' && !isAdmin && (
-          <Button 
-            size="sm" 
-            onClick={() => {
-              console.log('🔐 Upgrade button clicked - checking auth state:', { 
-                user: !!user, 
-                userRole, 
-                isAdmin,
-                hasRecordingDemo,
-                hasLiveDemo 
-              });
-              setIsUpgrade(true);
-              setShowSubscriptionModal(true);
-            }}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white mr-2"
-          >
-            <Crown className="h-4 w-4 mr-2" />
-            Upgrade Now
-          </Button>
-        )}
-        
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          {/* Upgrade button for demo users */}
+          {(hasRecordingDemo || hasLiveDemo) && userRole === 'student' && !isAdmin && (
+            <Button 
+              size="sm" 
+              onClick={() => {
+                setIsUpgrade(true);
+                setShowSubscriptionModal(true);
+              }}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+            >
+              <Crown className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Upgrade Now</span>
+              <span className="sm:hidden">Upgrade</span>
+            </Button>
+          )}
+          
+          <ThemeToggle />
+        </div>
       </div>
-      <div className="px-0 h-[calc(100vh-56px)] overflow-hidden flex gap-6">
+      <div className="px-0 h-[calc(100vh-56px)] overflow-hidden flex gap-0 lg:gap-6">
         {/* Sidebar (non-scrollable) */}
-        <aside className="w-[260px] flex-shrink-0">
-          <div className="rounded-none border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0b1220] px-4 pt-3 pb-0 shadow-sm w-[260px] h-full flex flex-col text-gray-800 dark:text-slate-200">
+        <aside 
+          className={`${sidebarOpen ? 'fixed inset-0 z-50 bg-black/50 lg:relative lg:bg-transparent' : 'hidden'} lg:block lg:w-[260px] lg:flex-shrink-0`}
+          onClick={(e) => {
+            // Close sidebar when clicking on backdrop (but not on mobile sidebar content)
+            if (e.target === e.currentTarget && sidebarOpen) {
+              setSidebarOpen(false);
+            }
+          }}
+        >
+          <div className={`rounded-none border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0b1220] px-4 pt-3 pb-0 shadow-sm w-[260px] h-full flex flex-col text-gray-800 dark:text-slate-200 ${sidebarOpen ? 'relative' : ''}`}>
             <div className="space-y-3">
-              <h1 className="text-base font-semibold text-gray-900 dark:text-white">{course.title}</h1>
+              <div className="flex items-center justify-between">
+                <h1 className="text-base font-semibold text-gray-900 dark:text-white">{course.title}</h1>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="lg:hidden"
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
               {course.description && (
                 <p className="mt-1 line-clamp-2 text-xs text-gray-600 dark:text-slate-300">{course.description}</p>
               )}
@@ -616,14 +630,22 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
               <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-gray-700 dark:text-slate-400">This Course</p>
               <ul className="space-y-1 text-sm text-gray-800 dark:text-slate-200">
                 <li>
-                  <Link href={{ pathname: `/courses/${courseId}`, query: { tab: 'chapters' } }} className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='chapters' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}>
+                  <Link 
+                    href={{ pathname: `/courses/${courseId}`, query: { tab: 'chapters' } }} 
+                    onClick={() => setSidebarOpen(false)}
+                    className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='chapters' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}
+                  >
                     <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='chapters' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
                     <BookOpen className="h-4 w-4" /> Chapters
                   </Link>
                 </li>
                 {!(userRole === 'student' && !isAdmin && hasLiveDemo) && (
                   <li>
-                    <Link href={{ pathname: `/courses/${courseId}`, query: { tab: 'lectures' } }} className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='lectures' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}>
+                    <Link 
+                      href={{ pathname: `/courses/${courseId}`, query: { tab: 'lectures' } }} 
+                      onClick={() => setSidebarOpen(false)}
+                      className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='lectures' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}
+                    >
                       <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='lectures' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
                       <Play className="h-4 w-4" /> Recorded Lectures
                       {demoAccessLoading && userRole === 'student' && !isAdmin && (
@@ -635,20 +657,32 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                   </li>
                 )}
                 <li>
-                  <Link href={{ pathname: `/courses/${courseId}`, query: { tab: 'quizzes' } }} className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='quizzes' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}>
+                  <Link 
+                    href={{ pathname: `/courses/${courseId}`, query: { tab: 'quizzes' } }} 
+                    onClick={() => setSidebarOpen(false)}
+                    className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='quizzes' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}
+                  >
                     <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='quizzes' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
                     <Eye className="h-4 w-4" /> Quizzes
                   </Link>
                 </li>
                 <li>
-                  <Link href={{ pathname: `/courses/${courseId}`, query: { tab: 'assignments' } }} className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='assignments' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}>
+                  <Link 
+                    href={{ pathname: `/courses/${courseId}`, query: { tab: 'assignments' } }} 
+                    onClick={() => setSidebarOpen(false)}
+                    className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='assignments' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}
+                  >
                     <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='assignments' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
                     <FileText className="h-4 w-4" /> Assignments
                   </Link>
                 </li>
                 {!(userRole === 'student' && !isAdmin && hasRecordingDemo) && (
                   <li>
-                    <Link href={{ pathname: `/courses/${courseId}`, query: { tab: 'live-classes' } }} className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='live-classes' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}>
+                    <Link 
+                      href={{ pathname: `/courses/${courseId}`, query: { tab: 'live-classes' } }} 
+                      onClick={() => setSidebarOpen(false)}
+                      className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='live-classes' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}
+                    >
                       <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='live-classes' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
                       <Calendar className="h-4 w-4" /> Live Classes
                       {demoAccessLoading && userRole === 'student' && !isAdmin && (
@@ -664,6 +698,7 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
             <div className="mt-auto pt-2 pb-3">
               <Link
                 href="/dashboard"
+                onClick={() => setSidebarOpen(false)}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm text-gray-800 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800/70"
               >
                 <ChevronLeft className="h-4 w-4" /> Back to Dashboard
@@ -673,13 +708,13 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
         </aside>
 
         {/* Main content (scrollable) */}
-        <main className="flex-1 overflow-y-auto pr-2 pl-2 space-y-8" style={{height: 'calc(100vh - 56px)'}}>
+        <main className="flex-1 overflow-y-auto px-4 md:px-6 lg:pr-2 lg:pl-2 space-y-8" style={{height: 'calc(100vh - 56px)'}}>
 
           {/* Chapters */}
           {activeTab === 'chapters' && (
             <section id="chapters" className="space-y-5">
               <div className="flex items-center justify-between pl-0 pt-2">
-                <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">Chapters</h2>
+                <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">Chapters</h2>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500 dark:text-gray-400">{chaptersList.length} total</span>
                   {isAdmin && (
@@ -755,23 +790,23 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                         <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-3">{ch.content}</p>
                       )}
                       
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                         {ch.file_url ? (
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <a 
                               href={ch.file_url} 
                               target="_blank" 
                               rel="noreferrer" 
-                              className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800 hover:underline transition-colors"
+                              className="inline-flex items-center gap-1 text-xs sm:text-sm text-indigo-600 hover:text-indigo-800 hover:underline transition-colors"
                             >
-                              <Eye className="h-4 w-4" />
+                              <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                               View Resource
                             </a>
                             <button
                               onClick={() => handleDownloadFile(ch.file_url!, ch.title)}
-                              className="inline-flex items-center gap-1 text-sm text-green-600 hover:text-green-800 hover:underline transition-colors"
+                              className="inline-flex items-center gap-1 text-xs sm:text-sm text-green-600 hover:text-green-800 hover:underline transition-colors"
                             >
-                              <Download className="h-4 w-4" />
+                              <Download className="h-3 w-3 sm:h-4 sm:w-4" />
                               Download
                             </button>
                           </div>

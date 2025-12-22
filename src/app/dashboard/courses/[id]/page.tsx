@@ -21,7 +21,8 @@ import {
   Image,
   Video,
   Download,
-  Trash2
+  Trash2,
+  Bug
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
@@ -37,6 +38,7 @@ import { uploadToS3, deleteFromS3, formatFileSize } from '@/lib/s3';
 import { getChapters, createChapterFromFile, deleteChapter, type Chapter } from '@/lib/chapters';
 import { supabase } from '@/lib/supabase';
 import Avatar from '@/components/ui/avatar';
+import BugReportForm from '@/components/bug-reports/bug-report-form';
 
 interface Course {
   id: string;
@@ -416,16 +418,32 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <ThemeToggle />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={signOut}
-                className="text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <ThemeToggle />
+                <BugReportForm
+                  trigger={
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+                      title="Report Bug"
+                    >
+                      <Bug className="h-4 w-4" />
+                    </Button>
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={signOut}
+                  className="text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -459,25 +477,25 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
         </div>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+          <div className="max-w-7xl mx-auto space-y-4 md:space-y-6">
             {/* Course Header */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6">
+              <div className="flex flex-col md:flex-row items-start justify-between gap-4">
+                <div className="flex-1 w-full md:w-auto">
                   <div className="flex items-center space-x-3 mb-2">
-                    <Badge variant="secondary" className="bg-primary/10 text-primary">
+                    <Badge variant="secondary" className="bg-primary/10 text-primary text-xs md:text-sm">
                       {course.subject}
                     </Badge>
                   </div>
-                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                  <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2 break-words">
                     {course.title}
                   </h1>
-                  <p className="text-gray-600 dark:text-gray-300 text-lg">
+                  <p className="text-gray-600 dark:text-gray-300 text-sm md:text-base lg:text-lg">
                     {course.description}
                   </p>
                 </div>
-                <Button className="bg-primary text-white hover:bg-primary-600">
+                <Button className="bg-primary text-white hover:bg-primary-600 w-full md:w-auto">
                   <Settings className="mr-2 h-4 w-4" />
                   Settings
                 </Button>
@@ -485,7 +503,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
             </div>
 
             {/* Course Stats */}
-            <div className="grid gap-6 md:grid-cols-3">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
               <Card className="border-gray-200 dark:border-gray-700">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">

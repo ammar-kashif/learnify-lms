@@ -287,15 +287,15 @@ export default function CoursesPage() {
                       </Badge>
                     </div>
                     <div className="flex flex-col gap-2 w-full max-w-full">
-                      <Button 
+                    <Button 
                         className="w-full max-w-full bg-primary text-white hover:bg-primary-600 transition-colors h-10 px-4 flex items-center justify-center overflow-hidden"
-                        onClick={() => handleEnroll(course)}
-                        disabled={authLoading || checkingEnrollment === course.id}
-                      >
+                      onClick={() => handleEnroll(course)}
+                      disabled={authLoading || checkingEnrollment === course.id}
+                    >
                         <BookOpen className="mr-2 h-4 w-4 flex-shrink-0" />
                         <span className="truncate">
-                          {authLoading ? 'Loading...' : 
-                           checkingEnrollment === course.id ? 'Checking...' : 'Enroll Now'}
+                      {authLoading ? 'Loading...' : 
+                       checkingEnrollment === course.id ? 'Checking...' : 'Enroll Now'}
                         </span>
                       </Button>
                       <Link href={`/courses/${course.id}/preview`} className="w-full max-w-full block">
@@ -304,7 +304,7 @@ export default function CoursesPage() {
                         >
                           <Video className="mr-2 h-4 w-4 flex-shrink-0" />
                           <span className="truncate">Watch a Video</span>
-                        </Button>
+                    </Button>
                       </Link>
                     </div>
                   </div>

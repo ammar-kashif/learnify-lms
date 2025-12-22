@@ -33,12 +33,16 @@ import {
   FileText,
   Settings,
   Calendar,
-  Edit
+  Edit,
+  Bug,
+  User,
+  X
 } from 'lucide-react';
 import LiveClassCalendar from '@/components/attendance/live-class-calendar';
 import LiveClassForm from '@/components/attendance/live-class-form';
 import { useTheme } from 'next-themes';
 import { formatDate } from '@/utils/date';
+import BugReportForm from '@/components/bug-reports/bug-report-form';
 
 interface User {
   id: string;
@@ -77,7 +81,7 @@ export default function AdminDashboard() {
   const [paymentVerifications, setPaymentVerifications] = useState<any[]>([]);
   const [enrollments, setEnrollments] = useState<any[]>([]);
   // const [enrollmentStats] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'assignments' | 'payments' | 'enrollments' | 'live-classes' | 'plans'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'assignments' | 'payments' | 'enrollments' | 'live-classes' | 'plans' | 'bug-reports'>('users');
   
   // Enrollment management states
   const [showEditEnrollment, setShowEditEnrollment] = useState(false);
@@ -90,6 +94,15 @@ export default function AdminDashboard() {
   const [courseSearch, setCourseSearch] = useState('');
   const [showCreateClass, setShowCreateClass] = useState(false);
   const [liveClassRefreshKey, setLiveClassRefreshKey] = useState(0);
+  
+  // Bug reports states
+  const [bugReports, setBugReports] = useState<any[]>([]);
+  const [bugReportsLoading, setBugReportsLoading] = useState(false);
+  const [bugReportStatusFilter, setBugReportStatusFilter] = useState<'all' | 'open' | 'in_progress' | 'resolved' | 'closed'>('all');
+  const [bugReportSeverityFilter, setBugReportSeverityFilter] = useState<'all' | 'low' | 'medium' | 'high' | 'critical'>('all');
+  const [bugReportSearch, setBugReportSearch] = useState('');
+  const [selectedBugReport, setSelectedBugReport] = useState<any>(null);
+  const [showBugReportDetails, setShowBugReportDetails] = useState(false);
   
   // Form states
   const [showAddUser, setShowAddUser] = useState(false);
@@ -289,6 +302,53 @@ export default function AdminDashboard() {
       fetchEnrollments();
     }
   }, [activeTab, enrollments.length, fetchEnrollments]);
+
+  // Fetch bug reports function
+  const fetchBugReports = useCallback(async () => {
+    try {
+      console.log('🐛 Fetching bug reports...');
+      setBugReportsLoading(true);
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No authentication token found');
+      }
+
+      let url = '/api/bug-reports?';
+      if (bugReportStatusFilter !== 'all') {
+        url += `status=${bugReportStatusFilter}&`;
+      }
+      if (bugReportSeverityFilter !== 'all') {
+        url += `severity=${bugReportSeverityFilter}&`;
+      }
+
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch bug reports');
+      }
+      
+      setBugReports(data.bugReports || []);
+      console.log('✅ Bug reports fetched successfully');
+    } catch (error) {
+      console.error('❌ Error fetching bug reports:', error);
+      setError('Failed to load bug reports');
+    } finally {
+      setBugReportsLoading(false);
+    }
+  }, [bugReportStatusFilter, bugReportSeverityFilter]);
+
+  // Lazy-load bug reports when tab is opened
+  useEffect(() => {
+    if (activeTab === 'bug-reports') {
+      fetchBugReports();
+    }
+  }, [activeTab, bugReportStatusFilter, bugReportSeverityFilter, fetchBugReports]);
 
   // No special fetch needed for live-classes; calendar component fetches on its own
 
@@ -845,6 +905,7 @@ export default function AdminDashboard() {
     { id: 'assignments', label: 'Assignments', icon: GraduationCap },
     { id: 'payments', label: 'Payments', icon: CreditCard },
     { id: 'enrollments', label: 'Enrollments', icon: Users },
+    { id: 'bug-reports', label: 'Bug Reports', icon: Bug },
     ...(userRole === 'superadmin' ? [
       { id: 'live-classes', label: 'Live Classes', icon: Calendar },
       { id: 'plans', label: 'Plans', icon: CreditCard }
@@ -937,6 +998,18 @@ export default function AdminDashboard() {
             {mounted && theme === 'dark' ? <Sun className={`${sidebarOpen ? 'h-5 w-5 mr-3' : 'h-4 w-4'}`} /> : <Moon className={`${sidebarOpen ? 'h-5 w-5 mr-3' : 'h-4 w-4'}`} />}
             {sidebarOpen && <span>Theme</span>}
           </Button>
+          <BugReportForm
+            trigger={
+              <Button
+                variant="ghost"
+                className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center'} text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700`}
+                title={!sidebarOpen ? 'Report Bug' : undefined}
+              >
+                <Bug className={`${sidebarOpen ? 'h-5 w-5 mr-3' : 'h-4 w-4'}`} />
+                {sidebarOpen && <span>Report Bug</span>}
+              </Button>
+            }
+          />
           <Button
             variant="ghost"
             className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center'} text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20`}
@@ -973,6 +1046,7 @@ export default function AdminDashboard() {
                   {activeTab === 'enrollments' && 'Enrollment Management'}
                   {activeTab === 'live-classes' && 'All Live Classes Calendar'}
                   {activeTab === 'plans' && 'Subscription Plans'}
+                  {activeTab === 'bug-reports' && 'Bug Reports'}
                 </h1>
                 <p className="text-gray-600 dark:text-gray-300">
                   Welcome back, {user?.user_metadata?.full_name || user?.email}
@@ -1372,49 +1446,51 @@ export default function AdminDashboard() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filteredCourses.map((course) => (
-                    <Card key={course.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
-                      <CardHeader>
+                    <Card key={course.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow flex flex-col h-full">
+                      <CardHeader className="flex-shrink-0">
                         <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                          <div className="flex items-start gap-2 flex-1">
+                            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex-shrink-0">
                               <BookOpen className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                             </div>
-                            <div>
+                            <div className="flex-1 min-w-0">
                               <CardTitle className="text-lg text-gray-900 dark:text-white">{course.title}</CardTitle>
-                              <CardDescription className="text-gray-700 dark:text-gray-300 mt-1">{course.description}</CardDescription>
+                              <CardDescription className="text-gray-700 dark:text-gray-300 mt-1 line-clamp-3">{course.description}</CardDescription>
                             </div>
                           </div>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleDeleteCourse(course.id)}
-                            className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                            className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex-shrink-0"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4" />
-                              Created: {formatDate(course.created_at)}
-                            </span>
+                      <CardContent className="flex flex-col flex-grow">
+                        <div className="flex flex-col h-full">
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-4 w-4" />
+                                Created: {formatDate(course.created_at)}
+                              </span>
+                            </div>
+                            
+                            <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                              <div className="flex items-center gap-1">
+                                <FileText className="h-3 w-3" />
+                                {course.chapters_count || 0} chapters
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Settings className="h-3 w-3" />
+                                {course.quizzes_count || 0} quizzes
+                              </div>
+                            </div>
                           </div>
                           
-                          <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-                            <div className="flex items-center gap-1">
-                              <FileText className="h-3 w-3" />
-                              {course.chapters_count || 0} chapters
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Settings className="h-3 w-3" />
-                              {course.quizzes_count || 0} quizzes
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 mt-auto pt-3">
                             <Button
                               variant="outline"
                               size="sm"
@@ -1655,6 +1731,149 @@ export default function AdminDashboard() {
               <PlansEditor />
             )}
 
+            {/* Bug Reports Tab */}
+            {activeTab === 'bug-reports' && (
+              <div className="space-y-6">
+                {/* Filters */}
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex-1 min-w-[200px]">
+                    <Input
+                      placeholder="Search bug reports..."
+                      value={bugReportSearch}
+                      onChange={(e) => setBugReportSearch(e.target.value)}
+                      className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+                    />
+                  </div>
+                  <Select value={bugReportStatusFilter} onValueChange={(value: any) => setBugReportStatusFilter(value)}>
+                    <SelectTrigger className="w-[180px] bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-gray-700">
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="open">Open</SelectItem>
+                      <SelectItem value="in_progress">In Progress</SelectItem>
+                      <SelectItem value="resolved">Resolved</SelectItem>
+                      <SelectItem value="closed">Closed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={bugReportSeverityFilter} onValueChange={(value: any) => setBugReportSeverityFilter(value)}>
+                    <SelectTrigger className="w-[180px] bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+                      <SelectValue placeholder="Filter by severity" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-gray-700">
+                      <SelectItem value="all">All Severity</SelectItem>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="critical">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Bug Reports List */}
+                {bugReportsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                      <p className="text-gray-600 dark:text-gray-400">Loading bug reports...</p>
+                    </div>
+                  </div>
+                ) : bugReports.length === 0 ? (
+                  <Card className="bg-white dark:bg-gray-800">
+                    <CardContent className="py-12 text-center">
+                      <Bug className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                      <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">No bug reports found</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {bugReportSearch || bugReportStatusFilter !== 'all' || bugReportSeverityFilter !== 'all' 
+                          ? 'Try adjusting your filters' 
+                          : 'Bug reports will appear here when users submit them'}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid gap-4">
+                    {bugReports
+                      .filter(report => {
+                        if (!bugReportSearch) return true;
+                        const search = bugReportSearch.toLowerCase();
+                        return (
+                          report.title?.toLowerCase().includes(search) ||
+                          report.email?.toLowerCase().includes(search) ||
+                          report.description?.toLowerCase().includes(search)
+                        );
+                      })
+                      .map((report) => (
+                      <Card 
+                        key={report.id} 
+                        className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-700"
+                        onClick={() => {
+                          setSelectedBugReport(report);
+                          setShowBugReportDetails(true);
+                        }}
+                      >
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Bug className={`h-5 w-5 ${
+                                  report.severity === 'critical' ? 'text-red-600' :
+                                  report.severity === 'high' ? 'text-orange-600' :
+                                  report.severity === 'medium' ? 'text-yellow-600' : 'text-blue-600'
+                                }`} />
+                                <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                                  {report.title}
+                                </CardTitle>
+                              </div>
+                              <CardDescription className="flex items-center gap-2 text-sm">
+                                <User className="h-3 w-3" />
+                                {report.email}
+                                <span className="text-gray-400">•</span>
+                                <Calendar className="h-3 w-3" />
+                                {formatDate(report.created_at)}
+                              </CardDescription>
+                            </div>
+                            <div className="flex flex-col gap-2 items-end">
+                              <Badge 
+                                variant={
+                                  report.severity === 'critical' ? 'destructive' :
+                                  report.severity === 'high' ? 'destructive' :
+                                  report.severity === 'medium' ? 'default' : 'secondary'
+                                }
+                                className="text-xs font-medium"
+                              >
+                                {report.severity.toUpperCase()}
+                              </Badge>
+                              <Badge 
+                                variant={
+                                  report.status === 'open' ? 'default' :
+                                  report.status === 'in_progress' ? 'default' :
+                                  report.status === 'resolved' ? 'secondary' : 'secondary'
+                                }
+                                className="text-xs font-medium"
+                              >
+                                {report.status.replace('_', ' ').toUpperCase()}
+                              </Badge>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2 mb-3">
+                            {report.description}
+                          </p>
+                          {report.url && (
+                            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                              <FileText className="h-3 w-3" />
+                              <span className="truncate">{report.url}</span>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Live Classes Tab (Superadmin) */}
             {activeTab === 'live-classes' && userRole === 'superadmin' && (
               <div className="mt-6">
@@ -1838,6 +2057,225 @@ export default function AdminDashboard() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Bug Report Details Modal */}
+      {showBugReportDetails && selectedBugReport && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6 flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <Bug className={`h-6 w-6 ${
+                    selectedBugReport.severity === 'critical' ? 'text-red-600' :
+                    selectedBugReport.severity === 'high' ? 'text-orange-600' :
+                    selectedBugReport.severity === 'medium' ? 'text-yellow-600' : 'text-blue-600'
+                  }`} />
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {selectedBugReport.title}
+                  </h3>
+                </div>
+                <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                  <div className="flex items-center gap-1">
+                    <User className="h-4 w-4" />
+                    {selectedBugReport.email}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4" />
+                    {formatDate(selectedBugReport.created_at)}
+                  </div>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowBugReportDetails(false);
+                  setSelectedBugReport(null);
+                }}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Status and Severity */}
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Status</Label>
+                  <Select 
+                    value={selectedBugReport.status} 
+                    onValueChange={async (value) => {
+                      try {
+                        const { data: { session } } = await supabase.auth.getSession();
+                        const response = await fetch(`/api/bug-reports/${selectedBugReport.id}`, {
+                          method: 'PATCH',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${session?.access_token}`,
+                          },
+                          body: JSON.stringify({ status: value }),
+                        });
+                        
+                        if (response.ok) {
+                          setSelectedBugReport({ ...selectedBugReport, status: value });
+                          fetchBugReports();
+                        }
+                      } catch (error) {
+                        console.error('Error updating status:', error);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-gray-700">
+                      <SelectItem value="open">Open</SelectItem>
+                      <SelectItem value="in_progress">In Progress</SelectItem>
+                      <SelectItem value="resolved">Resolved</SelectItem>
+                      <SelectItem value="closed">Closed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex-1">
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Severity</Label>
+                  <div className={`h-10 px-4 rounded-md border flex items-center justify-center font-medium text-sm ${
+                    selectedBugReport.severity === 'critical' 
+                      ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300'
+                      : selectedBugReport.severity === 'high'
+                      ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-300'
+                      : selectedBugReport.severity === 'medium'
+                      ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700 text-yellow-700 dark:text-yellow-300'
+                      : 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
+                  }`}>
+                    {selectedBugReport.severity.charAt(0).toUpperCase() + selectedBugReport.severity.slice(1)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Description</Label>
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                  <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{selectedBugReport.description}</p>
+                </div>
+              </div>
+
+              {/* Steps to Reproduce */}
+              {selectedBugReport.steps_to_reproduce && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Steps to Reproduce</Label>
+                  <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                    <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{selectedBugReport.steps_to_reproduce}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Expected vs Actual Behavior */}
+              {(selectedBugReport.expected_behavior || selectedBugReport.actual_behavior) && (
+                <div className="grid md:grid-cols-2 gap-4">
+                  {selectedBugReport.expected_behavior && (
+                    <div>
+                      <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Expected Behavior</Label>
+                      <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
+                        <p className="text-gray-900 dark:text-white text-sm">{selectedBugReport.expected_behavior}</p>
+                      </div>
+                    </div>
+                  )}
+                  {selectedBugReport.actual_behavior && (
+                    <div>
+                      <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Actual Behavior</Label>
+                      <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 border border-red-200 dark:border-red-800">
+                        <p className="text-gray-900 dark:text-white text-sm">{selectedBugReport.actual_behavior}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Technical Details */}
+              <div className="grid md:grid-cols-2 gap-4">
+                {selectedBugReport.browser_info && (
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Browser Info</Label>
+                    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                      <p className="text-gray-900 dark:text-white text-xs font-mono">{selectedBugReport.browser_info}</p>
+                    </div>
+                  </div>
+                )}
+                {selectedBugReport.device_info && (
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Device Info</Label>
+                    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                      <p className="text-gray-900 dark:text-white text-xs font-mono">{selectedBugReport.device_info}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* URL */}
+              {selectedBugReport.url && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Page URL</Label>
+                  <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                    <a 
+                      href={selectedBugReport.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-indigo-600 dark:text-indigo-400 hover:underline text-sm break-all"
+                    >
+                      {selectedBugReport.url}
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowBugReportDetails(false);
+                    setSelectedBugReport(null);
+                  }}
+                  className="flex-1"
+                >
+                  Close
+                </Button>
+                {selectedBugReport.status !== 'closed' && (
+                  <Button
+                    onClick={async () => {
+                      try {
+                        const { data: { session } } = await supabase.auth.getSession();
+                        const response = await fetch(`/api/bug-reports/${selectedBugReport.id}`, {
+                          method: 'PATCH',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${session?.access_token}`,
+                          },
+                          body: JSON.stringify({ status: 'closed' }),
+                        });
+                        
+                        if (response.ok) {
+                          setSelectedBugReport({ ...selectedBugReport, status: 'closed' });
+                          fetchBugReports();
+                          setShowBugReportDetails(false);
+                          setSelectedBugReport(null);
+                        }
+                      } catch (error) {
+                        console.error('Error closing bug report:', error);
+                      }
+                    }}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    Close Bug Report
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -9,6 +9,7 @@ export interface UserProfile {
   id: string;
   email: string;
   full_name: string;
+  phone_number: string | null;
   role: 'student' | 'teacher' | 'admin' | 'superadmin';
   avatar_url: string | null;
   created_at: string;
@@ -28,7 +29,8 @@ export interface AuthContextType {
   signUp: (
     email: string,
     password: string,
-    fullName: string
+    fullName: string,
+    phoneNumber: string
   ) => Promise<{ error: AuthError | PostgrestError | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
@@ -57,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       const fetchPromise = supabase
         .from('users')
-        .select('id, role, avatar_url, full_name, email, created_at, updated_at')
+        .select('id, role, avatar_url, full_name, email, phone_number, created_at, updated_at')
         .eq('id', userId)
         .single();
       
@@ -210,7 +212,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (
     email: string,
     password: string,
-    fullName: string
+    fullName: string,
+    phoneNumber: string
   ) => {
     try {
       console.log('🚀 Starting signup process for:', email);
@@ -225,7 +228,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({
           email: email,
           password: password,
-          fullName: fullName
+          fullName: fullName,
+          phoneNumber: phoneNumber
           // All signups are automatically student role
         })
       });

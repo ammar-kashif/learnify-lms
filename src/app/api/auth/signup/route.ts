@@ -16,12 +16,21 @@ const supabaseAdmin = createClient(
 export async function POST(request: NextRequest) {
   try {
     // Get the request body
-    const { email, password, fullName } = await request.json();
+    const { email, password, fullName, phoneNumber } = await request.json();
 
     // Validate input
-    if (!email || !password || !fullName) {
+    if (!email || !password || !fullName || !phoneNumber) {
       return NextResponse.json(
         { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // Validate phone number format (E.164 international format)
+    const phoneRegex = /^\+[1-9]\d{1,14}$/;
+    if (!phoneRegex.test(phoneNumber)) {
+      return NextResponse.json(
+        { error: 'Phone number must be in international format (e.g., +1234567890)' },
         { status: 400 }
       );
     }
@@ -38,6 +47,7 @@ export async function POST(request: NextRequest) {
       email_confirm: true,
       user_metadata: {
         full_name: fullName,
+        phone_number: phoneNumber,
         role: userRole
       }
     });
@@ -58,6 +68,7 @@ export async function POST(request: NextRequest) {
         id: authData.user.id,
         email,
         full_name: fullName,
+        phone_number: phoneNumber,
         role: userRole,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -97,6 +108,7 @@ export async function POST(request: NextRequest) {
         id: authData.user?.id,
         email,
         full_name: fullName,
+        phone_number: phoneNumber,
         role: userRole
       }
     });

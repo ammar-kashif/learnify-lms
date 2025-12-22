@@ -30,8 +30,7 @@ export type ActionType =
   | 'live_class_join'
   | 'live_class_leave'
   | 'feedback_submit'
-  | 'bug_report_submit'
-  | 'content_flag';
+  | 'bug_report_submit';
 
 export type ResourceType =
   | 'lecture_recording'

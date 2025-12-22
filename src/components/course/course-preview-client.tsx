@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, MouseEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -44,6 +44,53 @@ export default function CoursePreviewClient({ course, courseId }: CoursePreviewC
   const [videoToken, setVideoToken] = useState<string | null>(null);
   const [fetchingToken, setFetchingToken] = useState(false);
   const router = useRouter();
+
+  // Prevent right-click on video
+  const handleContextMenu = (e: MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    return false;
+  };
+
+  // Block keyboard shortcuts for downloading/saving videos
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Block Ctrl+S / Cmd+S (Save)
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        return false;
+      }
+      // Block Ctrl+P / Cmd+P (Print)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        e.preventDefault();
+        return false;
+      }
+      // Block F12 (Dev Tools)
+      if (e.key === 'F12') {
+        e.preventDefault();
+        return false;
+      }
+      // Block Ctrl+Shift+I / Cmd+Option+I (Dev Tools)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'I') {
+        e.preventDefault();
+        return false;
+      }
+      // Block Ctrl+Shift+J / Cmd+Option+J (Console)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'J') {
+        e.preventDefault();
+        return false;
+      }
+      // Block Ctrl+U / Cmd+U (View Source)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'u') {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   useEffect(() => {
     fetchRecording();
@@ -219,21 +266,54 @@ export default function CoursePreviewClient({ course, courseId }: CoursePreviewC
                   </div>
                 ) : recording && videoToken ? (
                   <div className="space-y-4">
-                    <div className="rounded-lg overflow-hidden bg-black">
+                    <div 
+                      className="rounded-lg overflow-hidden bg-black select-none" 
+                      onContextMenu={handleContextMenu}
+                      style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+                    >
                       <video
+                        ref={(el) => {
+                          if (el && videoToken) {
+                            // Force play when video loads
+                            const playPromise = el.play();
+                            if (playPromise !== undefined) {
+                              playPromise.catch(() => {
+                                // Auto-play was prevented, unmute might help
+                                el.muted = true;
+                                el.play().catch(() => {
+                                  // Still failed, user needs to click play
+                                });
+                              });
+                            }
+                          }
+                        }}
                         className="w-full h-auto max-h-[500px] object-contain bg-black"
                         controls
                         preload="auto"
-                        autoPlay
-                        muted
                         playsInline
                         controlsList="nodownload noremoteplayback"
                         disablePictureInPicture
+                        onContextMenu={handleContextMenu}
+                        onCanPlay={(e) => {
+                          const video = e.currentTarget;
+                          // Auto-play when enough data is buffered
+                          if (video.paused) {
+                            const playPromise = video.play();
+                            if (playPromise !== undefined) {
+                              playPromise.catch(() => {
+                                // Auto-play prevented by browser
+                                video.muted = true;
+                                video.play();
+                              });
+                            }
+                          }
+                        }}
                       >
                         <source
                           src={`/api/lecture-recordings/stream?key=${encodeURIComponent(
                             recording.video_key || ''
                           )}&accessToken=${encodeURIComponent(videoToken)}`}
+                          type="video/mp4"
                         />
                       </video>
                     </div>

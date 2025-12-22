@@ -22,12 +22,14 @@ import {
   Lock,
   User,
   ArrowLeft,
+  Phone,
 } from 'lucide-react';
 
 export default function SignUpPage() {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
+    phoneNumber: '',
     password: '',
     confirmPassword: '',
   });
@@ -75,11 +77,20 @@ export default function SignUpPage() {
       return;
     }
 
+    // Validate phone number format (E.164 international format)
+    const phoneRegex = /^\+[1-9]\d{1,14}$/;
+    if (!phoneRegex.test(formData.phoneNumber)) {
+      setError('Phone number must be in international format (e.g., +1234567890)');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const { error } = await signUp(
         formData.email,
         formData.password,
-        formData.fullName
+        formData.fullName,
+        formData.phoneNumber
       );
 
       if (error) {
@@ -272,6 +283,26 @@ export default function SignUpPage() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber" className="text-charcoal-700 dark:text-gray-300">
+                  Phone Number
+                </Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-charcoal-400 dark:text-gray-400" />
+                  <Input
+                    id="phoneNumber"
+                    type="tel"
+                    placeholder="+1234567890"
+                    value={formData.phoneNumber}
+                    onChange={e => handleInputChange('phoneNumber', e.target.value)}
+                    className="border-charcoal-300 dark:border-gray-600 pl-10 focus:border-primary focus:ring-primary bg-white dark:bg-gray-800 text-charcoal-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-400"
+                    required
+                  />
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Enter phone number in international format (e.g., +1234567890)
+                </p>
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-charcoal-700 dark:text-gray-300">

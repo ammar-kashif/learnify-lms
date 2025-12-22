@@ -36,11 +36,13 @@ import {
   PieChart,
   Activity,
   Shield,
+  Bug,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { getNavigationByRole } from '@/config/navigation';
 import ThemeToggle from '@/components/theme-toggle';
 import Avatar from '@/components/ui/avatar';
+import BugReportForm from '@/components/bug-reports/bug-report-form';
 
 // Icon mapping for navigation items
 const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } =
@@ -178,10 +180,22 @@ export default function DashboardLayout({
                   </p>
                 </div>
               </div>
+              <BugReportForm
+                trigger={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-3 w-full justify-start text-charcoal-700 hover:bg-primary/10 hover:text-primary dark:text-gray-300"
+                  >
+                    <Bug className="mr-2 h-4 w-4" />
+                    Report Bug
+                  </Button>
+                }
+              />
               <Button
                 variant="ghost"
                 size="sm"
-                className="mt-3 w-full justify-start text-charcoal-700 hover:bg-primary/10 hover:text-primary dark:text-gray-300"
+                className="mt-2 w-full justify-start text-charcoal-700 hover:bg-primary/10 hover:text-primary dark:text-gray-300"
                 onClick={handleSignOut}
               >
                 <LogOut className="mr-2 h-4 w-4" />

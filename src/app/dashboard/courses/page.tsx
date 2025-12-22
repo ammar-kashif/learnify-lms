@@ -23,11 +23,13 @@ import {
   Menu,
   X,
   LogOut,
+  Bug,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import ThemeToggle from '@/components/theme-toggle';
 import Avatar from '@/components/ui/avatar';
+import BugReportForm from '@/components/bug-reports/bug-report-form';
 
 interface Course {
   id: string;
@@ -195,8 +197,23 @@ export default function TeacherCoursesPage() {
                 </p>
               </div>
             </div>
+            <div className="space-y-2">
             <div className="flex items-center justify-between">
               <ThemeToggle />
+                <BugReportForm
+                  trigger={
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+                      title="Report Bug"
+                    >
+                      <Bug className="h-4 w-4" />
+                    </Button>
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-end">
               <Button
                 variant="ghost"
                 size="sm"
@@ -205,6 +222,7 @@ export default function TeacherCoursesPage() {
               >
                 <LogOut className="h-4 w-4" />
               </Button>
+              </div>
             </div>
           </div>
         </div>

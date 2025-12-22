@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, MouseEvent, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,7 +18,7 @@ import {
   Lock,
   Star,
   Crown,
-  Flag
+  Loader2
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { supabase } from '@/lib/supabase';
@@ -30,7 +30,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import ContentFlagButton from '@/components/content-flagging/content-flag-button';
 
 interface LectureRecording {
   id: string;
@@ -66,6 +65,9 @@ export default function LectureRecordingsList({
   const { session } = useAuth();
   const [recordings, setRecordings] = useState<LectureRecording[]>([]);
   const [loading, setLoading] = useState(true);
+  const [checkingEnrollment, setCheckingEnrollment] = useState(true);
+  const [isPaidUser, setIsPaidUser] = useState(false);
+  const [enrollmentChecked, setEnrollmentChecked] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [openRecordingId, setOpenRecordingId] = useState<string | null>(null);
@@ -77,32 +79,134 @@ export default function LectureRecordingsList({
   const [demoVideoId, setDemoVideoId] = useState<string | null>(null);
   const [videoTokens, setVideoTokens] = useState<Record<string, string>>({});
 
-  // Load demo video restriction state from localStorage on component mount
+  // Prevent right-click on video
+  const handleContextMenu = (e: MouseEvent<HTMLElement>) => {
+    e.preventDefault();
+    return false;
+  };
+
+  // Block keyboard shortcuts for downloading/saving videos
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedDemoState = localStorage.getItem(`demo-videos-${courseId}`);
-      if (savedDemoState) {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Block Ctrl+S / Cmd+S (Save)
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        return false;
+      }
+      // Block Ctrl+P / Cmd+P (Print)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        e.preventDefault();
+        return false;
+      }
+      // Block F12 (Dev Tools)
+      if (e.key === 'F12') {
+        e.preventDefault();
+        return false;
+      }
+      // Block Ctrl+Shift+I / Cmd+Option+I (Dev Tools)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'I') {
+        e.preventDefault();
+        return false;
+      }
+      // Block Ctrl+Shift+J / Cmd+Option+J (Console)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'J') {
+        e.preventDefault();
+        return false;
+      }
+      // Block Ctrl+U / Cmd+U (View Source)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'u') {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  // Check enrollment status immediately for authenticated users, or load demo state for guests
+  useEffect(() => {
+    // Prevent multiple checks - only run once per user session
+    if (enrollmentChecked) return;
+    
+    const checkEnrollmentAndSetDemoState = async () => {
+      // Non-students (admin, teacher, superadmin) get full access immediately
+      if (session?.access_token && userRole && userRole !== 'student') {
+        setHasAccess(true);
+        setIsPaidUser(true);
+        setIsDemoMode(false);
+        setCheckingEnrollment(false);
+        setEnrollmentChecked(true);
+        return;
+      }
+      
+      if (session?.access_token && userRole === 'student') {
+        // Authenticated user - check enrollment from database immediately
         try {
-          const { isDemoMode: savedIsDemoMode, watchedVideos: savedWatchedVideos } = JSON.parse(savedDemoState);
-          setIsDemoMode(savedIsDemoMode);
-          setWatchedVideos(new Set(savedWatchedVideos));
-          console.log('🎬 Loaded demo state from localStorage:', { isDemoMode: savedIsDemoMode, watchedVideos: savedWatchedVideos });
+          const enrollmentResponse = await fetch(`/api/enrollments?courseId=${courseId}`, {
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+          });
+          const enrollmentData = await enrollmentResponse.json();
+          
+          if (enrollmentData.enrolled && enrollmentData.isPaidEnrollment) {
+            // Paid user - clear all demo state immediately and grant access
+            setHasAccess(true);
+            setIsPaidUser(true); // Mark as paid user to prevent demo mode from being re-enabled
+            setIsDemoMode(false);
+            setWatchedVideos(new Set());
+            setDemoVideoId(null); // Clear any demo video selection
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem(`demo-videos-${courseId}`);
+              localStorage.removeItem(`demo-override-${courseId}`); // Clear admin override
+            }
+            setCheckingEnrollment(false);
+            setEnrollmentChecked(true); // Mark as checked
+            return; // Exit early, don't load any demo state
+          }
         } catch (error) {
-          console.error('Error parsing saved demo state:', error);
+          console.error('Error checking enrollment:', error);
         }
       }
+      
+      // Only load demo state if not authenticated or not a paid user
+      if (typeof window !== 'undefined' && !session) {
+        const savedDemoState = localStorage.getItem(`demo-videos-${courseId}`);
+        if (savedDemoState) {
+          try {
+            const { isDemoMode: savedIsDemoMode, watchedVideos: savedWatchedVideos } = JSON.parse(savedDemoState);
+            setIsDemoMode(savedIsDemoMode);
+            setWatchedVideos(new Set(savedWatchedVideos));
+          } catch (error) {
+            console.error('Error parsing saved demo state:', error);
+          }
+        }
+      }
+      
+      // Mark enrollment check as complete
+      setCheckingEnrollment(false);
+      setEnrollmentChecked(true);
+    };
+    
+    // Only run this check once per course/session combination
+    if (!enrollmentChecked) {
+      if (session?.access_token && userRole) {
+        // Authenticated user with role loaded - check enrollment
+        checkEnrollmentAndSetDemoState();
+      } else if (!session) {
+        // Guest user - mark as checked immediately and grant basic access
+        setHasAccess(true); // Guests can see the first lecture
+        setCheckingEnrollment(false);
+        setEnrollmentChecked(true);
+      }
+      // If session exists but userRole not yet loaded, wait for next render
     }
-  }, [courseId]);
+  }, [courseId, session?.access_token, userRole, enrollmentChecked]);
 
-  // Debug logging for demo mode state
-  useEffect(() => {
-    console.log('🎬 Demo mode state changed:', {
-      isDemoMode,
-      watchedVideosCount: watchedVideos.size,
-      watchedVideosArray: Array.from(watchedVideos),
-      demoAccess: !!demoAccess
-    });
-  }, [isDemoMode, watchedVideos, demoAccess]);
+  // Demo mode state tracking (removed console logs for production)
 
   // Check if user has demo access for this course
   useEffect(() => {
@@ -137,61 +241,58 @@ export default function LectureRecordingsList({
       }
     };
 
-    if (showAccessControls && userRole === 'student') {
+    // Only check demo access for non-paid students
+    if (showAccessControls && userRole === 'student' && !isPaidUser) {
       checkDemoAccess();
     }
-  }, [courseId, showAccessControls, userRole, recordings]);
+  }, [courseId, showAccessControls, userRole, recordings, isPaidUser]);
 
   // Set demo video ID when demo mode is activated and recordings are loaded
+  // BUT: Never run this for paid users OR while still checking enrollment
   useEffect(() => {
-    if (isDemoMode && recordings.length > 0 && !demoVideoId) {
+    // Wait until enrollment check is complete
+    if (checkingEnrollment) return;
+    
+    if (!isPaidUser && isDemoMode && recordings.length > 0 && !demoVideoId) {
       const sortedRecordings = [...recordings].sort((a, b) => 
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
       setDemoVideoId(sortedRecordings[0].id);
-      console.log('🎬 Demo video set to (via useEffect):', sortedRecordings[0].id, sortedRecordings[0].title);
     }
-  }, [isDemoMode, recordings, demoVideoId]);
+  }, [checkingEnrollment, isPaidUser, isDemoMode, recordings, demoVideoId]);
 
   const checkAccess = async () => {
-    console.log('🔍 checkAccess called:', { 
-      hasSession: !!session?.access_token, 
-      userRole, 
-      courseId,
-      showAccessControls 
-    });
-    
     if (!session?.access_token || userRole !== 'student') {
-      console.log('❌ checkAccess early return:', { 
-        noSession: !session?.access_token, 
-        notStudent: userRole !== 'student' 
-      });
       return;
     }
 
     try {
       // FIRST: Check if user is enrolled in the course (regular enrollment)
-      console.log('📞 Calling enrollment API for courseId:', courseId);
       const enrollmentResponse = await fetch(`/api/enrollments?courseId=${courseId}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
         },
       });
       const enrollmentData = await enrollmentResponse.json();
-      console.log('📊 Enrollment API response:', enrollmentData);
 
       if (enrollmentData.enrolled) {
         // User is enrolled - check if it's paid or demo
         if (enrollmentData.isPaidEnrollment) {
           // User has paid enrollment - full access
-          console.log('✅ User has paid enrollment - full access');
           setHasAccess(true);
+          setIsPaidUser(true); // Mark as paid user to prevent demo mode from being re-enabled
           setIsDemoMode(false);
+          setWatchedVideos(new Set());
+          setDemoVideoId(null); // Clear any demo video selection
+          // Clear demo state from localStorage (all possible keys)
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem(`demo-videos-${courseId}`);
+            localStorage.removeItem(`demoState_${courseId}`);
+            localStorage.removeItem(`demo-override-${courseId}`); // Clear admin override
+          }
           return;
         } else if (enrollmentData.isDemoEnrollment) {
           // User has demo enrollment - check what type of demo access they have
-          console.log('✅ User has demo enrollment - checking demo access type...');
-          
           // RUTHLESS CHECK: Only allow recordings if they have lecture_recording demo access
           // Add cache-busting timestamp to ensure fresh data
           const demoResponse = await fetch(`/api/demo-access?courseId=${courseId}&accessType=lecture_recording&_t=${Date.now()}`, {
@@ -205,7 +306,6 @@ export default function LectureRecordingsList({
           if (demoData.hasAccess && demoData.demoAccess && demoData.demoAccess.length > 0) {
             const demoAccessRecord = demoData.demoAccess[0];
             if (demoAccessRecord.access_type === 'lecture_recording') {
-              console.log('🎬 Demo user has lecture_recording access - allowing recordings ONLY');
               setHasAccess(true);
               setIsDemoMode(true);
               setDemoAccess(demoAccessRecord);
@@ -221,7 +321,6 @@ export default function LectureRecordingsList({
                   const videoUsageData = await videoUsageResponse.json();
                   if (videoUsageData.watchedVideos && videoUsageData.watchedVideos.length > 0) {
                     setWatchedVideos(new Set(videoUsageData.watchedVideos));
-                    console.log('🎬 Loaded watched videos from database:', videoUsageData.watchedVideos);
                   }
                 }
               } catch (e) {
@@ -232,14 +331,12 @@ export default function LectureRecordingsList({
           }
           
           // If demo enrollment exists but no lecture_recording access, DENY access
-          console.log('🚫 Demo enrollment exists but NO lecture_recording access - DENIED');
           setHasAccess(false);
           setIsDemoMode(false);
           // Clear any stale localStorage data
           try {
             localStorage.removeItem(`demo-videos-${courseId}`);
             localStorage.removeItem(`demo-override-${courseId}`);
-            console.log('🧹 Cleared stale demo state from localStorage');
           } catch (e) {
             console.error('Error clearing localStorage:', e);
           }
@@ -273,7 +370,6 @@ export default function LectureRecordingsList({
           const videoUsageData = await videoUsageResponse.json();
           if (videoUsageData.watchedVideos && videoUsageData.watchedVideos.length > 0) {
             setWatchedVideos(new Set(videoUsageData.watchedVideos));
-            console.log('🎬 Loaded watched videos from database:', videoUsageData.watchedVideos);
           }
         }
         
@@ -341,7 +437,8 @@ export default function LectureRecordingsList({
       setHasLoadedOnce(true);
       
       // For guests, set hasAccess based on API response
-      if (result.isGuest) {
+      // BUT: Only if user is not already confirmed as paid
+      if (result.isGuest && !isPaidUser) {
         setHasAccess(true); // Guests have access to first lecture
         setIsDemoMode(true); // Treat guests like demo users
         // Set first accessible lecture as demo video
@@ -352,26 +449,26 @@ export default function LectureRecordingsList({
       }
       
       // Prefer explicit demo, else local override (superadmin), else oldest in demo mode
-      if (recordingsList.length > 0) {
+      // BUT: Only do this if user is in demo mode, guest, or admin (not paid users)
+      const shouldSetDemoVideo = !isPaidUser && (inDemoMode || result.isGuest || userRole === 'admin' || userRole === 'superadmin');
+      
+      if (recordingsList.length > 0 && shouldSetDemoVideo && !isPaidUser) {
         // 1) Server-side explicit demo
         const explicitDemo = recordingsList.find((r: any) => r.is_demo);
         if (explicitDemo) {
           setDemoVideoId(explicitDemo.id);
-          console.log('🎬 Demo video set to explicit is_demo:', explicitDemo.id, explicitDemo.title);
         } else {
           // 2) Local override (used by superadmin immediately after change, until DB column exists/propagates)
           if (typeof window !== 'undefined') {
             const overrideId = localStorage.getItem(`demo-override-${courseId}`);
             if (overrideId && recordingsList.some((r: any) => r.id === overrideId)) {
               setDemoVideoId(overrideId);
-              console.log('🎬 Demo video set via local override:', overrideId);
               return;
             }
           }
 
           // 3) Fallback to oldest only if in demo mode
           if (!inDemoMode) {
-            console.log('🚫 Not in demo mode and no explicit demo/override; leaving demoVideoId null');
             setDemoVideoId(null);
             return;
           }
@@ -379,8 +476,10 @@ export default function LectureRecordingsList({
             new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
           );
           setDemoVideoId(sortedRecordings[0].id);
-          console.log('🎬 Demo video set to oldest (fallback):', sortedRecordings[0].id, sortedRecordings[0].title);
         }
+      } else if (!shouldSetDemoVideo) {
+        // Paid users or users not in demo mode: clear demo video
+        setDemoVideoId(null);
       }
     } catch (error) {
       console.error('Error fetching recordings:', error);
@@ -391,31 +490,20 @@ export default function LectureRecordingsList({
   };
 
   useEffect(() => {
-    console.log('🔄 useEffect triggered:', { 
-      courseId, 
-      hasSession: !!session?.access_token, 
-      refreshKey, 
-      showAccessControls, 
-      userRole 
-    });
+    // Wait for enrollment check to complete before fetching recordings
+    if (checkingEnrollment && session?.access_token) {
+      return; // Don't fetch until we know if user is paid
+    }
     
     // Always fetch recordings (works for guests too)
     fetchRecordings(false);
     
-    // Only check access for authenticated students
-    if (showAccessControls && userRole === 'student' && session?.access_token) {
-      console.log('🚀 Calling checkAccess from useEffect');
+    // Only check access for authenticated students who aren't already confirmed as paid
+    if (showAccessControls && userRole === 'student' && session?.access_token && !isPaidUser) {
       checkAccess();
-    } else {
-      console.log('⏭️ Skipping checkAccess:', { 
-        showAccessControls, 
-        userRole, 
-        hasSession: !!session?.access_token,
-        shouldCall: showAccessControls && userRole === 'student' && !!session?.access_token
-      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId, session?.access_token, refreshKey, showAccessControls, userRole]);
+  }, [courseId, session?.access_token, refreshKey, showAccessControls, userRole, checkingEnrollment, isPaidUser]);
 
   const handleTogglePublish = async (recordingId: string, currentStatus: boolean) => {
     if (!session?.access_token) return;
@@ -554,17 +642,6 @@ export default function LectureRecordingsList({
   };
 
   const handleVideoPlay = async (recordingId: string) => {
-    console.log('🎬 handleVideoPlay called:', {
-      recordingId,
-      isDemoMode,
-      demoVideoId,
-      watchedVideosCount: watchedVideos.size,
-      hasWatchedThisVideo: watchedVideos.has(recordingId),
-      watchedVideosArray: Array.from(watchedVideos),
-      hasSession: !!session,
-      sessionToken: session?.access_token ? 'present' : 'missing'
-    });
-
     // Check if lecture is locked (for guests or non-enrolled users)
     const recording = recordings.find(r => r.id === recordingId);
     if (recording && recording.is_accessible === false) {
@@ -585,9 +662,6 @@ export default function LectureRecordingsList({
 
     // Check if this is a demo user or guest trying to watch a non-demo video
     if (isDemoMode && demoVideoId && recordingId !== demoVideoId) {
-      console.log('🚫 Demo video restriction - blocking non-demo video');
-      console.log('🚫 Demo video ID:', demoVideoId);
-      console.log('🚫 Trying to watch:', recordingId);
       if (!session) {
         toast.error('Sign up to unlock all lectures!');
         window.location.href = `/auth/signup?redirect=/courses/${courseId}`;
@@ -600,8 +674,6 @@ export default function LectureRecordingsList({
 
     // If in demo mode but demoVideoId is not set yet, block all videos
     if (isDemoMode && !demoVideoId) {
-      console.log('🚫 Demo mode active but demo video not set yet - blocking video');
-      console.log('🚫 Trying to watch:', recordingId);
       toast.error('Demo access is being set up. Please wait a moment and try again.');
       return;
     }
@@ -678,7 +750,6 @@ export default function LectureRecordingsList({
           timestamp: Date.now()
         };
         localStorage.setItem(`demo-videos-${courseId}`, JSON.stringify(demoState));
-        console.log('💾 Saved demo state to localStorage:', demoState);
       }
 
       // Track demo video usage in database (only if authenticated)
@@ -696,7 +767,6 @@ export default function LectureRecordingsList({
               accessType: 'lecture_recording'
             }),
           });
-          console.log('📊 Tracked demo video usage in database');
         } catch (error) {
           console.error('Error tracking demo video usage:', error);
         }
@@ -756,6 +826,25 @@ export default function LectureRecordingsList({
     );
   }
 
+  // Show loading screen during initial load and enrollment check
+  // This prevents any flashing of demo mode UI for paid users
+  const isInitializing = checkingEnrollment || !hasLoadedOnce || (session && hasAccess === null);
+  
+  if (isInitializing) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Video className="h-5 w-5" />
+          <h3 className="text-lg font-semibold">Lecture Recordings</h3>
+        </div>
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+          <p className="text-muted-foreground">Loading your course content...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -767,20 +856,7 @@ export default function LectureRecordingsList({
       </div>
 
       {/* Access Control for Students */}
-      {(() => {
-        const shouldShow = showAccessControls && userRole === 'student' && session?.access_token && hasAccess !== null;
-        console.log('🎯 Access control render check:', {
-          showAccessControls,
-          userRole,
-          hasSession: !!session?.access_token,
-          hasAccess,
-          hasUsedDemoForCourse,
-          isDemoMode,
-          demoAccess: !!demoAccess,
-          shouldShow
-        });
-        return shouldShow;
-      })() && (
+      {showAccessControls && userRole === 'student' && session?.access_token && hasAccess !== null && (
         <div className="space-y-4">
           {hasAccess === false && !hasUsedDemoForCourse && (
             <Alert>
@@ -798,7 +874,7 @@ export default function LectureRecordingsList({
           )}
 
           {/* Show upgrade button for any demo user */}
-          {(isDemoMode || hasUsedDemoForCourse) && (
+          {!checkingEnrollment && !isPaidUser && (isDemoMode || hasUsedDemoForCourse) && (
             <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
               <Crown className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               <AlertDescription className="text-blue-800 dark:text-blue-200">
@@ -813,15 +889,7 @@ export default function LectureRecordingsList({
             </Alert>
           )}
 
-          {(() => {
-            const shouldShowDemoAlert = isDemoMode && demoAccess;
-            console.log('🎬 Demo alert check:', {
-              isDemoMode,
-              demoAccess: !!demoAccess,
-              shouldShowDemoAlert
-            });
-            return shouldShowDemoAlert;
-          })() && (
+          {isDemoMode && demoAccess && (
             <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
               <Star className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               <AlertDescription className="text-blue-800 dark:text-blue-200">
@@ -848,7 +916,7 @@ export default function LectureRecordingsList({
                 <div className="space-y-1 flex-1">
                   <CardTitle className="text-base flex items-center gap-2">
                     {recording.title}
-                    {recording.is_accessible === false && (
+                    {!checkingEnrollment && recording.is_accessible === false && (
                       <Badge variant="outline" className="text-xs border-amber-300 text-amber-700 bg-amber-50">
                         <Lock className="h-3 w-3 mr-1" />
                         Locked
@@ -860,13 +928,13 @@ export default function LectureRecordingsList({
                         Published
                       </Badge>
                     ) : null}
-                    {(recording as any).is_demo || (isDemoMode && demoVideoId && demoVideoId === recording.id) ? (
+                    {!checkingEnrollment && ((recording as any).is_demo || (isDemoMode && demoVideoId && demoVideoId === recording.id)) ? (
                       <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
                         <Star className="h-3 w-3 mr-1" />
                         Demo Video
                       </Badge>
                     ) : null}
-                    {isDemoMode && watchedVideos.has(recording.id) && (
+                    {!checkingEnrollment && isDemoMode && watchedVideos.has(recording.id) && (
                       <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
                         <Star className="h-3 w-3 mr-1" />
                         Demo Watched
@@ -946,21 +1014,11 @@ export default function LectureRecordingsList({
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
-                {/* Flag button - visible to all users */}
-                <ContentFlagButton
-                  resourceType="lecture_recording"
-                  resourceId={recording.id}
-                  courseId={courseId}
-                  variant="ghost"
-                  size="sm"
-                  trigger={
-                    <Button variant="ghost" size="sm" title="Flag this content">
-                      <Flag className="h-4 w-4" />
-                    </Button>
-                  }
-                />
                 {/* Play button - handle guest, student, and teacher states */}
-                {recording.is_accessible === false ? (
+                {checkingEnrollment ? (
+                  // Loading state - don't show any button until enrollment check completes
+                  <div className="ml-2 h-9 w-20" />
+                ) : recording.is_accessible === false ? (
                   <div className="ml-2 flex items-center gap-2">
                     <Lock className="h-4 w-4 text-muted-foreground" />
                     <Button
@@ -1018,16 +1076,55 @@ export default function LectureRecordingsList({
               </div>
 
               {openRecordingId === recording.id && (
-                <div className="mt-4 rounded-lg overflow-hidden bg-black">
+                <div 
+                  className="mt-4 rounded-lg overflow-hidden bg-black select-none" 
+                  onContextMenu={handleContextMenu}
+                  style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+                >
                   <video
+                    ref={(el) => {
+                      if (el && videoTokens[recording.id]) {
+                        // Force play when video loads
+                        const playPromise = el.play();
+                        if (playPromise !== undefined) {
+                          playPromise.catch(() => {
+                            // Auto-play was prevented, unmute might help
+                            el.muted = true;
+                            el.play().catch(() => {
+                              // Still failed, user needs to click play
+                            });
+                          });
+                        }
+                      }
+                    }}
                     className="w-full h-64 object-contain bg-black"
                     controls
                     preload="auto"
-                    autoPlay
-                    muted
                     playsInline
                     controlsList="nodownload noremoteplayback"
                     disablePictureInPicture
+                    onContextMenu={handleContextMenu}
+                    onLoadedMetadata={(e) => {
+                      const video = e.currentTarget;
+                      // Set buffer size for smoother playback
+                      if ('buffered' in video) {
+                        video.volume = 1.0;
+                      }
+                    }}
+                    onCanPlay={(e) => {
+                      const video = e.currentTarget;
+                      // Auto-play when enough data is buffered
+                      if (video.paused) {
+                        const playPromise = video.play();
+                        if (playPromise !== undefined) {
+                          playPromise.catch(() => {
+                            // Auto-play prevented by browser
+                            video.muted = true;
+                            video.play();
+                          });
+                        }
+                      }
+                    }}
                     onEnded={() => {
                       // Track video completion
                       trackVideoComplete(recording.id, courseId, {
@@ -1043,6 +1140,7 @@ export default function LectureRecordingsList({
                         )}&accessToken=${encodeURIComponent(
                           videoTokens[recording.id]
                         )}`}
+                        type="video/mp4"
                       />
                     )}
                   </video>

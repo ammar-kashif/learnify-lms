@@ -37,8 +37,8 @@ export default function DashboardPage() {
         if (!session) {
           // Only redirect if Supabase also confirms no session
           redirectAttempted.current = true;
-          router.replace('/');
-        }
+      router.replace('/');
+    }
         // If session exists, the auth context will catch up
       }
       setAuthChecked(true);
