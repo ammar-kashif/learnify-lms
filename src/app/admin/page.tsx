@@ -1470,22 +1470,22 @@ export default function AdminDashboard() {
                       </CardHeader>
                       <CardContent className="flex flex-col flex-grow">
                         <div className="flex flex-col h-full">
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-                              <span className="flex items-center gap-1">
-                                <Calendar className="h-4 w-4" />
-                                Created: {formatDate(course.created_at)}
-                              </span>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-4 w-4" />
+                              Created: {formatDate(course.created_at)}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                            <div className="flex items-center gap-1">
+                              <FileText className="h-3 w-3" />
+                              {course.chapters_count || 0} chapters
                             </div>
-                            
-                            <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-                              <div className="flex items-center gap-1">
-                                <FileText className="h-3 w-3" />
-                                {course.chapters_count || 0} chapters
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Settings className="h-3 w-3" />
-                                {course.quizzes_count || 0} quizzes
+                            <div className="flex items-center gap-1">
+                              <Settings className="h-3 w-3" />
+                              {course.quizzes_count || 0} quizzes
                               </div>
                             </div>
                           </div>

@@ -28,6 +28,7 @@ export default function QuizForm({ courseId, onSave, onCancel, loading = false, 
         options: ['', ''],
         correct_answer: 0,
         points: 1,
+        requires_manual_grading: false,
       }
     ]
   );
@@ -46,6 +47,7 @@ export default function QuizForm({ courseId, onSave, onCancel, loading = false, 
       options: ['', ''],
       correct_answer: 0,
       points: 1,
+      requires_manual_grading: false,
     }]);
   };
 
@@ -112,14 +114,29 @@ export default function QuizForm({ courseId, onSave, onCancel, loading = false, 
         toast.error(`Question ${i + 1} text is required`);
         return;
       }
-      if (!q.options || q.options.length < 2) {
-        toast.error(`Question ${i + 1} must have at least 2 options`);
-        return;
+      
+      // Validate multiple choice questions
+      if (q.type === 'multiple_choice') {
+        if (!q.options || q.options.length < 2) {
+          toast.error(`Question ${i + 1} must have at least 2 options`);
+          return;
+        }
+        if (q.options.some(opt => !opt.trim())) {
+          toast.error(`Question ${i + 1} has empty options`);
+          return;
+        }
+        if (q.correct_answer === undefined) {
+          toast.error(`Question ${i + 1} must have a correct answer selected`);
+          return;
+        }
       }
-      if (q.options.some(opt => !opt.trim())) {
-        toast.error(`Question ${i + 1} has empty options`);
-        return;
+      
+      // Text questions don't need validation for options
+      if (q.type === 'text' && q.requires_manual_grading === undefined) {
+        // Default to true for text questions
+        q.requires_manual_grading = true;
       }
+      
       if (q.points <= 0) {
         toast.error(`Question ${i + 1} points must be greater than 0`);
         return;
@@ -194,6 +211,83 @@ export default function QuizForm({ courseId, onSave, onCancel, loading = false, 
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Question Type Selector */}
+              <div className="space-y-2" style={{ pointerEvents: 'auto', position: 'relative', zIndex: 10 }}>
+                <Label>Question Type *</Label>
+                <div className="flex gap-4 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <label 
+                    className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                    onClick={(e) => {
+                      console.log('Multiple Choice label clicked');
+                      e.stopPropagation();
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name={`question-type-${questionIndex}`}
+                      value="multiple_choice"
+                      checked={question.type === 'multiple_choice'}
+                      onChange={(e) => {
+                        console.log('Multiple Choice radio changed', e.target.checked);
+                        const updated = [...questions];
+                        updated[questionIndex] = {
+                          ...updated[questionIndex],
+                          type: 'multiple_choice',
+                          options: ['', ''],
+                          correct_answer: 0,
+                          correct_text_answer: undefined,
+                          requires_manual_grading: false,
+                        };
+                        setQuestions(updated);
+                        console.log('Updated questions state:', updated);
+                      }}
+                      onClick={(e) => {
+                        console.log('Multiple Choice radio clicked');
+                        e.stopPropagation();
+                      }}
+                      className="w-4 h-4 text-blue-600 cursor-pointer"
+                      style={{ pointerEvents: 'auto' }}
+                    />
+                    <span className="font-medium select-none">Multiple Choice</span>
+                  </label>
+                  <label 
+                    className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                    onClick={(e) => {
+                      console.log('Text Answer label clicked');
+                      e.stopPropagation();
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name={`question-type-${questionIndex}`}
+                      value="text"
+                      checked={question.type === 'text'}
+                      onChange={(e) => {
+                        console.log('Text Answer radio changed', e.target.checked);
+                        const updated = [...questions];
+                        updated[questionIndex] = {
+                          ...updated[questionIndex],
+                          type: 'text',
+                          options: undefined,
+                          correct_answer: undefined,
+                          correct_text_answer: '',
+                          requires_manual_grading: true,
+                        };
+                        setQuestions(updated);
+                        console.log('Updated questions state:', updated);
+                      }}
+                      onClick={(e) => {
+                        console.log('Text Answer radio clicked');
+                        e.stopPropagation();
+                      }}
+                      className="w-4 h-4 text-blue-600 cursor-pointer"
+                      style={{ pointerEvents: 'auto' }}
+                    />
+                    <span className="font-medium select-none">Text Answer</span>
+                  </label>
+                </div>
+              </div>
+
               {/* Question Text */}
               <div>
                 <Label htmlFor={`question-${questionIndex}`}>Question Text *</Label>
@@ -206,50 +300,82 @@ export default function QuizForm({ courseId, onSave, onCancel, loading = false, 
                 />
               </div>
 
-              {/* Options */}
-              <div>
-                <Label>Options *</Label>
-                <div className="space-y-2">
-                  {question.options?.map((option, optionIndex) => (
-                    <div key={optionIndex} className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        name={`correct-${questionIndex}`}
-                        checked={question.correct_answer === optionIndex}
-                        onChange={() => updateQuestion(questionIndex, 'correct_answer', optionIndex)}
-                        className="text-primary"
-                      />
-                      <Input
-                        value={option}
-                        onChange={(e) => updateOption(questionIndex, optionIndex, e.target.value)}
-                        placeholder={`Option ${optionIndex + 1}`}
-                        required
-                      />
-                      {question.options && question.options.length > 2 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeOption(questionIndex, optionIndex)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => addOption(questionIndex)}
-                    className="w-full"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Option
-                  </Button>
+              {/* Multiple Choice Options */}
+              {question.type === 'multiple_choice' && (
+                <div>
+                  <Label>Options *</Label>
+                  <div className="space-y-2">
+                    {question.options?.map((option, optionIndex) => (
+                      <div key={optionIndex} className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          name={`correct-${questionIndex}`}
+                          checked={question.correct_answer === optionIndex}
+                          onChange={() => updateQuestion(questionIndex, 'correct_answer', optionIndex)}
+                          className="text-primary"
+                        />
+                        <Input
+                          value={option}
+                          onChange={(e) => updateOption(questionIndex, optionIndex, e.target.value)}
+                          placeholder={`Option ${optionIndex + 1}`}
+                          required
+                        />
+                        {question.options && question.options.length > 2 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeOption(questionIndex, optionIndex)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addOption(questionIndex)}
+                      className="w-full"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Option
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Text Answer Fields */}
+              {question.type === 'text' && (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor={`correct-text-${questionIndex}`}>Expected Answer (Optional)</Label>
+                    <Input
+                      id={`correct-text-${questionIndex}`}
+                      value={question.correct_text_answer || ''}
+                      onChange={(e) => updateQuestion(questionIndex, 'correct_text_answer', e.target.value)}
+                      placeholder="Enter the expected answer for reference"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      This is for your reference only. Text questions require manual grading.
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2 p-3 bg-blue-50 rounded-md">
+                    <input
+                      type="checkbox"
+                      id={`manual-grading-${questionIndex}`}
+                      checked={question.requires_manual_grading !== false}
+                      onChange={(e) => updateQuestion(questionIndex, 'requires_manual_grading', e.target.checked)}
+                      className="text-primary"
+                    />
+                    <Label htmlFor={`manual-grading-${questionIndex}`} className="cursor-pointer">
+                      Requires manual grading
+                    </Label>
+                  </div>
+                </div>
+              )}
 
               {/* Points */}
               <div>

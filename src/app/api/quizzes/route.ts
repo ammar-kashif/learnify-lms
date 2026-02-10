@@ -126,15 +126,32 @@ export async function POST(request: NextRequest) {
 
     // Validate questions
     for (const question of questions) {
-      if (!question.question || !question.options || question.options.length < 2) {
+      if (!question.question) {
         return NextResponse.json({ 
-          error: 'Each question must have a question text and at least 2 options' 
+          error: 'Each question must have a question text' 
         }, { status: 400 });
       }
-      if (question.correct_answer === undefined || question.correct_answer < 0 || question.correct_answer >= question.options.length) {
-        return NextResponse.json({ 
-          error: 'Correct answer index must be valid for the options' 
-        }, { status: 400 });
+      
+      // Validate multiple choice questions
+      if (question.type === 'multiple_choice') {
+        if (!question.options || question.options.length < 2) {
+          return NextResponse.json({ 
+            error: 'Multiple choice questions must have at least 2 options' 
+          }, { status: 400 });
+        }
+        if (question.correct_answer === undefined || question.correct_answer < 0 || question.correct_answer >= question.options.length) {
+          return NextResponse.json({ 
+            error: 'Correct answer index must be valid for the options' 
+          }, { status: 400 });
+        }
+      }
+      
+      // Validate text questions
+      if (question.type === 'text') {
+        // Text questions don't need options but should have manual grading flag
+        if (question.requires_manual_grading === undefined) {
+          question.requires_manual_grading = true;
+        }
       }
     }
 

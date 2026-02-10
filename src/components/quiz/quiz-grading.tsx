@@ -23,10 +23,15 @@ export default function QuizGrading({ quiz, attempts, onGradingComplete }: QuizG
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const currentAttempt = attempts[currentAttemptIndex];
+  
   const textQuestions = quiz.questions.filter(q => q.type === 'text');
-  const textAnswers = currentAttempt?.answers.filter(a => 
-    textQuestions.some(q => q.id === a.question_id)
-  ) || [];
+  
+  // Filter text answers - also check if answer has manually_graded flag or requires_manual_grading
+  const textAnswers = currentAttempt?.answers.filter(a => {
+    const matchesTextQuestion = textQuestions.some(q => q.id === a.question_id);
+    const hasManualFlag = a.manually_graded === true || a.manually_graded === false;
+    return matchesTextQuestion || hasManualFlag;
+  }) || [];
 
   const updateGrading = (questionId: string, points: number, feedback: string) => {
     setGradingData(prev => ({
@@ -96,6 +101,48 @@ export default function QuizGrading({ quiz, attempts, onGradingComplete }: QuizG
       <Card>
         <CardContent className="p-6 text-center">
           <p className="text-gray-500">No attempts to grade</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show message if no text questions in quiz
+  if (textQuestions.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center space-y-3">
+          <p className="text-gray-600 dark:text-gray-300 font-medium">No Text Questions Found</p>
+          <p className="text-sm text-gray-500">
+            This quiz only contains multiple choice questions which are auto-graded. There are no text questions that require manual grading.
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => window.history.back()}
+            className="mt-4"
+          >
+            Go Back
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show message if no text answers to grade
+  if (textAnswers.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center space-y-3">
+          <p className="text-gray-600 dark:text-gray-300 font-medium">No Text Answers to Grade</p>
+          <p className="text-sm text-gray-500">
+            This student did not answer any text questions in this attempt.
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => window.history.back()}
+            className="mt-4"
+          >
+            Go Back
+          </Button>
         </CardContent>
       </Card>
     );
@@ -196,7 +243,7 @@ export default function QuizGrading({ quiz, attempts, onGradingComplete }: QuizG
                   <Label className="text-sm font-medium">Student&apos;s Answer:</Label>
                   <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
                     <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">
-                      {answer.text_answer || answer.selected_answer || 'No answer provided'}
+                      {answer.text_answer || (typeof answer.selected_answer === 'string' ? answer.selected_answer : '') || 'No answer provided'}
                     </p>
                   </div>
                 </div>

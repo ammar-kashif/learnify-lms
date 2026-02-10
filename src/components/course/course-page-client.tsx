@@ -296,8 +296,17 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
         
         const json = await res.json();
         const list = (json?.demoAccess ?? []) as any[];
-        setHasRecordingDemo(list.some(a => a.access_type === 'lecture_recording'));
-        setHasLiveDemo(list.some(a => a.access_type === 'live_class'));
+        const hasRec = list.some(a => a.access_type === 'lecture_recording');
+        const hasLive = list.some(a => a.access_type === 'live_class');
+        console.log('🎬 Demo access check result:', { 
+          demoAccessList: list, 
+          hasRecordingDemo: hasRec, 
+          hasLiveDemo: hasLive,
+          userRole,
+          isAdmin
+        });
+        setHasRecordingDemo(hasRec);
+        setHasLiveDemo(hasLive);
       } catch (error) {
         console.error('Demo access check failed:', error);
         // Set defaults on error - assume no demo access
@@ -574,24 +583,24 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
         </div>
         
         <div className="flex items-center gap-2">
-          {/* Upgrade button for demo users */}
-          {(hasRecordingDemo || hasLiveDemo) && userRole === 'student' && !isAdmin && (
-            <Button 
-              size="sm" 
-              onClick={() => {
-                setIsUpgrade(true);
-                setShowSubscriptionModal(true);
-              }}
+        {/* Upgrade button for demo users */}
+        {(hasRecordingDemo || hasLiveDemo) && userRole === 'student' && !isAdmin && (
+          <Button 
+            size="sm" 
+            onClick={() => {
+              setIsUpgrade(true);
+              setShowSubscriptionModal(true);
+            }}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-            >
-              <Crown className="h-4 w-4 mr-2" />
+          >
+            <Crown className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Upgrade Now</span>
               <span className="sm:hidden">Upgrade</span>
-            </Button>
-          )}
-          
-          <ThemeToggle />
-        </div>
+          </Button>
+        )}
+        
+        <ThemeToggle />
+      </div>
       </div>
       <div className="px-0 h-[calc(100vh-56px)] overflow-hidden flex gap-0 lg:gap-6">
         {/* Sidebar (non-scrollable) */}
@@ -614,7 +623,7 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
           <div className={`rounded-none border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0b1220] px-4 pt-3 pb-0 shadow-sm w-[260px] h-full flex flex-col text-gray-800 dark:text-slate-200 ${sidebarOpen ? 'relative' : ''}`}>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h1 className="text-base font-semibold text-gray-900 dark:text-white">{course.title}</h1>
+              <h1 className="text-base font-semibold text-gray-900 dark:text-white">{course.title}</h1>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -643,7 +652,12 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                     <BookOpen className="h-4 w-4" /> Chapters
                   </Link>
                 </li>
-                {!(userRole === 'student' && !isAdmin && hasLiveDemo) && (
+                {/* Hide Recordings tab ONLY if student has live class demo BUT NOT recording demo */}
+                {(() => {
+                  const shouldShow = !(userRole === 'student' && !isAdmin && hasLiveDemo && !hasRecordingDemo);
+                  console.log('🎬 Recordings tab check:', { userRole, isAdmin, hasLiveDemo, hasRecordingDemo, shouldShow });
+                  return shouldShow;
+                })() && (
                   <li>
                     <Link 
                       href={{ pathname: `/courses/${courseId}`, query: { tab: 'lectures' } }} 
@@ -680,7 +694,12 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                     <FileText className="h-4 w-4" /> Assignments
                   </Link>
                 </li>
-                {!(userRole === 'student' && !isAdmin && hasRecordingDemo) && (
+                {/* Hide Live Classes tab ONLY if student has recording demo BUT NOT live class demo */}
+                {(() => {
+                  const shouldShow = !(userRole === 'student' && !isAdmin && hasRecordingDemo && !hasLiveDemo);
+                  console.log('📅 Live Classes tab check:', { userRole, isAdmin, hasRecordingDemo, hasLiveDemo, shouldShow });
+                  return shouldShow;
+                })() && (
                   <li>
                     <Link 
                       href={{ pathname: `/courses/${courseId}`, query: { tab: 'live-classes' } }} 

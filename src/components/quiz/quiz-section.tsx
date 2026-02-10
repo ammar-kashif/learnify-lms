@@ -363,6 +363,34 @@ export default function QuizSection({ courseId, userRole, userId }: QuizSectionP
     );
   }
 
+  // Show grading interface
+  if (gradingQuiz) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Grade Quiz: {gradingQuiz.title}</h2>
+          <Button
+            variant="outline"
+            onClick={() => setGradingQuiz(null)}
+          >
+            Close Grading
+          </Button>
+        </div>
+        <QuizGrading
+          quiz={gradingQuiz}
+          attempts={attempts}
+          onGradingComplete={() => {
+            setGradingQuiz(null);
+            // Refresh attempts
+            if (gradingQuiz) {
+              loadAttempts(gradingQuiz.id);
+            }
+          }}
+        />
+      </div>
+    );
+  }
+
   // Show quiz list
   return (
     <div className="space-y-5">
@@ -607,31 +635,6 @@ export default function QuizSection({ courseId, userRole, userId }: QuizSectionP
         </div>
       )}
 
-      {/* Grading Interface */}
-      {gradingQuiz && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Grade Quiz: {gradingQuiz.title}</h2>
-            <Button
-              variant="outline"
-              onClick={() => setGradingQuiz(null)}
-            >
-              Close Grading
-            </Button>
-          </div>
-          <QuizGrading
-            quiz={gradingQuiz}
-            attempts={attempts}
-            onGradingComplete={() => {
-              setGradingQuiz(null);
-              // Refresh attempts
-              if (gradingQuiz) {
-                loadAttempts(gradingQuiz.id);
-              }
-            }}
-          />
-        </div>
-      )}
     </div>
   );
 }

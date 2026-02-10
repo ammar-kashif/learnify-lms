@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { getAllGuestDemos, clearAllGuestDemos } from '@/lib/guest-demo';
 import {
   Eye,
   EyeOff,
@@ -96,6 +97,61 @@ export default function SignUpPage() {
       if (error) {
         setError(error.message);
       } else {
+        // Migrate guest demos to authenticated account
+        const guestDemos = getAllGuestDemos();
+        if (guestDemos.length > 0) {
+          console.log('🔄 Migrating', guestDemos.length, 'guest demo(s) to authenticated account');
+          
+          // Wait for session to be established
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          try {
+            let session = null;
+            for (let i = 0; i < 3; i++) {
+              const { data } = await supabase.auth.getSession();
+              if (data?.session?.access_token) {
+                session = data.session;
+                break;
+              }
+              await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            
+            if (session?.access_token) {
+              // Migrate each guest demo
+              for (const guestDemo of guestDemos) {
+                try {
+                  const response = await fetch('/api/demo-access', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${session.access_token}`,
+                    },
+                    body: JSON.stringify({
+                      courseId: guestDemo.courseId,
+                      accessType: guestDemo.accessType,
+                      resourceId: guestDemo.videoId || null,
+                    }),
+                  });
+
+                  if (response.ok) {
+                    console.log('✅ Migrated guest demo for course:', guestDemo.courseId);
+                  } else {
+                    console.error('❌ Failed to migrate guest demo for course:', guestDemo.courseId);
+                  }
+                } catch (error) {
+                  console.error('Error migrating guest demo:', error);
+                }
+              }
+              
+              // Clear all guest demos after migration
+              clearAllGuestDemos();
+              console.log('✅ All guest demos migrated and cleared');
+            }
+          } catch (error) {
+            console.error('Error during guest demo migration:', error);
+          }
+        }
+
         // Check for stored course data and redirect accordingly
         const demoCourse = localStorage.getItem('selectedCourseForDemo');
         const subscriptionCourse = localStorage.getItem('selectedCourseForSubscription');

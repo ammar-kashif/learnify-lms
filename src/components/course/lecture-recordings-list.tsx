@@ -24,6 +24,8 @@ import { useAuth } from '@/contexts/auth-context';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { trackVideoPlay, trackVideoComplete } from '@/lib/tracking';
+import { getGuestDemo, setGuestDemo, hasGuestDemoExpired } from '@/lib/guest-demo';
+import DemoCountdownTimer from './demo-countdown-timer';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -78,6 +80,25 @@ export default function LectureRecordingsList({
   const [watchedVideos, setWatchedVideos] = useState<Set<string>>(new Set());
   const [demoVideoId, setDemoVideoId] = useState<string | null>(null);
   const [videoTokens, setVideoTokens] = useState<Record<string, string>>({});
+  const [guestDemo, setGuestDemoState] = useState<ReturnType<typeof getGuestDemo>>(null);
+  const [showGuestDemoExpiredModal, setShowGuestDemoExpiredModal] = useState(false);
+
+  // Check for guest demo on mount
+  useEffect(() => {
+    if (!session) {
+      const demo = getGuestDemo(courseId);
+      if (demo && !hasGuestDemoExpired(demo)) {
+        setGuestDemoState(demo);
+        setIsDemoMode(true);
+        // If videoId is set in guest demo, use it
+        if (demo.videoId) {
+          setDemoVideoId(demo.videoId);
+        }
+      } else if (demo && hasGuestDemoExpired(demo)) {
+        setShowGuestDemoExpiredModal(true);
+      }
+    }
+  }, [session, courseId]);
 
   // Prevent right-click on video
   const handleContextMenu = (e: MouseEvent<HTMLElement>) => {
@@ -159,7 +180,7 @@ export default function LectureRecordingsList({
             setIsDemoMode(false);
             setWatchedVideos(new Set());
             setDemoVideoId(null); // Clear any demo video selection
-            if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined') {
               localStorage.removeItem(`demo-videos-${courseId}`);
               localStorage.removeItem(`demo-override-${courseId}`); // Clear admin override
             }
@@ -174,17 +195,17 @@ export default function LectureRecordingsList({
       
       // Only load demo state if not authenticated or not a paid user
       if (typeof window !== 'undefined' && !session) {
-        const savedDemoState = localStorage.getItem(`demo-videos-${courseId}`);
-        if (savedDemoState) {
-          try {
-            const { isDemoMode: savedIsDemoMode, watchedVideos: savedWatchedVideos } = JSON.parse(savedDemoState);
-            setIsDemoMode(savedIsDemoMode);
-            setWatchedVideos(new Set(savedWatchedVideos));
-          } catch (error) {
-            console.error('Error parsing saved demo state:', error);
-          }
+      const savedDemoState = localStorage.getItem(`demo-videos-${courseId}`);
+      if (savedDemoState) {
+        try {
+          const { isDemoMode: savedIsDemoMode, watchedVideos: savedWatchedVideos } = JSON.parse(savedDemoState);
+          setIsDemoMode(savedIsDemoMode);
+          setWatchedVideos(new Set(savedWatchedVideos));
+        } catch (error) {
+          console.error('Error parsing saved demo state:', error);
         }
       }
+    }
       
       // Mark enrollment check as complete
       setCheckingEnrollment(false);
@@ -660,7 +681,34 @@ export default function LectureRecordingsList({
       return;
     }
 
-    // Check if this is a demo user or guest trying to watch a non-demo video
+    // For guest demo users
+    if (guestDemo && !session) {
+      // Check if demo expired
+      if (hasGuestDemoExpired(guestDemo)) {
+        setShowGuestDemoExpiredModal(true);
+        return;
+      }
+
+      // Update guest demo with the video ID if not set
+      if (!guestDemo.videoId) {
+        const updatedDemo = setGuestDemo(courseId, recordingId);
+        setGuestDemoState(updatedDemo);
+        setDemoVideoId(recordingId);
+      }
+
+      // Only allow the demo video
+      const allowedVideoId = guestDemo.videoId || recordingId;
+      if (recordingId !== allowedVideoId) {
+        toast.error('Guest demo allows only one video. Sign up to unlock all lectures!');
+        setShowGuestDemoExpiredModal(true);
+        return;
+      }
+
+      setOpenRecordingId(recordingId);
+      return;
+    }
+
+    // Check if this is a demo user trying to watch a non-demo video
     if (isDemoMode && demoVideoId && recordingId !== demoVideoId) {
       if (!session) {
         toast.error('Sign up to unlock all lectures!');
@@ -855,6 +903,41 @@ export default function LectureRecordingsList({
         </Badge>
       </div>
 
+      {/* Guest Demo Countdown Timer */}
+      {guestDemo && !session && (
+        <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+          <CardContent className="pt-6">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-semibold text-blue-900 dark:text-blue-100">Guest Demo Active</h4>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">You can watch 1 video</p>
+                </div>
+                <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                  <Star className="h-3 w-3 mr-1" />
+                  Demo
+                </Badge>
+              </div>
+              <DemoCountdownTimer 
+                demo={guestDemo} 
+                onExpire={() => setShowGuestDemoExpiredModal(true)}
+                showProgress={true}
+              />
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => {
+                  window.location.href = `/auth/signup?redirect=/courses/${courseId}`;
+                }}
+                className="w-full"
+              >
+                Sign Up for Full Access
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Access Control for Students */}
       {showAccessControls && userRole === 'student' && session?.access_token && hasAccess !== null && (
         <div className="space-y-4">
@@ -893,11 +976,17 @@ export default function LectureRecordingsList({
             <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
               <Star className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               <AlertDescription className="text-blue-800 dark:text-blue-200">
-                <div className="flex items-center justify-between">
-                  <span>🎬 Demo Mode: You can watch 1 video. Subscribe for unlimited access.</span>
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                    Demo Active
-                  </Badge>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span>🎬 Demo Mode: You can watch 1 video. Subscribe for unlimited access.</span>
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                      Demo Active
+                    </Badge>
+                  </div>
+                  <DemoCountdownTimer 
+                    demo={demoAccess} 
+                    compact={true}
+                  />
                 </div>
               </AlertDescription>
             </Alert>
@@ -1151,6 +1240,51 @@ export default function LectureRecordingsList({
           </Card>
         ))}
       </div>
+
+      {/* Guest Demo Expired Modal */}
+      {showGuestDemoExpiredModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <Card className="max-w-md w-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-red-600" />
+                Demo Expired
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-gray-700 dark:text-gray-300">
+                Your 24-hour guest demo has expired. Sign up to get full access to all lecture recordings!
+              </p>
+              <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg space-y-2">
+                <h4 className="font-semibold text-blue-900 dark:text-blue-100">Premium Features:</h4>
+                <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+                  <li>✓ Unlimited lecture recordings</li>
+                  <li>✓ Live classes with teachers</li>
+                  <li>✓ Quizzes and assignments</li>
+                  <li>✓ Course certificates</li>
+                </ul>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowGuestDemoExpiredModal(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    window.location.href = `/auth/signup?redirect=/courses/${courseId}`;
+                  }}
+                  className="flex-1"
+                >
+                  Sign Up Now
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

@@ -34,6 +34,7 @@ import LectureRecordingsList from '@/components/course/lecture-recordings-list';
 import EnrollmentStatus from '@/components/course/enrollment-status';
 import AssignmentManagement from '@/components/assignments/assignment-management';
 import LiveClassesList from '@/components/course/live-classes-list';
+import CourseDemoManagement from '@/components/course/course-demo-management';
 import { uploadToS3, deleteFromS3, formatFileSize } from '@/lib/s3';
 import { getChapters, createChapterFromFile, deleteChapter, type Chapter } from '@/lib/chapters';
 import { supabase } from '@/lib/supabase';
@@ -58,7 +59,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   const [quizCount, setQuizCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'quizzes' | 'content' | 'students' | 'recordings' | 'enrollments' | 'assignments' | 'live-classes'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'quizzes' | 'content' | 'students' | 'recordings' | 'enrollments' | 'assignments' | 'live-classes' | 'demo-access'>('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
   // Content management state
@@ -310,6 +311,9 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
     { id: 'live-classes', label: 'Live Classes', icon: Video },
     { id: 'assignments', label: 'Assignments', icon: FileText },
     { id: 'students', label: 'Students', icon: Users },
+    ...(userProfile?.role === 'admin' || userProfile?.role === 'superadmin' 
+      ? [{ id: 'demo-access', label: 'Demo Access', icon: Users }] 
+      : []),
     ...((userProfile?.role === 'admin' || userProfile?.role === 'superadmin') ? [{ id: 'enrollments', label: 'Enrollments', icon: Users } as const] : []),
   ];
 
@@ -419,8 +423,8 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
               </div>
             </div>
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <ThemeToggle />
+            <div className="flex items-center justify-between">
+              <ThemeToggle />
                 <BugReportForm
                   trigger={
                     <Button
@@ -435,14 +439,14 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
                 />
               </div>
               <div className="flex items-center justify-end">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={signOut}
-                  className="text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400"
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={signOut}
+                className="text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
               </div>
             </div>
           </div>
@@ -631,6 +635,13 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
                     courseId={params.id}
                     userRole="teacher"
                     userId={user?.id || ''}
+                  />
+                )}
+
+                {activeTab === 'demo-access' && (
+                  <CourseDemoManagement
+                    courseId={params.id}
+                    courseTitle={course?.title || ''}
                   />
                 )}
 

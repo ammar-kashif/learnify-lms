@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { toast } from 'sonner';
+import { setGuestDemo, getGuestDemo } from '@/lib/guest-demo';
 
 interface DemoAccessRequestProps {
   courseId: string;
@@ -57,15 +58,31 @@ export default function DemoAccessRequest({
 
   const handleRequestDemo = async (accessType: AccessType) => {
     if (!user || !session?.access_token) {
-      // User is not authenticated, store demo selection and redirect to signup
-      localStorage.setItem('selectedCourseForDemo', JSON.stringify({
-        id: courseId,
-        title: courseTitle
-      }));
-      localStorage.setItem('selectedDemoType', accessType);
-      toast.success('Demo selection saved! Please sign up to access your demo.');
-      onAccessGranted?.();
-      return;
+      // For guests: Create guest demo immediately (only for lecture recordings)
+      if (accessType === 'lecture_recording') {
+        try {
+          // We'll set the videoId to empty string for now
+          // It will be determined by the lecture-recordings-list component
+          setGuestDemo(courseId, '');
+          toast.success('Demo activated! You have 24 hours of access.');
+          onAccessGranted?.();
+          return;
+        } catch (error) {
+          console.error('Error creating guest demo:', error);
+          toast.error('Failed to activate demo');
+          return;
+        }
+      } else {
+        // Live classes require authentication
+        localStorage.setItem('selectedCourseForDemo', JSON.stringify({
+          id: courseId,
+          title: courseTitle
+        }));
+        localStorage.setItem('selectedDemoType', accessType);
+        toast.success('Please sign up to access live classes demo.');
+        window.location.href = `/auth/signup?redirect=/courses/${courseId}`;
+        return;
+      }
     }
 
     setIsRequesting(true);
