@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { toast } from 'sonner';
-import { setGuestDemo, getGuestDemo } from '@/lib/guest-demo';
+import { setGuestDemo } from '@/lib/guest-demo';
 
 interface DemoAccessRequestProps {
   courseId: string;

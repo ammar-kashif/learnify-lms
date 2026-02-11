@@ -27,7 +27,6 @@ import {
   TrendingUp,
   Plus,
   Trash2,
-  Filter,
   Search,
   RefreshCw
 } from 'lucide-react';

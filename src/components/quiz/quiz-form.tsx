@@ -217,10 +217,6 @@ export default function QuizForm({ courseId, onSave, onCancel, loading = false, 
                 <div className="flex gap-4 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
                   <label 
                     className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 p-2 rounded transition-colors"
-                    onClick={(e) => {
-                      console.log('Multiple Choice label clicked');
-                      e.stopPropagation();
-                    }}
                   >
                     <input
                       type="radio"
@@ -252,10 +248,6 @@ export default function QuizForm({ courseId, onSave, onCancel, loading = false, 
                   </label>
                   <label 
                     className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 p-2 rounded transition-colors"
-                    onClick={(e) => {
-                      console.log('Text Answer label clicked');
-                      e.stopPropagation();
-                    }}
                   >
                     <input
                       type="radio"

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Clock, AlertCircle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { GuestDemoState, formatTimeRemaining, getDemoProgress, hasGuestDemoExpired } from '@/lib/guest-demo';
+import { GuestDemoState } from '@/lib/guest-demo';
 
 interface DemoCountdownTimerProps {
   demo: GuestDemoState | { expires_at: string; used_at: string };

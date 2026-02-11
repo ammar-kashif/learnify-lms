@@ -296,17 +296,8 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
         
         const json = await res.json();
         const list = (json?.demoAccess ?? []) as any[];
-        const hasRec = list.some(a => a.access_type === 'lecture_recording');
-        const hasLive = list.some(a => a.access_type === 'live_class');
-        console.log('🎬 Demo access check result:', { 
-          demoAccessList: list, 
-          hasRecordingDemo: hasRec, 
-          hasLiveDemo: hasLive,
-          userRole,
-          isAdmin
-        });
-        setHasRecordingDemo(hasRec);
-        setHasLiveDemo(hasLive);
+        setHasRecordingDemo(list.some(a => a.access_type === 'lecture_recording'));
+        setHasLiveDemo(list.some(a => a.access_type === 'live_class'));
       } catch (error) {
         console.error('Demo access check failed:', error);
         // Set defaults on error - assume no demo access
@@ -653,11 +644,7 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                   </Link>
                 </li>
                 {/* Hide Recordings tab ONLY if student has live class demo BUT NOT recording demo */}
-                {(() => {
-                  const shouldShow = !(userRole === 'student' && !isAdmin && hasLiveDemo && !hasRecordingDemo);
-                  console.log('🎬 Recordings tab check:', { userRole, isAdmin, hasLiveDemo, hasRecordingDemo, shouldShow });
-                  return shouldShow;
-                })() && (
+                {!(userRole === 'student' && !isAdmin && hasLiveDemo && !hasRecordingDemo) && (
                   <li>
                     <Link 
                       href={{ pathname: `/courses/${courseId}`, query: { tab: 'lectures' } }} 
@@ -695,11 +682,7 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                   </Link>
                 </li>
                 {/* Hide Live Classes tab ONLY if student has recording demo BUT NOT live class demo */}
-                {(() => {
-                  const shouldShow = !(userRole === 'student' && !isAdmin && hasRecordingDemo && !hasLiveDemo);
-                  console.log('📅 Live Classes tab check:', { userRole, isAdmin, hasRecordingDemo, hasLiveDemo, shouldShow });
-                  return shouldShow;
-                })() && (
+                {!(userRole === 'student' && !isAdmin && hasRecordingDemo && !hasLiveDemo) && (
                   <li>
                     <Link 
                       href={{ pathname: `/courses/${courseId}`, query: { tab: 'live-classes' } }} 
