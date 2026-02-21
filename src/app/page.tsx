@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import ThemeToggle from '@/components/theme-toggle';
+import Testimonials from '@/components/testimonials';
 
 export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -508,6 +509,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Testimonials Section */}
+      <Testimonials />
 
       {/* CTA Section */}
       <section id="contact" className="relative px-4 py-20 overflow-hidden">

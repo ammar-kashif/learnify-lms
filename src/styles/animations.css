@@ -1,0 +1,59 @@
+/* ===== Floating & Bounce Animations ===== */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(5deg); }
+}
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+.animate-float { animation: float 10s ease-in-out infinite; }
+.animate-bounce-slow { animation: bounce-slow 4s ease-in-out infinite; }
+
+/* ===== Slide / Scale entrance ===== */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-slide-up { animation: slide-up 0.6s ease-out forwards; }
+.animate-scale-in { animation: scale-in 0.5s ease-out forwards; }
+
+/* ===== Gradient animation ===== */
+@keyframes gradient-x {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.animate-gradient-x {
+  background-size: 200% 200%;
+  animation: gradient-x 4s ease infinite;
+}
+
+/* ===== Testimonials Carousel ===== */
+@keyframes testimonial-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes testimonial-out-left {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(-40px); }
+}
+@keyframes testimonial-out-right {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(40px); }
+}
+
+.testimonial-slide-in {
+  animation: testimonial-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.testimonial-slide-out-left {
+  animation: testimonial-out-left 0.35s ease-in forwards;
+}
+.testimonial-slide-out-right {
+  animation: testimonial-out-right 0.35s ease-in forwards;
+}
