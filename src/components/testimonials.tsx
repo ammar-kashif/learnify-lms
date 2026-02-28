@@ -10,6 +10,7 @@ interface Testimonial {
 }
 
 const testimonials: Testimonial[] = [
+  { name: 'Abdullah', image: '/images/testimonials/Abdullah review post.png' },
   { name: 'Ali', image: '/images/testimonials/Ali review.png' },
   { name: 'Ansha', image: '/images/testimonials/Ansha Review post.png' },
   { name: 'Ayaan', image: '/images/testimonials/Ayaan review post.png' },
@@ -17,6 +18,7 @@ const testimonials: Testimonial[] = [
   { name: 'Fatima', image: '/images/testimonials/Fatima review.png' },
   { name: 'Jannat', image: '/images/testimonials/Jannat review post.png' },
   { name: 'Mahnoor', image: '/images/testimonials/Mahnoor Review post.png' },
+  { name: 'Mahrukh', image: '/images/testimonials/Mahrukh review post.png' },
 ];
 
 export default function Testimonials() {
