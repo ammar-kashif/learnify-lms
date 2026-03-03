@@ -8,41 +8,53 @@
 export interface GuestDemoState {
   courseId: string;
   videoId: string;
-  accessType: 'lecture_recording';
+  accessType: 'lecture_recording' | 'live_class';
   grantedAt: string;
   expiresAt: string;
+  guestEmail?: string;
 }
 
 const STORAGE_KEY_PREFIX = 'guest-demo-';
 const DEMO_DURATION_HOURS = 24;
 
 /**
- * Get guest demo state for a specific course
+ * Get guest demo state for a specific course and access type
  */
-export function getGuestDemo(courseId: string): GuestDemoState | null {
+export function getGuestDemo(courseId: string, accessType?: 'lecture_recording' | 'live_class'): GuestDemoState | null {
   if (typeof window === 'undefined') return null;
 
   try {
-    const key = `${STORAGE_KEY_PREFIX}${courseId}`;
-    const stored = localStorage.getItem(key);
-    
-    if (!stored) return null;
+    // Try the access-type-specific key first, then fall back to legacy key
+    const keys = accessType
+      ? [`${STORAGE_KEY_PREFIX}${courseId}-${accessType}`]
+      : [
+          `${STORAGE_KEY_PREFIX}${courseId}-lecture_recording`,
+          `${STORAGE_KEY_PREFIX}${courseId}-live_class`,
+          `${STORAGE_KEY_PREFIX}${courseId}`, // legacy key
+        ];
 
-    const demo: GuestDemoState = JSON.parse(stored);
-    
-    // Validate demo structure
-    if (!demo.courseId || !demo.videoId || !demo.grantedAt || !demo.expiresAt) {
-      clearGuestDemo(courseId);
-      return null;
+    for (const key of keys) {
+      const stored = localStorage.getItem(key);
+      if (!stored) continue;
+
+      const demo: GuestDemoState = JSON.parse(stored);
+
+      // Validate demo structure (videoId can be empty for live_class)
+      if (!demo.courseId || !demo.grantedAt || !demo.expiresAt) {
+        localStorage.removeItem(key);
+        continue;
+      }
+
+      // Check if expired
+      if (hasGuestDemoExpired(demo)) {
+        localStorage.removeItem(key);
+        continue;
+      }
+
+      return demo;
     }
 
-    // Check if expired
-    if (hasGuestDemoExpired(demo)) {
-      clearGuestDemo(courseId);
-      return null;
-    }
-
-    return demo;
+    return null;
   } catch (error) {
     console.error('Error reading guest demo:', error);
     return null;
@@ -52,7 +64,7 @@ export function getGuestDemo(courseId: string): GuestDemoState | null {
 /**
  * Create/update guest demo for a course
  */
-export function setGuestDemo(courseId: string, videoId: string): GuestDemoState {
+export function setGuestDemo(courseId: string, videoId: string, accessType: 'lecture_recording' | 'live_class' = 'lecture_recording', guestEmail?: string): GuestDemoState {
   if (typeof window === 'undefined') {
     throw new Error('Cannot set guest demo on server side');
   }
@@ -63,14 +75,21 @@ export function setGuestDemo(courseId: string, videoId: string): GuestDemoState 
   const demo: GuestDemoState = {
     courseId,
     videoId,
-    accessType: 'lecture_recording',
+    accessType,
     grantedAt: now.toISOString(),
     expiresAt: expiresAt.toISOString(),
+    ...(guestEmail ? { guestEmail } : {}),
   };
 
   try {
-    const key = `${STORAGE_KEY_PREFIX}${courseId}`;
+    const key = `${STORAGE_KEY_PREFIX}${courseId}-${accessType}`;
     localStorage.setItem(key, JSON.stringify(demo));
+
+    // Clear any previous "joined class" marker so new demos start fresh
+    if (accessType === 'live_class') {
+      localStorage.removeItem(`guest-demo-joined-${courseId}`);
+    }
+
     return demo;
   } catch (error) {
     console.error('Error setting guest demo:', error);
@@ -88,14 +107,20 @@ export function hasGuestDemoExpired(demo: GuestDemoState): boolean {
 }
 
 /**
- * Clear guest demo for a specific course
+ * Clear guest demo for a specific course (all access types)
  */
-export function clearGuestDemo(courseId: string): void {
+export function clearGuestDemo(courseId: string, accessType?: 'lecture_recording' | 'live_class'): void {
   if (typeof window === 'undefined') return;
 
   try {
-    const key = `${STORAGE_KEY_PREFIX}${courseId}`;
-    localStorage.removeItem(key);
+    if (accessType) {
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}${courseId}-${accessType}`);
+    } else {
+      // Clear all access types + legacy key
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}${courseId}`);
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}${courseId}-lecture_recording`);
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}${courseId}-live_class`);
+    }
   } catch (error) {
     console.error('Error clearing guest demo:', error);
   }

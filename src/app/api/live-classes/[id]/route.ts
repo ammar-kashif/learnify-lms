@@ -27,8 +27,8 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch live class with related data
-    const { data: liveClass, error } = await supabase
+    // Fetch live class with related data (admin client to bypass RLS)
+    const { data: liveClass, error } = await supabaseAdmin
       .from('live_classes')
       .select(`
         *,
@@ -72,8 +72,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify user owns this live class (we may allow admins to override below)
-    const { data: existingClass, error: fetchError } = await supabase
+    // Verify user owns this live class (use admin client to bypass RLS)
+    const { data: existingClass, error: fetchError } = await supabaseAdmin
       .from('live_classes')
       .select('teacher_id')
       .eq('id', id)
@@ -83,8 +83,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Live class not found' }, { status: 404 });
     }
 
-    // Determine user role
-    const { data: userProfile } = await supabase
+    // Determine user role (use admin client to bypass RLS)
+    const { data: userProfile } = await supabaseAdmin
       .from('users')
       .select('role')
       .eq('id', user.id)
@@ -93,8 +93,29 @@ export async function PUT(
     const isAdminOrSuper = userProfile?.role === 'admin' || userProfile?.role === 'superadmin';
     const isTeacher = userProfile?.role === 'teacher';
 
+    // Teachers can update their own classes or classes for courses they're assigned to
     if (!isAdminOrSuper && existingClass.teacher_id !== user.id) {
-      return NextResponse.json({ error: 'Unauthorized to update this live class' }, { status: 403 });
+      // Check if teacher is assigned to this course
+      const { data: liveClassWithCourse } = await supabaseAdmin
+        .from('live_classes')
+        .select('course_id')
+        .eq('id', id)
+        .single();
+
+      if (liveClassWithCourse) {
+        const { data: teacherCourse } = await supabaseAdmin
+          .from('teacher_courses')
+          .select('teacher_id')
+          .eq('course_id', liveClassWithCourse.course_id)
+          .eq('teacher_id', user.id)
+          .maybeSingle();
+
+        if (!teacherCourse) {
+          return NextResponse.json({ error: 'Unauthorized to update this live class' }, { status: 403 });
+        }
+      } else {
+        return NextResponse.json({ error: 'Unauthorized to update this live class' }, { status: 403 });
+      }
     }
 
     // Update live class
@@ -152,10 +173,10 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify user owns this live class
-    const { data: existingClass, error: fetchError } = await supabase
+    // Verify user owns this live class (admin client to bypass RLS)
+    const { data: existingClass, error: fetchError } = await supabaseAdmin
       .from('live_classes')
-      .select('teacher_id, status')
+      .select('teacher_id, status, course_id')
       .eq('id', id)
       .single();
 
@@ -163,8 +184,30 @@ export async function DELETE(
       return NextResponse.json({ error: 'Live class not found' }, { status: 404 });
     }
 
-    if (existingClass.teacher_id !== user.id) {
-      return NextResponse.json({ error: 'Unauthorized to delete this live class' }, { status: 403 });
+    // Check user role
+    const { data: deleteUserProfile } = await supabaseAdmin
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    const canDelete = 
+      deleteUserProfile?.role === 'admin' || 
+      deleteUserProfile?.role === 'superadmin' || 
+      existingClass.teacher_id === user.id;
+
+    if (!canDelete) {
+      // Also check if teacher is assigned to this course
+      const { data: teacherCourse } = await supabaseAdmin
+        .from('teacher_courses')
+        .select('teacher_id')
+        .eq('course_id', existingClass.course_id)
+        .eq('teacher_id', user.id)
+        .maybeSingle();
+
+      if (!teacherCourse) {
+        return NextResponse.json({ error: 'Unauthorized to delete this live class' }, { status: 403 });
+      }
     }
 
     // Don't allow deletion of live classes that have started
@@ -173,7 +216,7 @@ export async function DELETE(
     }
 
     // Delete live class (attendance records will be deleted due to CASCADE)
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await supabaseAdmin
       .from('live_classes')
       .delete()
       .eq('id', id);

@@ -32,7 +32,7 @@ interface ModernSubscriptionModalProps {
   loading?: boolean;
 }
 
-type TimelineOption = '1month' | '3months' | 'cies';
+type TimelineOption = '1month' | '3months' | '1year';
 
 export default function ModernSubscriptionModal({
   isOpen,
@@ -51,8 +51,7 @@ export default function ModernSubscriptionModal({
   const timelinePlans = {
     '1month': subscriptionPlans.filter(plan => plan.duration_months === 1),
     '3months': subscriptionPlans.filter(plan => plan.duration_months === 3),
-    'cies': subscriptionPlans.filter(plan => plan.duration_until_date && 
-      new Date(plan.duration_until_date).getFullYear() === 2026)
+    '1year': subscriptionPlans.filter(plan => plan.duration_months === 12),
   };
 
   const currentPlans = timelinePlans[selectedTimeline];
@@ -69,7 +68,7 @@ export default function ModernSubscriptionModal({
     switch (timeline) {
       case '1month': return <Clock className="h-4 w-4" />;
       case '3months': return <Star className="h-4 w-4" />;
-      case 'cies': return <Calendar className="h-4 w-4" />;
+      case '1year': return <Calendar className="h-4 w-4" />;
       default: return <Zap className="h-4 w-4" />;
     }
   };
@@ -78,7 +77,7 @@ export default function ModernSubscriptionModal({
     switch (timeline) {
       case '1month': return '1 Month';
       case '3months': return '3 Months';
-      case 'cies': return 'Until CIES';
+      case '1year': return '1 Year';
       default: return 'Custom';
     }
   };
@@ -139,7 +138,7 @@ export default function ModernSubscriptionModal({
                   Choose Timeline
                 </h3>
                 <div className="flex bg-gray-100 dark:bg-gray-800 rounded-full p-1">
-                  {(['1month', '3months', 'cies'] as TimelineOption[]).map((timeline) => (
+                  {(['1month', '3months', '1year'] as TimelineOption[]).map((timeline) => (
                     <button
                       key={timeline}
                       onClick={() => setSelectedTimeline(timeline)}
@@ -164,7 +163,7 @@ export default function ModernSubscriptionModal({
                     "h-2 rounded-full transition-all duration-500",
                     selectedTimeline === '1month' && "bg-primary w-1/3",
                     selectedTimeline === '3months' && "bg-primary w-2/3",
-                    selectedTimeline === 'cies' && "bg-primary w-full"
+                    selectedTimeline === '1year' && "bg-primary w-full"
                   )}
                 />
               </div>
@@ -183,10 +182,26 @@ export default function ModernSubscriptionModal({
                     className={cn(
                       "relative group transition-all duration-300 cursor-pointer transform hover:scale-105 flex flex-col h-full",
                       isSelected && "ring-2 ring-primary shadow-xl scale-105",
+                      plan.type === 'recordings_and_live' && "ring-2 ring-primary/50",
                       "hover:shadow-xl"
                     )}
                     onClick={() => handleSelectPlan(plan.id)}
                   >
+                    {/* Best Value / Bonus badge */}
+                    {plan.type === 'recordings_and_live' && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                        <span className="inline-flex items-center rounded-full bg-gradient-to-r from-primary to-purple-600 px-3 py-1 text-xs font-bold text-white shadow-lg">
+                          🔥 BEST VALUE
+                        </span>
+                      </div>
+                    )}
+                    {plan.type === 'recordings_only' && plan.duration_months && plan.duration_months <= 3 && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                        <span className="inline-flex items-center rounded-full bg-green-500 px-3 py-1 text-xs font-bold text-white shadow-lg">
+                          🎁 +1 MONTH FREE
+                        </span>
+                      </div>
+                    )}
                     {/* Plan Type Header */}
                     <div className={cn(
                       "text-center py-4 rounded-t-lg text-white font-bold text-sm",
@@ -213,14 +228,26 @@ export default function ModernSubscriptionModal({
 
                       {/* Price */}
                       <div className="mt-4">
+                        {/* Show original price with strikethrough for early bird deals */}
+                        {plan.type === 'recordings_and_live' && (
+                          <div className="mb-1">
+                            <span className="text-lg text-gray-400 line-through">
+                              PKR 19,999
+                            </span>
+                            <span className="ml-2 inline-flex items-center rounded-full bg-red-100 dark:bg-red-900/30 px-2 py-0.5 text-xs font-bold text-red-600 dark:text-red-400">
+                              EARLY BIRD
+                            </span>
+                          </div>
+                        )}
                         <span className="text-4xl font-bold text-gray-900 dark:text-white">
-                          PKR {plan.price_pkr.toLocaleString()}
+                          Rs. {plan.price_pkr.toLocaleString()}
                         </span>
                         {plan.duration_months && (
                           <span className="text-gray-500 dark:text-gray-400 text-sm ml-1">
-                            /{plan.duration_months === 1 ? 'month' : '3 months'}
+                            /{plan.duration_months === 1 ? 'month' : plan.duration_months === 3 ? '3 months' : 'year'}
                           </span>
                         )}
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">per subject</p>
                       </div>
                     </CardHeader>
 

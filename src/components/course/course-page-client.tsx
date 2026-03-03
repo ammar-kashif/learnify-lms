@@ -11,6 +11,7 @@ import FileUpload from '@/components/ui/file-upload';
 import LectureRecordingsList from '@/components/course/lecture-recordings-list';
 import LectureRecordingUpload from '@/components/course/lecture-recording-upload';
 import DemoAccessRequest from '@/components/course/demo-access-request';
+import { getGuestDemo } from '@/lib/guest-demo';
 import ModernSubscriptionModal from '@/components/modern-subscription-modal';
 // PaymentPopup is not currently used
 import AssignmentManagement from '@/components/assignments/assignment-management';
@@ -80,10 +81,21 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
   const [subscriptionPlans, setSubscriptionPlans] = useState<any[]>([]);
   const [subscriptionPlansLoading, setSubscriptionPlansLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isGuestLiveDemo, setIsGuestLiveDemo] = useState(false);
 
   useEffect(() => {
     setIsAdmin(userRole === 'admin' || userRole === 'superadmin');
   }, [userRole]);
+
+  // Detect guest demo mode (live class demo without signup)
+  useEffect(() => {
+    if (!user) {
+      const guestDemo = getGuestDemo(courseId, 'live_class');
+      setIsGuestLiveDemo(!!guestDemo);
+    } else {
+      setIsGuestLiveDemo(false);
+    }
+  }, [user, courseId]);
 
   // Track page view and course view
   useEffect(() => {
@@ -574,19 +586,24 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
         </div>
         
         <div className="flex items-center gap-2">
-        {/* Upgrade button for demo users */}
-        {(hasRecordingDemo || hasLiveDemo) && userRole === 'student' && !isAdmin && (
+        {/* Upgrade button for demo users (signed-in students or guest demo) */}
+        {((hasRecordingDemo || hasLiveDemo) && userRole === 'student' && !isAdmin || isGuestLiveDemo) && (
           <Button 
             size="sm" 
             onClick={() => {
-              setIsUpgrade(true);
-              setShowSubscriptionModal(true);
+              if (isGuestLiveDemo) {
+                // Guest demo: redirect to signup
+                window.location.href = `/auth/signup?redirect=/courses/${courseId}`;
+              } else {
+                setIsUpgrade(true);
+                setShowSubscriptionModal(true);
+              }
             }}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
           >
             <Crown className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Upgrade Now</span>
-              <span className="sm:hidden">Upgrade</span>
+              <span className="hidden sm:inline">{isGuestLiveDemo ? 'Sign Up' : 'Upgrade Now'}</span>
+              <span className="sm:hidden">{isGuestLiveDemo ? 'Sign Up' : 'Upgrade'}</span>
           </Button>
         )}
         
@@ -629,10 +646,20 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
               )}
             </div>
 
+            {/* Guest demo banner */}
+            {isGuestLiveDemo && (
+              <div className="mt-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2">
+                <p className="text-xs font-medium text-amber-800 dark:text-amber-200">🎓 Guest Demo Mode</p>
+                <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">Only Live Classes are available in demo mode.</p>
+              </div>
+            )}
+
             {/* Course section */}
             <div className="pt-4">
               <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-gray-700 dark:text-slate-400">This Course</p>
               <ul className="space-y-1 text-sm text-gray-800 dark:text-slate-200">
+                {/* Hide Chapters for guest demo users */}
+                {!isGuestLiveDemo && (
                 <li>
                   <Link 
                     href={{ pathname: `/courses/${courseId}`, query: { tab: 'chapters' } }} 
@@ -643,8 +670,9 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                     <BookOpen className="h-4 w-4" /> Chapters
                   </Link>
                 </li>
-                {/* Hide Recordings tab ONLY if student has live class demo BUT NOT recording demo */}
-                {!(userRole === 'student' && !isAdmin && hasLiveDemo && !hasRecordingDemo) && (
+                )}
+                {/* Hide Recordings tab if guest demo OR if student has live class demo BUT NOT recording demo */}
+                {!isGuestLiveDemo && !(userRole === 'student' && !isAdmin && hasLiveDemo && !hasRecordingDemo) && (
                   <li>
                     <Link 
                       href={{ pathname: `/courses/${courseId}`, query: { tab: 'lectures' } }} 
@@ -661,6 +689,8 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                     </Link>
                   </li>
                 )}
+                {/* Hide Quizzes for guest demo users */}
+                {!isGuestLiveDemo && (
                 <li>
                   <Link 
                     href={{ pathname: `/courses/${courseId}`, query: { tab: 'quizzes' } }} 
@@ -671,6 +701,9 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                     <Eye className="h-4 w-4" /> Quizzes
                   </Link>
                 </li>
+                )}
+                {/* Hide Assignments for guest demo users */}
+                {!isGuestLiveDemo && (
                 <li>
                   <Link 
                     href={{ pathname: `/courses/${courseId}`, query: { tab: 'assignments' } }} 
@@ -681,6 +714,7 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                     <FileText className="h-4 w-4" /> Assignments
                   </Link>
                 </li>
+                )}
                 {/* Hide Live Classes tab ONLY if student has recording demo BUT NOT live class demo */}
                 {!(userRole === 'student' && !isAdmin && hasRecordingDemo && !hasLiveDemo) && (
                   <li>
@@ -701,7 +735,20 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                 )}
               </ul>
             </div>
-            <div className="mt-auto pt-2 pb-3">
+            <div className="mt-auto pt-2 pb-3 space-y-2">
+              {isGuestLiveDemo && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    window.location.href = `/auth/signup?redirect=/courses/${courseId}`;
+                  }}
+                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs"
+                >
+                  <Crown className="h-3.5 w-3.5 mr-1.5" />
+                  Sign Up for Full Access
+                </Button>
+              )}
+              {!isGuestLiveDemo && (
               <Link
                 href="/dashboard"
                 onClick={() => setSidebarOpen(false)}
@@ -709,6 +756,7 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
               >
                 <ChevronLeft className="h-4 w-4" /> Back to Dashboard
               </Link>
+              )}
             </div>
           </div>
         </aside>
@@ -1199,7 +1247,16 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
                 courseTitle={course.title}
                 onAccessGranted={() => {
                   setShowDemoModal(false);
-                  window.location.reload();
+                  // Navigate to the appropriate page based on demo type
+                  const liveDemo = localStorage.getItem(`guest-demo-${courseId}-live_class`);
+                  const recordingDemo = localStorage.getItem(`guest-demo-${courseId}-lecture_recording`);
+                  if (liveDemo) {
+                    window.location.href = `/courses/${courseId}?tab=live-classes`;
+                  } else if (recordingDemo) {
+                    window.location.href = `/courses/${courseId}/preview`;
+                  } else {
+                    window.location.reload();
+                  }
                 }}
               />
             </div>

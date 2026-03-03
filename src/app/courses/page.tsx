@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { BookOpen, Clock, Users, Star, Loader2, X, CheckCircle, Crown, Video } from 'lucide-react';
+import { BookOpen, Clock, Users, Star, Loader2, X, CheckCircle, Crown, Video, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import DemoAccessRequest from '@/components/course/demo-access-request';
@@ -186,6 +186,12 @@ export default function CoursesPage() {
       {/* Header */}
       <div className="border-b border-gray-200 bg-white">
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <div className="mb-6">
+            <Link href="/" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Home
+            </Link>
+          </div>
           <div className="text-center">
             <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
               Explore Our Courses
@@ -437,13 +443,15 @@ export default function CoursesPage() {
                 courseTitle={selectedCourse.title}
                 onAccessGranted={() => {
                   setShowDemoModal(false);
-                  // Check if user is authenticated
-                  if (user) {
-                    // User is authenticated, redirect to course page
-                    window.location.href = `/courses/${selectedCourse.id}`;
+                  // Navigate to the appropriate page based on demo type
+                  const liveDemo = localStorage.getItem(`guest-demo-${selectedCourse.id}-live_class`);
+                  const recordingDemo = localStorage.getItem(`guest-demo-${selectedCourse.id}-lecture_recording`);
+                  if (liveDemo) {
+                    window.location.href = `/courses/${selectedCourse.id}?tab=live-classes`;
+                  } else if (recordingDemo) {
+                    window.location.href = `/courses/${selectedCourse.id}/preview`;
                   } else {
-                    // User is not authenticated, redirect to signup
-                    window.location.href = '/auth/signup';
+                    window.location.href = `/courses/${selectedCourse.id}`;
                   }
                 }}
               />

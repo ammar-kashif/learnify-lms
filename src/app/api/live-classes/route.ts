@@ -148,8 +148,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Verify user is teacher of the course
-    const { data: course, error: courseError } = await supabase
+    // Verify course exists (use admin client to bypass RLS)
+    const { data: course, error: courseError } = await supabaseAdmin
       .from('courses')
       .select('created_by')
       .eq('id', course_id)
@@ -178,16 +178,18 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
 
-    // For teachers, check if they're assigned to this course
+    // For teachers, check if they're assigned to this course OR if they created it
     if (userProfile?.role === 'teacher') {
-      const { data: teacherCourse } = await supabase
+      const { data: teacherCourse } = await supabaseAdmin
         .from('teacher_courses')
         .select('teacher_id')
         .eq('course_id', course_id)
         .eq('teacher_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (!teacherCourse) {
+      const isCreator = course.created_by === user.id;
+
+      if (!teacherCourse && !isCreator) {
         return NextResponse.json({ 
           error: 'You are not assigned as a teacher for this course',
           details: {

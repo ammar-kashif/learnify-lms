@@ -86,7 +86,7 @@ export default function LectureRecordingsList({
   // Check for guest demo on mount
   useEffect(() => {
     if (!session) {
-      const demo = getGuestDemo(courseId);
+      const demo = getGuestDemo(courseId, 'lecture_recording');
       if (demo && !hasGuestDemoExpired(demo)) {
         setGuestDemoState(demo);
         setIsDemoMode(true);

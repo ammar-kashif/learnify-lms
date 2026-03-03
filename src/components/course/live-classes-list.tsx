@@ -8,6 +8,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Lock, Star, Crown, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { toast } from 'sonner';
+import { getGuestDemo, hasGuestDemoExpired, GuestDemoState } from '@/lib/guest-demo';
+import DemoCountdownTimer from '@/components/course/demo-countdown-timer';
 import LiveClassCalendar from '@/components/attendance/live-class-calendar';
 import LiveClassForm from '@/components/attendance/live-class-form';
 import AttendanceInterface from '@/components/attendance/attendance-interface';
@@ -41,15 +43,26 @@ export default function LiveClassesList({
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [demoAccess, setDemoAccess] = useState<any>(null);
   const [hasUsedDemoForCourse, setHasUsedDemoForCourse] = useState(false);
+  const [guestDemo, setGuestDemoState] = useState<GuestDemoState | null>(null);
 
-  // Check if user has demo access for this course
+  // Check if user has demo access for this course (authenticated or guest)
   useEffect(() => {
     const checkDemoAccess = async () => {
+      // ===== GUEST PATH: check localStorage =====
       if (!session?.access_token) {
-        setHasAccess(false);
+        const demo = getGuestDemo(courseId, 'live_class');
+        if (demo && !hasGuestDemoExpired(demo)) {
+          setGuestDemoState(demo);
+          setHasAccess(true);
+          setHasUsedDemoForCourse(true);
+          setDemoAccess(demo);
+        } else {
+          setHasAccess(false);
+        }
         return;
       }
 
+      // ===== AUTHENTICATED PATH: check API =====
       try {
         const response = await fetch(`/api/demo-access?courseId=${courseId}&accessType=live_class`, {
           headers: {
@@ -98,11 +111,16 @@ export default function LiveClassesList({
   };
 
   const handleRequestDemoAccess = async () => {
+    // ===== GUEST PATH =====
     if (!session?.access_token) {
-      toast.error('Please log in to request demo access');
+      // Guest demo for live classes is handled by the DemoAccessRequest component
+      // which collects email and stores in localStorage.
+      // If somehow called directly, redirect to the course page (which shows the demo request card).
+      toast.info('Please use the demo access card to get demo access.');
       return;
     }
 
+    // ===== AUTHENTICATED PATH =====
     try {
       const response = await fetch('/api/demo-access', {
         method: 'POST',
@@ -173,7 +191,19 @@ export default function LiveClassesList({
             </Alert>
           )}
 
-          {demoAccess && (
+          {/* Guest demo timer */}
+          {guestDemo && !session?.access_token && (
+            <DemoCountdownTimer
+              demo={guestDemo}
+              onExpire={() => {
+                setGuestDemoState(null);
+                setHasAccess(false);
+                setDemoAccess(null);
+              }}
+            />
+          )}
+
+          {demoAccess && !guestDemo && (
             <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
               <Star className="h-4 w-4 text-green-600 dark:text-green-400" />
               <AlertDescription className="text-green-800 dark:text-green-200">
