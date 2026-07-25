@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -195,9 +196,9 @@ export default function AssignmentList({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        <span className="ml-2 text-gray-600">Loading assignments...</span>
+      <div role="status" aria-live="polite" aria-busy="true" className="py-4">
+        <span className="sr-only">Loading assignments…</span>
+        <SkeletonList rows={4} />
       </div>
     );
   }

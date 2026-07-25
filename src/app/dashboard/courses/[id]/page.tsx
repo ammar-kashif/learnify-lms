@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { Skeleton, SkeletonList, SkeletonStatRow } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -332,11 +333,14 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-gray-400 dark:text-gray-500" />
-          <p className="text-gray-600 dark:text-gray-300">Loading course...</p>
+      <div role="status" aria-live="polite" aria-busy="true" className="mx-auto max-w-7xl space-y-8 p-6">
+        <span className="sr-only">Loading course…</span>
+        <div className="space-y-3">
+          <Skeleton className="h-9 w-72" />
+          <Skeleton className="h-4 w-96 max-w-full" />
         </div>
+        <SkeletonStatRow count={3} />
+        <SkeletonList rows={4} />
       </div>
     );
   }

@@ -11,11 +11,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { BookOpen, Clock, Star, Loader2, X, CheckCircle, Crown, Video, ArrowLeft, Search } from 'lucide-react';
+import { BookOpen, Clock, Star, X, CheckCircle, Crown, Video, ArrowLeft, Search } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import DemoAccessRequest from '@/components/course/demo-access-request';
 import ModernSubscriptionModal from '@/components/modern-subscription-modal';
+import { Skeleton, SkeletonCourseGrid } from '@/components/ui/skeleton';
 import {
   parseCourseTitle,
   subjectIcon,
@@ -249,19 +250,24 @@ export default function CoursesPage() {
 
       {/* Courses Grid */}
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        {authLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-              <p className="mt-2 text-gray-600">Verifying authentication...</p>
+        {authLoading || loading ? (
+          <div role="status" aria-live="polite" aria-busy="true">
+            <span className="sr-only">Loading courses…</span>
+            {/* Mirrors the filter bar and grid so the layout doesn't jump */}
+            <div className="mb-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <Skeleton className="h-11 w-full rounded-full lg:max-w-sm" />
+              <div className="flex gap-2">
+                {[64, 84, 76, 72].map((w, i) => (
+                  <Skeleton key={i} className="h-10 rounded-full" style={{ width: w }} />
+                ))}
+              </div>
             </div>
-          </div>
-        ) : loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-              <p className="mt-2 text-gray-600">Loading courses...</p>
+            <div className="mb-6 flex items-center gap-4">
+              <Skeleton className="h-7 w-28" />
+              <Skeleton className="h-5 w-20 rounded-full" />
+              <div className="h-px flex-1 bg-gray-200" />
             </div>
+            <SkeletonCourseGrid count={6} />
           </div>
         ) : error ? (
           <div className="text-center py-12">
