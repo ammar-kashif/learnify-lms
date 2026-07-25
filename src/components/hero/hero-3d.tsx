@@ -24,7 +24,11 @@ const HeroScene = dynamic(() => import('./hero-scene'), {
   loading: () => <HeroFallback />,
 });
 
-/** Static brand-coloured aurora. Always rendered; the canvas layers over it. */
+/**
+ * Static brand-coloured aurora. Always rendered; the canvas layers over it.
+ * Sized in percentages so it fills whatever container it is dropped into —
+ * a square column on desktop, a shorter band on mobile.
+ */
 export function HeroFallback() {
   return (
     <div
@@ -32,13 +36,13 @@ export function HeroFallback() {
       className="absolute inset-0 overflow-hidden"
       data-testid="hero-fallback"
     >
-      <div className="animate-aurora absolute left-1/2 top-1/2 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/25 blur-3xl" />
+      <div className="animate-aurora absolute left-1/2 top-1/2 h-[70%] w-[70%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/25 blur-3xl" />
       <div
-        className="animate-aurora absolute left-1/3 top-1/3 h-72 w-72 rounded-full bg-primary-300/30 blur-3xl"
+        className="animate-aurora absolute left-[18%] top-[20%] h-[45%] w-[45%] rounded-full bg-primary-300/30 blur-3xl"
         style={{ animationDelay: '-6s' }}
       />
       <div
-        className="animate-aurora absolute bottom-1/4 right-1/4 h-64 w-64 rounded-full bg-charcoal-300/25 blur-3xl dark:bg-charcoal-600/25"
+        className="animate-aurora absolute bottom-[15%] right-[15%] h-[40%] w-[40%] rounded-full bg-charcoal-300/25 blur-3xl dark:bg-charcoal-600/25"
         style={{ animationDelay: '-12s' }}
       />
     </div>
