@@ -1,11 +1,22 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Plus, Play, Clock, Award, Users, BarChart3 } from 'lucide-react';
+import { Plus, Play, Award, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  EmptyState,
+  Meta,
+  StatusDot,
+  panel,
+  plural,
+  primaryButton,
+  quietButton,
+  row,
+  rowGroup,
+} from '@/components/course/course-ui';
+import { cn } from '@/lib/utils';
 import { Quiz, QuizAttempt } from '@/types/quiz';
 import QuizForm from './quiz-form';
 import QuizAttempts from './quiz-attempts';
@@ -16,9 +27,11 @@ interface QuizSectionProps {
   courseId: string;
   userRole: 'student' | 'teacher' | 'admin' | 'superadmin';
   userId: string;
+  /** Off when the page already renders its own section heading above the list. */
+  showHeading?: boolean;
 }
 
-export default function QuizSection({ courseId, userRole, userId }: QuizSectionProps) {
+export default function QuizSection({ courseId, userRole, userId, showHeading = true }: QuizSectionProps) {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -392,249 +405,178 @@ export default function QuizSection({ courseId, userRole, userId }: QuizSectionP
   }
 
   // Show quiz list
+  const isTeacher = userRole === 'teacher' || userRole === 'admin' || userRole === 'superadmin';
+
   return (
-    <div className="space-y-5">
-      {(userRole === 'teacher' || userRole === 'admin' || userRole === 'superadmin') ? (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Quizzes ({quizzes.length})</h3>
-            <Button onClick={() => setShowCreateForm(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Quiz
-            </Button>
-          </div>
-
-          {loading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <Card key={i} className="animate-pulse">
-                  <CardHeader>
-                    <div className="h-6 bg-gray-200 rounded w-1/3"></div>
-                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                  </CardContent>
-                </Card>
-              ))}
+    <div className="space-y-4">
+      {(showHeading || isTeacher) && (
+        <div className="flex items-center justify-between gap-3">
+          {showHeading ? (
+            <div className="flex items-baseline gap-2.5">
+              <h3 className="text-lg font-semibold tracking-[-0.01em] text-gray-900 dark:text-white">
+                Quizzes
+              </h3>
+              <span className="text-sm tabular-nums text-gray-400 dark:text-gray-500">
+                {quizzes.length}
+              </span>
             </div>
-          ) : quizzes.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Award className="h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  No quizzes yet
-                </h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-4 text-center">
-                  Create your first quiz to start assessing your students
-                </p>
-                <Button onClick={() => setShowCreateForm(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Quiz
-                </Button>
-              </CardContent>
-            </Card>
           ) : (
-            <div className="grid gap-4">
-              {quizzes.map((quiz) => {
-                const totalPoints = quiz.questions.reduce((sum, q) => sum + q.points, 0);
-                const timeLimit = quiz.settings?.time_limit;
-
-                return (
-                  <Card key={quiz.id} className="hover:shadow-md transition-shadow">
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-lg">{quiz.title}</CardTitle>
-                          {quiz.description && (
-                            <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                              {quiz.description}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Badge variant="secondary" className="bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
-                            {quiz.questions.length} questions
-                          </Badge>
-                          <Badge variant="outline">
-                            {totalPoints} points
-                          </Badge>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                        {timeLimit && (
-                          <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-300">
-                            <Clock className="h-4 w-4" />
-                            <span>{timeLimit} minutes</span>
-                          </div>
-                        )}
-                        <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-300">
-                          <Users className="h-4 w-4" />
-                          <span>{quiz.settings?.max_attempts || 1} attempt(s)</span>
-                        </div>
-                        <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-300">
-                          <Award className="h-4 w-4" />
-                          <span>
-                            {quiz.settings?.shuffle_questions ? 'Shuffled' : 'Fixed order'}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-300">
-                          <span>Created: {new Date(quiz.created_at).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-
-                      {/* Teacher Actions */}
-                      <div className="flex justify-end space-x-2 pt-4">
-                        <Button 
-                          onClick={() => handleViewAttempts(quiz.id)}
-                          variant="outline"
-                          className="px-4 py-2"
-                        >
-                          <BarChart3 className="h-4 w-4 mr-2" />
-                          View Attempts
-                        </Button>
-                        {quiz.questions.some(q => q.type === 'text') && (
-                          <Button 
-                            onClick={() => handleGradeQuiz(quiz)}
-                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2"
-                          >
-                            <Award className="h-4 w-4 mr-2" />
-                            Grade Quiz
-                          </Button>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+            <span />
           )}
-        </div>
-      ) : (
-        // Student view
-        <div className="space-y-4">
-          {loading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <Card key={i} className="animate-pulse">
-                  <CardHeader>
-                    <div className="h-6 bg-gray-200 rounded w-1/3"></div>
-                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : quizzes.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Award className="h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  No quizzes available
-                </h3>
-                <p className="text-gray-600 dark:text-gray-300 text-center">
-                  Your teacher hasn&apos;t created any quizzes for this course yet
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4">
-              {quizzes.map((quiz) => {
-                const totalPoints = quiz.questions.reduce((sum, q) => sum + q.points, 0);
-                const timeLimit = quiz.settings?.time_limit;
-                const attempts = studentAttempts.get(quiz.id) || [];
-                const maxAttempts = quiz.settings?.max_attempts || 1;
-                const isCompleted = attempts.length >= maxAttempts;
-                const hasAttempted = attempts.length > 0;
-                  
-                  return (
-                    <Card key={quiz.id} className={`hover:shadow-md transition-shadow ${isCompleted ? 'opacity-75' : ''}`}>
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <CardTitle className="text-lg">{quiz.title}</CardTitle>
-                            {quiz.description && (
-                              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                                {quiz.description}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Badge variant="secondary" className="bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
-                              {quiz.questions.length} questions
-                            </Badge>
-                            <Badge variant="outline">
-                              {totalPoints} points
-                            </Badge>
-                            {hasAttempted && (
-                              <Badge variant={isCompleted ? "destructive" : "default"} className={isCompleted ? "bg-orange-500 hover:bg-orange-600 text-white" : ""}>
-                                {isCompleted ? 'Completed' : `${attempts.length}/${maxAttempts} attempts`}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-                          {timeLimit && (
-                            <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-300">
-                              <Clock className="h-4 w-4" />
-                              <span>{timeLimit} minutes</span>
-                            </div>
-                          )}
-                          <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-300">
-                            <Users className="h-4 w-4" />
-                            <span>{maxAttempts} attempt(s)</span>
-                          </div>
-                          <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-300">
-                            <Award className="h-4 w-4" />
-                            <span>
-                              {quiz.settings?.shuffle_questions ? 'Shuffled' : 'Fixed order'}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Clean View Attempts Button for Students */}
-                        {hasAttempted && attempts.length > 0 && (
-                          <div className="flex justify-center pt-4">
-                            <Button 
-                              onClick={() => handleReviewAnswers(quiz)}
-                              className="bg-primary hover:bg-primary/90 text-white px-6 py-2"
-                            >
-                              <BarChart3 className="h-4 w-4 mr-2" />
-                              View Attempts
-                            </Button>
-                          </div>
-                        )}
-
-                        <div className="flex justify-between items-center">
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {hasAttempted ? `${maxAttempts - attempts.length} attempt(s) remaining` : `${maxAttempts} attempt(s) available`}
-                          </div>
-                          
-                          {!isCompleted && (
-                            <Button
-                              onClick={() => handleTakeQuiz(quiz)}
-                              className="bg-primary text-white hover:bg-primary-600"
-                            >
-                              <Play className="h-4 w-4 mr-2" />
-                              {hasAttempted ? 'Retake Quiz' : 'Take Quiz'}
-                            </Button>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-            </div>
+          {isTeacher && (
+            <Button
+              onClick={() => setShowCreateForm(true)}
+              size="sm"
+              className={cn(primaryButton, 'h-9')}
+            >
+              <Plus className="mr-1.5 h-4 w-4" />
+              Create quiz
+            </Button>
           )}
         </div>
       )}
 
+      {loading ? (
+        <QuizSkeletons />
+      ) : quizzes.length === 0 ? (
+        <EmptyState
+          icon={Award}
+          title={isTeacher ? 'No quizzes yet' : 'No quizzes available'}
+          description={
+            isTeacher
+              ? 'Create your first quiz to start assessing your students.'
+              : "Your teacher hasn't created any quizzes for this course yet."
+          }
+          action={
+            isTeacher ? (
+              <Button
+                onClick={() => setShowCreateForm(true)}
+                size="sm"
+                className={cn(primaryButton, 'h-9')}
+              >
+                <Plus className="mr-1.5 h-4 w-4" />
+                Create quiz
+              </Button>
+            ) : undefined
+          }
+        />
+      ) : (
+        /* Rows, not cards. Each quiz is four short facts and one action — a
+           200px card per quiz is why this tab read as filler. */
+        <div className={rowGroup}>
+          {quizzes.map((quiz) => {
+            const totalPoints = quiz.questions.reduce((sum, q) => sum + q.points, 0);
+            const timeLimit = quiz.settings?.time_limit;
+            const maxAttempts = quiz.settings?.max_attempts || 1;
+            const attempts = studentAttempts.get(quiz.id) || [];
+            const isCompleted = !isTeacher && attempts.length >= maxAttempts;
+            const hasAttempted = attempts.length > 0;
+            const remaining = Math.max(0, maxAttempts - attempts.length);
+
+            return (
+              <div key={quiz.id} className={row}>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    {!isTeacher && hasAttempted && (
+                      <StatusDot tone={isCompleted ? 'green' : 'amber'} />
+                    )}
+                    <p className="truncate text-sm font-medium text-gray-900 dark:text-white">
+                      {quiz.title}
+                    </p>
+                  </div>
+                  {quiz.description && (
+                    <p className="mt-0.5 line-clamp-1 text-[13px] text-gray-500 dark:text-gray-400">
+                      {quiz.description}
+                    </p>
+                  )}
+                  <Meta
+                    className="mt-1 text-[13px]"
+                    items={[
+                      plural(quiz.questions.length, 'question'),
+                      plural(totalPoints, 'point'),
+                      timeLimit ? `${timeLimit} min` : null,
+                      quiz.settings?.shuffle_questions ? 'Shuffled' : null,
+                      isTeacher
+                        ? plural(maxAttempts, 'attempt')
+                        : isCompleted
+                          ? 'Completed'
+                          : `${remaining} of ${maxAttempts} left`,
+                    ]}
+                  />
+                </div>
+
+                <div className="flex flex-shrink-0 items-center gap-1.5">
+                  {isTeacher ? (
+                    <>
+                      <Button
+                        onClick={() => handleViewAttempts(quiz.id)}
+                        className={cn(quietButton, 'h-8 px-2.5 text-[13px]')}
+                      >
+                        <BarChart3 className="mr-1.5 h-3.5 w-3.5" />
+                        Attempts
+                      </Button>
+                      {quiz.questions.some((q) => q.type === 'text') && (
+                        <Button
+                          onClick={() => handleGradeQuiz(quiz)}
+                          className={cn(primaryButton, 'h-8 px-2.5 text-[13px]')}
+                        >
+                          Grade
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {hasAttempted && (
+                        <Button
+                          onClick={() => handleReviewAnswers(quiz)}
+                          className={cn(quietButton, 'h-8 px-2.5 text-[13px]')}
+                        >
+                          <BarChart3 className="mr-1.5 h-3.5 w-3.5" />
+                          Attempts
+                        </Button>
+                      )}
+                      {!isCompleted && (
+                        <Button
+                          onClick={() => handleTakeQuiz(quiz)}
+                          className={cn(primaryButton, 'h-8 px-2.5 text-[13px]')}
+                        >
+                          <Play className="mr-1.5 h-3.5 w-3.5" />
+                          {hasAttempted ? 'Retake' : 'Start'}
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Loading placeholders.
+ *
+ * The old inline version used a bare `bg-gray-200` with no dark variant, so in
+ * dark mode it was three near-invisible bars on a dark card.
+ */
+function QuizSkeletons() {
+  return (
+    <div className="space-y-4" role="status" aria-busy="true">
+      <span className="sr-only">Loading quizzes…</span>
+      {[1, 2, 3].map((i) => (
+        <Card key={i} className={cn(panel, 'animate-pulse')}>
+          <CardHeader className="space-y-2">
+            <div className="h-5 w-1/3 rounded bg-gray-200 dark:bg-gray-800" />
+            <div className="h-4 w-1/2 rounded bg-gray-100 dark:bg-gray-800/70" />
+          </CardHeader>
+          <CardContent>
+            <div className="h-4 w-3/4 rounded bg-gray-100 dark:bg-gray-800/70" />
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }

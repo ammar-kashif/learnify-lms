@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Check, X, Star, Clock, Calendar, Zap } from 'lucide-react';
@@ -30,6 +30,8 @@ interface ModernSubscriptionModalProps {
   onSelectPlan: (planId: string, plan: SubscriptionPlan) => void;
   subscriptionPlans: SubscriptionPlan[];
   loading?: boolean;
+  /** Context line under the header — e.g. why a demo user landed here. */
+  notice?: ReactNode;
 }
 
 type TimelineOption = '1month' | '3months' | '1year';
@@ -41,6 +43,7 @@ export default function ModernSubscriptionModal({
   onSelectPlan,
   subscriptionPlans,
   loading = false,
+  notice,
 }: ModernSubscriptionModalProps) {
   const [selectedTimeline, setSelectedTimeline] = useState<TimelineOption>('1month');
   const [selectedPlan, setSelectedPlan] = useState<string>('');
@@ -128,6 +131,11 @@ export default function ModernSubscriptionModal({
                 Unlock <span className="font-semibold text-primary">{course.title}</span> with flexible access options
               </p>
             </div>
+            {notice && (
+              <div className="mx-auto mt-5 max-w-2xl rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-center text-sm text-gray-700 dark:bg-primary/10 dark:text-gray-300">
+                {notice}
+              </div>
+            )}
           </div>
 
           <div className="p-8">

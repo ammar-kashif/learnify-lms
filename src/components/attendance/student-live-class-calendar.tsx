@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { panel, TabSpinner } from '@/components/course/course-ui';
+import { cn } from '@/lib/utils';
 
 interface LiveClass {
   id: string;
@@ -287,9 +289,11 @@ export default function StudentLiveClassCalendar({ courseId }: StudentLiveClassC
         // Determine if this class is locked for the guest
         const isLockedForGuest = isGuestDemo && guestJoinedClassId && guestJoinedClassId !== liveClass.id;
         
-        let backgroundColor = '#3B82F6'; // Blue for scheduled
-        let borderColor = '#2563EB';
-        
+        // Brand orange for scheduled, green for live, muted grey for ended or
+        // locked — the three states in the legend below the calendar.
+        let backgroundColor = '#DF6639'; // primary
+        let borderColor = '#D14A1F';     // primary-600
+
         if (isLockedForGuest) {
           backgroundColor = '#9CA3AF'; // Gray for locked
           borderColor = '#6B7280';
@@ -297,8 +301,8 @@ export default function StudentLiveClassCalendar({ courseId }: StudentLiveClassC
           backgroundColor = '#10B981'; // Green for live
           borderColor = '#059669';
         } else if (liveClass.status === 'ended') {
-          backgroundColor = '#6B7280'; // Gray for ended
-          borderColor = '#4B5563';
+          backgroundColor = '#9CA3AF'; // Gray for ended
+          borderColor = '#6B7280';
         }
 
         return {
@@ -334,55 +338,64 @@ export default function StudentLiveClassCalendar({ courseId }: StudentLiveClassC
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      </div>
-    );
+    return <TabSpinner label="Loading schedule…" />;
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-2" />
-          <p className="text-red-600 dark:text-red-400">{error}</p>
+      <div className={cn(panel, 'flex flex-col items-center justify-center px-6 py-16 text-center')}>
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 dark:bg-red-950/40">
+          <AlertCircle className="h-7 w-7 text-red-500" />
         </div>
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+          Couldn&apos;t load live classes
+        </h3>
+        <p className="mt-1.5 text-sm text-gray-600 dark:text-gray-400">{error}</p>
       </div>
     );
   }
 
+  const events = formatEvents(liveClasses);
+  const nextClass = liveClasses
+    .filter((c) => c.scheduled_date && new Date(c.scheduled_date) >= new Date() && c.status !== 'ended')
+    .sort((a, b) => +new Date(a.scheduled_date) - +new Date(b.scheduled_date))[0];
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Guest Demo Banner */}
       {isGuestDemo && guestDemoState && (
         <div className="space-y-3">
-          <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
-            <Star className="h-4 w-4 text-green-600 dark:text-green-400" />
-            <AlertDescription className="text-green-800 dark:text-green-200">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <Alert className="rounded-2xl border-emerald-200 bg-emerald-50 dark:border-emerald-900/60 dark:bg-emerald-950/40">
+            <Star className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <AlertDescription className="text-emerald-800 dark:text-emerald-200">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <span className="font-semibold">Demo Mode Active!</span>
-                  {' '}You can join <strong>one</strong> live class for free.
-                  {guestJoinedClassId && ' You have already used your demo class — subscribe for full access!'}
+                  <span className="font-semibold">Demo mode active.</span>{' '}
+                  You can join <strong>one</strong> live class for free.
+                  {guestJoinedClassId && ' You have already used your demo class — subscribe for full access.'}
                 </div>
-                <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 whitespace-nowrap">
-                  Demo Access
+                <Badge
+                  variant="secondary"
+                  className="whitespace-nowrap bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200"
+                >
+                  Demo access
                 </Badge>
               </div>
             </AlertDescription>
           </Alert>
           <DemoCountdownTimer demo={guestDemoState} compact />
           {guestJoinedClassId && (
-            <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
-              <Crown className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-              <AlertDescription className="text-amber-800 dark:text-amber-200">
-                <div className="flex items-center justify-between">
-                  <span>Want unlimited access to all live classes? Subscribe now!</span>
-                  <Button size="sm" variant="outline" className="border-amber-400 text-amber-700 hover:bg-amber-100"
-                    onClick={() => window.location.href = `/auth/signup?redirect=/courses/${courseId}`}
+            <Alert className="rounded-2xl border-primary/25 bg-primary/5 dark:bg-primary/10">
+              <Crown className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-gray-700 dark:text-gray-300">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <span>Want unlimited access to every live class?</span>
+                  <Button
+                    size="sm"
+                    className="rounded-full bg-primary text-white hover:bg-primary-600"
+                    onClick={() => (window.location.href = `/auth/signup?redirect=/courses/${courseId}`)}
                   >
-                    <Crown className="h-4 w-4 mr-1" /> Subscribe
+                    <Crown className="mr-1.5 h-4 w-4" /> Subscribe
                   </Button>
                 </div>
               </AlertDescription>
@@ -391,25 +404,81 @@ export default function StudentLiveClassCalendar({ courseId }: StudentLiveClassC
         </div>
       )}
 
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Live Classes Schedule</h3>
-        <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-          <div className="flex items-center">
-            <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-            Scheduled
+      {/* Next up. The calendar alone made you hunt the grid for the one thing
+          you actually came to find. */}
+      {nextClass && (
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedClass(nextClass);
+            setShowModal(true);
+          }}
+          className={cn(
+            panel,
+            'flex w-full items-center gap-4 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-depth-lg'
+          )}
+        >
+          <div
+            className={cn(
+              'flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl',
+              nextClass.status === 'live'
+                ? 'bg-emerald-100 dark:bg-emerald-950/60'
+                : 'bg-primary/10 dark:bg-primary/15'
+            )}
+          >
+            <Video
+              className={cn(
+                'h-5 w-5',
+                nextClass.status === 'live' ? 'text-emerald-600 dark:text-emerald-400' : 'text-primary'
+              )}
+            />
           </div>
-          <div className="flex items-center">
-            <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-            Live
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                {nextClass.status === 'live' ? 'Happening now' : 'Next class'}
+              </p>
+              {nextClass.status === 'live' && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                  Live
+                </span>
+              )}
+            </div>
+            <p className="mt-0.5 truncate font-semibold text-gray-900 dark:text-white">
+              {nextClass.title}
+            </p>
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-gray-500 dark:text-gray-400">
+              <span className="inline-flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                {format(new Date(nextClass.scheduled_date), 'EEE d MMM, h:mm a')}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {nextClass.duration_minutes} min
+              </span>
+            </p>
           </div>
-          <div className="flex items-center">
-            <div className="w-3 h-3 bg-gray-500 rounded-full mr-2"></div>
-            Ended
+        </button>
+      )}
+
+      <div className={cn(panel, 'p-4 sm:p-5')}>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white">Schedule</h3>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+            {[
+              { label: 'Scheduled', className: 'bg-primary' },
+              { label: 'Live', className: 'bg-emerald-500' },
+              { label: 'Ended', className: 'bg-gray-400' },
+            ].map((item) => (
+              <span key={item.label} className="inline-flex items-center gap-1.5">
+                <span className={cn('h-2.5 w-2.5 rounded-full', item.className)} />
+                {item.label}
+              </span>
+            ))}
           </div>
         </div>
-      </div>
-      
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
@@ -418,7 +487,7 @@ export default function StudentLiveClassCalendar({ courseId }: StudentLiveClassC
             center: 'title',
             right: 'dayGridMonth,timeGridWeek,timeGridDay'
           }}
-          events={formatEvents(liveClasses)}
+          events={events}
           eventClick={handleEventClick}
           height="auto"
           eventDisplay="block"
@@ -442,62 +511,87 @@ export default function StudentLiveClassCalendar({ courseId }: StudentLiveClassC
           eventClassNames="cursor-pointer"
         />
         {liveClasses.length === 0 && (
-          <div className="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
-            <Calendar className="w-5 h-5 inline-block mr-2 text-gray-400" />
-            No live classes scheduled for this course
+          <div className="flex flex-col items-center border-t border-gray-100 px-6 py-10 text-center dark:border-gray-800">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 dark:bg-primary/15">
+              <Calendar className="h-6 w-6 text-primary" />
+            </div>
+            <p className="text-sm font-medium text-gray-900 dark:text-white">
+              No live classes scheduled yet
+            </p>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              New sessions will show up here as soon as your tutor schedules them.
+            </p>
           </div>
         )}
       </div>
 
       {/* Details Modal */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <Video className="h-5 w-5" />
-              <span>{selectedClass?.title || 'Live Class'}</span>
+            <div className="mb-1 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 dark:bg-primary/15">
+              <Video className="h-5 w-5 text-primary" />
+            </div>
+            <DialogTitle className="text-left text-lg leading-snug">
+              {selectedClass?.title || 'Live Class'}
             </DialogTitle>
-            <DialogDescription>
-              View live class details and join if available.
+            <DialogDescription className="text-left">
+              {selectedClass?.status === 'live'
+                ? 'This class is running now.'
+                : selectedClass?.status === 'ended'
+                  ? 'This class has finished.'
+                  : 'The join link unlocks at the start time.'}
             </DialogDescription>
           </DialogHeader>
 
           {selectedClass && (
             <div className="space-y-4">
               {selectedClass.description && (
-                <p className="text-sm text-gray-700 dark:text-gray-300">
+                <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
                   {selectedClass.description}
                 </p>
               )}
 
-              <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                <div className="flex items-center space-x-2">
-                  <Calendar className="h-4 w-4 text-gray-500" />
-                  <span>{format(new Date(selectedClass.scheduled_date), 'PPP p')}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Clock className="h-4 w-4 text-gray-500" />
-                  <span>{selectedClass.duration_minutes} minutes</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Users className="h-4 w-4 text-gray-500" />
-                  <span>{selectedClass.users?.full_name || 'Teacher'}</span>
-                </div>
-              </div>
+              <dl className="space-y-2.5 rounded-xl bg-gray-50 p-4 text-sm dark:bg-gray-800/60">
+                {[
+                  {
+                    icon: Calendar,
+                    label: 'When',
+                    value: format(new Date(selectedClass.scheduled_date), 'PPP p'),
+                  },
+                  {
+                    icon: Clock,
+                    label: 'Duration',
+                    value: `${selectedClass.duration_minutes} minutes`,
+                  },
+                  {
+                    icon: Users,
+                    label: 'Tutor',
+                    value: selectedClass.users?.full_name || 'Teacher',
+                  },
+                ].map((row) => (
+                  <div key={row.label} className="flex items-center gap-3">
+                    <row.icon className="h-4 w-4 flex-shrink-0 text-primary" />
+                    <dt className="sr-only">{row.label}</dt>
+                    <dd className="text-gray-700 dark:text-gray-300">{row.value}</dd>
+                  </div>
+                ))}
+              </dl>
 
               {/* Guest demo: check if this class is locked */}
               {isGuestDemo && guestJoinedClassId && guestJoinedClassId !== selectedClass.id ? (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-center gap-2 rounded-md bg-gray-100 dark:bg-gray-700 px-4 py-3 text-gray-600 dark:text-gray-300">
-                    <Lock className="h-4 w-4" />
-                    <span className="text-sm font-medium">Locked — you&apos;ve already used your demo class</span>
+                  <div className="flex items-center justify-center gap-2 rounded-xl bg-gray-100 px-4 py-3 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                    <Lock className="h-4 w-4 flex-shrink-0" />
+                    <span className="text-sm font-medium">
+                      Locked — you&apos;ve already used your demo class
+                    </span>
                   </div>
                   <Button
-                    className="w-full"
-                    variant="outline"
-                    onClick={() => window.location.href = `/auth/signup?redirect=/courses/${courseId}`}
+                    className="w-full rounded-xl bg-primary text-white hover:bg-primary-600"
+                    onClick={() => (window.location.href = `/auth/signup?redirect=/courses/${courseId}`)}
                   >
-                    <Crown className="h-4 w-4 mr-2" /> Subscribe for Full Access
+                    <Crown className="mr-2 h-4 w-4" /> Subscribe for full access
                   </Button>
                 </div>
               ) : selectedClass.meeting_link ? (
@@ -506,7 +600,7 @@ export default function StudentLiveClassCalendar({ courseId }: StudentLiveClassC
                     href={selectedClass.meeting_link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full inline-flex items-center justify-center px-4 py-2 rounded-md text-white bg-green-600 hover:bg-green-700"
+                    className="inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-emerald-700"
                     onClick={() => {
                       // If guest demo, mark this class as joined
                       if (isGuestDemo && !guestJoinedClassId) {
@@ -514,23 +608,23 @@ export default function StudentLiveClassCalendar({ courseId }: StudentLiveClassC
                       }
                     }}
                   >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Join Live Class
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Join live class
                   </a>
                 ) : (
                   <button
                     type="button"
-                    className="w-full inline-flex items-center justify-center px-4 py-2 rounded-md text-white bg-gray-500 cursor-not-allowed"
+                    className="inline-flex w-full cursor-not-allowed items-center justify-center rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400"
                     disabled
                   >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    {selectedClass.status === 'scheduled' ? 'Available at start time' : 'Class Ended'}
+                    <Lock className="mr-2 h-4 w-4" />
+                    {selectedClass.status === 'scheduled' ? 'Available at start time' : 'Class ended'}
                   </button>
                 )
               ) : (
-                <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-center text-sm text-gray-500 dark:text-gray-400">
                   Meeting link not available
-                </div>
+                </p>
               )}
             </div>
           )}
