@@ -16,8 +16,6 @@ import {
   ArrowRight,
   Star,
   CheckCircle,
-  Menu,
-  X,
   Mail,
   Phone,
   MapPin,
@@ -28,7 +26,7 @@ import {
   Trophy,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import ThemeToggle from '@/components/theme-toggle';
+import LandingNav from '@/components/landing/landing-nav';
 import Testimonials from '@/components/testimonials';
 import WhatsAppFloat from '@/components/whatsapp-float';
 import Hero3D from '@/components/hero/hero-3d';
@@ -38,19 +36,8 @@ import { scaleIn } from '@/lib/motion';
 import { whatsappLink, WHATSAPP_MESSAGES, WHATSAPP_DISPLAY } from '@/config/contact';
 
 export default function HomePage() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [visibleElements, setVisibleElements] = useState<Set<string>>(new Set());
-  const [scrolled, setScrolled] = useState(false);
-
-  // The bar is transparent over the hero and only gains its background once
-  // you scroll, so it stops cutting a hard line across the animation.
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setIsVisible(true));
@@ -136,167 +123,11 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
-      {/* Navigation Bar */}
-      <nav
-        className={`sticky top-0 z-50 transition-all duration-300 ${
-          scrolled
-            ? 'border-b border-gray-200/80 bg-white/80 shadow-sm backdrop-blur-xl dark:border-gray-800/80 dark:bg-gray-900/80'
-            : 'border-b border-transparent bg-transparent'
-        }`}
-      >
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            {/* Logo and Brand. The logo was h-24 inside an h-16 bar, so it
-                overflowed the nav and pushed the layout around. */}
-            <Link href="/" className="flex items-center gap-2.5">
-              <img
-                src="/images/Logo.PNG"
-                alt=""
-                className="h-9 w-9 object-contain"
-              />
-              <span className="text-lg font-bold tracking-tight text-charcoal-900 dark:text-gray-100">
-                Learnify
-              </span>
-            </Link>
+      <LandingNav />
 
-            {/* Desktop Navigation */}
-            <div className="hidden items-center space-x-8 md:flex">
-              <Link
-                href="/"
-                className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-              >
-                Home
-              </Link>
-              <Link
-                href="/courses"
-                className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-              >
-                Courses
-              </Link>
-              <Link
-                href="/blog"
-                className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-              >
-                Blog
-              </Link>
-              <Link
-                href="#features"
-                className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-              >
-                Features
-              </Link>
-              <Link
-                href="#about"
-                className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-              >
-                About
-              </Link>
-              <Link
-                href="#contact"
-                className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-              >
-                Contact
-              </Link>
-            </div>
-
-            {/* Desktop Auth Buttons */}
-            <div className="hidden items-center space-x-2 md:flex">
-              <ThemeToggle />
-              <Button
-                asChild
-                variant="ghost"
-                className="text-gray-700 hover:bg-primary/10 hover:text-primary dark:text-gray-300"
-              >
-                <Link href="/auth/signin">Sign In</Link>
-              </Button>
-              <Button
-                asChild
-                className="bg-primary text-white hover:bg-primary-600"
-              >
-                <Link href="/auth/signup">Get Started</Link>
-              </Button>
-            </div>
-
-            {/* Mobile menu button */}
-            <div className="md:hidden">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="text-gray-700 hover:bg-primary/10 hover:text-primary dark:text-gray-300"
-              >
-                {mobileMenuOpen ? (
-                  <X className="h-5 w-5" />
-                ) : (
-                  <Menu className="h-5 w-5" />
-                )}
-              </Button>
-            </div>
-          </div>
-
-          {/* Mobile Navigation Menu */}
-          {mobileMenuOpen && (
-            <div className="border-t border-gray-200 py-4 dark:border-gray-800 md:hidden">
-              <div className="flex flex-col space-y-4">
-                <Link
-                  href="/"
-                  className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-                >
-                  Home
-                </Link>
-                <Link
-                  href="/courses"
-                  className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-                >
-                  Courses
-                </Link>
-                <Link
-                  href="/blog"
-                  className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-                >
-                  Blog
-                </Link>
-                <Link
-                  href="#features"
-                  className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-                >
-                  Features
-                </Link>
-                <Link
-                  href="#about"
-                  className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-                >
-                  About
-                </Link>
-                <Link
-                  href="#contact"
-                  className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-                >
-                  Contact
-                </Link>
-                <div className="border-t border-gray-200 pt-4 dark:border-gray-800">
-                  <Button
-                    asChild
-                    variant="ghost"
-                    className="mb-2 w-full justify-start text-gray-700 hover:bg-primary/10 hover:text-primary dark:text-gray-300"
-                  >
-                    <Link href="/auth/signin">Sign In</Link>
-                  </Button>
-                  <Button
-                    asChild
-                    className="w-full bg-primary text-white hover:bg-primary-600"
-                  >
-                    <Link href="/auth/signup">Get Started</Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </nav>
-
-      {/* Hero Section */}
-      <section className="relative overflow-hidden px-4 py-24 text-center sm:py-28">
+      {/* Hero Section. Top padding clears the fixed nav, which floats over the
+          3D scene rather than sitting above it. */}
+      <section className="relative overflow-hidden px-4 pb-24 pt-32 text-center sm:pb-28 sm:pt-36">
         {/* Base wash */}
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-white to-white dark:from-primary/10 dark:via-gray-900 dark:to-gray-900" />
 
@@ -387,7 +218,7 @@ export default function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="relative px-4 py-20 overflow-hidden">
+      <section id="features" className="relative scroll-mt-24 px-4 py-20 overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-primary/5 dark:from-gray-900 dark:via-gray-900 dark:to-primary/5"></div>
         
@@ -474,7 +305,7 @@ export default function HomePage() {
       </section>
 
       {/* Why Students Love Us */}
-      <section id="about" className="relative bg-white/80 px-4 py-20 dark:bg-gray-900 overflow-hidden">
+      <section id="about" className="relative scroll-mt-24 bg-white/80 px-4 py-20 dark:bg-gray-900 overflow-hidden">
         {/* Background Effects */}
         <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5"></div>
         <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent"></div>
@@ -587,7 +418,7 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section id="contact" className="relative px-4 py-20 overflow-hidden">
+      <section id="contact" className="relative scroll-mt-24 px-4 py-20 overflow-hidden">
         {/* Background Effects */}
         <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-primary/5 dark:from-gray-900 dark:via-gray-900 dark:to-primary/5"></div>
         

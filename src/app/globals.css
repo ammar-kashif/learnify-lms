@@ -43,6 +43,12 @@
     --destructive-foreground: 210 40% 98%;
   }
 
+  /* Anchor jumps glide instead of teleporting. The reduced-motion guard in
+     animations.css forces this back to `auto`. */
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-white text-gray-900;
   }
