@@ -14,6 +14,7 @@ import {
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import AuthShell from '@/components/auth/auth-shell';
 import { supabase } from '@/lib/supabase';
 import { getAllGuestDemos, clearAllGuestDemos } from '@/lib/guest-demo';
 import {
@@ -22,7 +23,6 @@ import {
   Mail,
   Lock,
   User,
-  ArrowLeft,
   Phone,
 } from 'lucide-react';
 
@@ -256,37 +256,12 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-950 dark:to-black p-4">
-      <div className="w-full max-w-md">
-        {/* Back to home link */}
-        <div className="mb-6">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Home
-          </Link>
-        </div>
-
-        {/* Logo and title */}
-        <div className="mb-8 text-center">
-          <div className="mb-4 flex items-center justify-center">
-            <img
-              src="/images/Logo.PNG"
-              alt="Learnify Logo"
-              className="h-12 w-12"
-            />
-          </div>
-          <h1 className="text-2xl font-bold text-charcoal-900 dark:text-white">
-            Create your account
-          </h1>
-          <p className="mt-2 text-charcoal-600 dark:text-gray-400">
-            Join Learnify and start your learning journey
-          </p>
-        </div>
-
-        <Card className="border-charcoal-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg">
+    <AuthShell
+      title="Start your A* journey."
+      subtitle="Join hundreds of students studying smarter with expert tutors, recorded lectures and weekly past paper practice."
+    >
+      <div className="w-full">
+        <Card className="border-charcoal-200 bg-white shadow-depth dark:border-gray-700 dark:bg-gray-900">
           <CardHeader className="text-center">
             <CardTitle className="text-xl text-charcoal-900 dark:text-white">Sign Up</CardTitle>
             <CardDescription className="text-charcoal-600 dark:text-gray-400">
@@ -449,6 +424,6 @@ export default function SignUpPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </AuthShell>
   );
 }

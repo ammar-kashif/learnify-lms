@@ -14,7 +14,8 @@ import {
 import { useAuth } from '@/contexts/auth-context';
 
 import Link from 'next/link';
-import { Mail, ArrowLeft } from 'lucide-react';
+import AuthShell from '@/components/auth/auth-shell';
+import { Mail } from 'lucide-react';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -45,37 +46,13 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-950 dark:to-black p-4">
-      <div className="w-full max-w-md">
-        {/* Back to home link */}
-        <div className="mb-6">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Home
-          </Link>
-        </div>
-
-        {/* Logo and title */}
-        <div className="mb-8 text-center">
-          <div className="mb-4 flex items-center justify-center">
-            <img
-              src="/images/Logo.PNG"
-              alt="Learnify Logo"
-              className="h-12 w-12"
-            />
-          </div>
-          <h1 className="text-2xl font-bold text-charcoal-900 dark:text-white">
-            Reset your password
-          </h1>
-          <p className="mt-2 text-charcoal-600 dark:text-gray-300">
-            Enter your email to receive a reset link
-          </p>
-        </div>
-
-        <Card className="border-charcoal-200 dark:border-gray-700 shadow-lg bg-white dark:bg-gray-800">
+    <AuthShell
+      title="Happens to everyone."
+      subtitle="Enter your email and we'll send you a link to set a new password."
+      showHighlights={false}
+    >
+      <div className="w-full">
+        <Card className="border-charcoal-200 bg-white shadow-depth dark:border-gray-700 dark:bg-gray-800">
           <CardHeader className="text-center">
             <CardTitle className="text-xl text-charcoal-900 dark:text-white">
               Forgot Password
@@ -139,6 +116,6 @@ export default function ForgotPasswordPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </AuthShell>
   );
 }
