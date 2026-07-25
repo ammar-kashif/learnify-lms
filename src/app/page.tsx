@@ -297,7 +297,16 @@ export default function HomePage() {
             it only on capable, non-reduced-motion, larger-than-mobile devices. */}
         <Hero3D className="pointer-events-none absolute inset-0" />
 
-        {/* Fade the scene into the page so text stays readable over it */}
+        {/* Readability scrim. The 3D sits directly behind the headline, and a
+            metallic orange sphere drifting under dark text destroys contrast.
+            This keeps a page-coloured wash under the copy while leaving the
+            scene visible around the edges. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_45%,rgba(255,255,255,0.92),rgba(255,255,255,0.65)_55%,transparent_80%)] dark:bg-[radial-gradient(ellipse_60%_50%_at_50%_45%,rgba(17,24,39,0.92),rgba(17,24,39,0.7)_55%,transparent_80%)]"
+        />
+
+        {/* Fade the scene into the page below */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-white to-transparent dark:from-gray-900" />
 
         <div className={`relative mx-auto max-w-4xl will-change-transform transition-transform duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
@@ -759,14 +768,14 @@ export default function HomePage() {
 
           {/* Bottom bar */}
           <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-gray-200 pt-8 dark:border-gray-800 sm:flex-row">
-            <p className="text-sm text-gray-500 dark:text-gray-500">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               © {new Date().getFullYear()} Learnify LMS. All rights reserved.
             </p>
             <div className="flex items-center space-x-6">
-              <Link href="#" className="text-sm text-gray-500 transition-colors hover:text-primary dark:text-gray-500 dark:hover:text-primary">
+              <Link href="#" className="text-sm text-gray-600 transition-colors hover:text-primary dark:text-gray-400 dark:hover:text-primary">
                 Privacy Policy
               </Link>
-              <Link href="#" className="text-sm text-gray-500 transition-colors hover:text-primary dark:text-gray-500 dark:hover:text-primary">
+              <Link href="#" className="text-sm text-gray-600 transition-colors hover:text-primary dark:text-gray-400 dark:hover:text-primary">
                 Terms of Service
               </Link>
             </div>

@@ -71,15 +71,28 @@
 }
 
 /* ===== Depth & glass ===== */
+/* Opacity is deliberately high: below ~0.85 the section background bleeds
+   through enough to drop body text under the 4.5:1 contrast floor. */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(16px) saturate(160%);
   -webkit-backdrop-filter: blur(16px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(226, 232, 240, 0.8);
 }
 .dark .glass-panel {
-  background: rgba(23, 23, 23, 0.6);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(17, 24, 39, 0.88);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* No backdrop-filter support (older Android WebView): fall back to solid,
+   otherwise the panel renders fully transparent and text sits on the page. */
+@supports not (backdrop-filter: blur(1px)) {
+  .glass-panel {
+    background: rgb(255, 255, 255);
+  }
+  .dark .glass-panel {
+    background: rgb(17, 24, 39);
+  }
 }
 
 /* Soft layered elevation, warmer than a plain black shadow */

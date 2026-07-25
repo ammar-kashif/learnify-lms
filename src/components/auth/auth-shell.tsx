@@ -50,7 +50,7 @@ export default function AuthShell({
         <div>
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-sm text-white/70 transition-colors hover:text-white"
+            className="inline-flex items-center gap-2 text-sm text-white/80 transition-colors hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to home
@@ -66,7 +66,7 @@ export default function AuthShell({
           <h1 className="mt-6 text-3xl font-bold leading-tight lg:mt-10 lg:text-4xl">
             {title}
           </h1>
-          <p className="mt-3 max-w-md text-base leading-relaxed text-white/70">
+          <p className="mt-3 max-w-md text-base leading-relaxed text-white/80">
             {subtitle}
           </p>
         </div>

@@ -218,27 +218,27 @@ export default function CoursesPage() {
     window.location.href = '/auth/signup';
   };
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-900">
       {/* Header */}
-      <div className="border-b border-gray-200 bg-white">
+      <div className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="mb-6">
-            <Link href="/" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors">
+            <Link href="/" className="inline-flex items-center gap-2 text-sm text-gray-500 transition-colors hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100">
               <ArrowLeft className="h-4 w-4" />
               Back to Home
             </Link>
           </div>
           <div className="text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-5xl lg:text-6xl">
               Explore Our Courses
             </h1>
-            <p className="mx-auto mt-4 max-w-3xl text-xl text-gray-600">
+            <p className="mx-auto mt-4 max-w-3xl text-xl text-gray-600 dark:text-gray-300">
               Discover a wide range of O Level and IGCSE courses designed to
               help you excel in your academic journey.
             </p>
             {!authLoading && user && userRole && userRole !== 'student' && (
-              <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-yellow-800">
+              <div className="mt-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-900 dark:bg-yellow-950/40">
+                <p className="text-yellow-800 dark:text-yellow-200">
                   <strong>Note:</strong> Course enrollment is only available for students. 
                   Your current role is: <span className="font-semibold">{userRole}</span>
                 </p>
@@ -265,21 +265,21 @@ export default function CoursesPage() {
             <div className="mb-6 flex items-center gap-4">
               <Skeleton className="h-7 w-28" />
               <Skeleton className="h-5 w-20 rounded-full" />
-              <div className="h-px flex-1 bg-gray-200" />
+              <div className="h-px flex-1 bg-gray-200 dark:bg-gray-800" />
             </div>
             <SkeletonCourseGrid count={6} />
           </div>
         ) : error ? (
           <div className="text-center py-12">
-            <div className="rounded-lg bg-red-50 border border-red-200 p-6">
-              <p className="text-red-800">{error}</p>
+            <div className="rounded-lg border border-red-200 bg-red-50 p-6 dark:border-red-900 dark:bg-red-950/40">
+              <p className="text-red-800 dark:text-red-200">{error}</p>
             </div>
           </div>
         ) : courses.length === 0 ? (
           <div className="text-center py-12">
             <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-4 text-lg font-medium text-gray-900">No courses available</h3>
-            <p className="mt-2 text-gray-600">Check back later for new courses.</p>
+            <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-gray-100">No courses available</h3>
+            <p className="mt-2 text-gray-600 dark:text-gray-400">Check back later for new courses.</p>
           </div>
         ) : (
           <>
@@ -293,7 +293,7 @@ export default function CoursesPage() {
                   onChange={e => setQuery(e.target.value)}
                   placeholder="Search subjects…"
                   aria-label="Search courses"
-                  className="h-11 w-full rounded-full border border-gray-200 bg-white pl-10 pr-4 text-sm text-gray-900 shadow-sm outline-none transition-colors placeholder:text-gray-400 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="h-11 w-full rounded-full border border-gray-200 bg-white pl-10 pr-4 text-sm text-gray-900 shadow-sm outline-none transition-colors placeholder:text-gray-400 focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
               </div>
 
@@ -319,7 +319,7 @@ export default function CoursesPage() {
                       className={`flex-shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200 ${
                         isActive
                           ? 'border-primary bg-primary text-white shadow-sm'
-                          : 'border-gray-200 bg-white text-gray-600 hover:border-primary/40 hover:text-primary'
+                          : 'border-gray-200 bg-white text-gray-600 hover:border-primary/40 hover:text-primary dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:text-primary'
                       }`}
                     >
                       {level}
@@ -337,10 +337,10 @@ export default function CoursesPage() {
             {filteredCourses.length === 0 ? (
               <div className="py-16 text-center">
                 <Search className="mx-auto h-12 w-12 text-gray-300" />
-                <h3 className="mt-4 text-lg font-medium text-gray-900">
+                <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-gray-100">
                   No courses match &ldquo;{query}&rdquo;
                 </h3>
-                <p className="mt-2 text-gray-600">
+                <p className="mt-2 text-gray-600 dark:text-gray-400">
                   Try a different subject, or clear the filters.
                 </p>
                 <Button
@@ -361,7 +361,7 @@ export default function CoursesPage() {
                     <div className="mb-6 flex items-center gap-4">
                       <h2
                         id={`level-${group.level}`}
-                        className="text-2xl font-bold text-gray-900"
+                        className="text-2xl font-bold text-gray-900 dark:text-gray-100"
                       >
                         {group.level}
                       </h2>
@@ -369,7 +369,7 @@ export default function CoursesPage() {
                         {group.courses.length}{' '}
                         {group.courses.length === 1 ? 'course' : 'courses'}
                       </span>
-                      <div className="h-px flex-1 bg-gray-200" />
+                      <div className="h-px flex-1 bg-gray-200 dark:bg-gray-800" />
                     </div>
 
                     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -379,7 +379,7 @@ export default function CoursesPage() {
                         return (
                           <Card
                             key={course.id}
-                            className="group flex h-full flex-col border-gray-200 bg-white transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-xl"
+                            className="group flex h-full flex-col border-gray-200 bg-white transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-xl dark:border-gray-800 dark:bg-gray-900"
                           >
                             <CardHeader className="pb-4">
                               <div className="mb-4 flex items-start justify-between gap-3">
@@ -393,21 +393,21 @@ export default function CoursesPage() {
                                   {level}
                                 </Badge>
                               </div>
-                              <CardTitle className="text-lg font-bold leading-snug text-gray-900">
+                              <CardTitle className="text-lg font-bold leading-snug text-gray-900 dark:text-gray-100">
                                 {subject}
                               </CardTitle>
-                              <CardDescription className="line-clamp-3 text-gray-600">
+                              <CardDescription className="line-clamp-3 text-gray-600 dark:text-gray-400">
                                 {course.description}
                               </CardDescription>
                             </CardHeader>
 
                             <CardContent className="mt-auto flex flex-col p-6 pt-0">
-                              <div className="mb-4 flex items-center gap-1.5 text-sm text-gray-500">
+                              <div className="mb-4 flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
                                 <Clock className="h-4 w-4" />
                                 <span>Self-paced</span>
                               </div>
 
-                              <div className="flex flex-col gap-2 border-t border-gray-200 pt-4">
+                              <div className="flex flex-col gap-2 border-t border-gray-200 pt-4 dark:border-gray-800">
                                 <Button
                                   className="h-10 w-full bg-primary text-white transition-colors hover:bg-primary-600"
                                   onClick={() => handleEnroll(course)}
