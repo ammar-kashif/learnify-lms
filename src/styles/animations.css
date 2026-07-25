@@ -34,6 +34,13 @@
   animation: gradient-x 4s ease infinite;
 }
 
+/* ===== Floating WhatsApp bubble ===== */
+@keyframes ping-slow {
+  0% { transform: scale(1); opacity: 0.5; }
+  70%, 100% { transform: scale(1.6); opacity: 0; }
+}
+.animate-ping-slow { animation: ping-slow 2.4s cubic-bezier(0, 0, 0.2, 1) infinite; }
+
 /* ===== Testimonials Carousel ===== */
 @keyframes testimonial-in {
   from { opacity: 0; transform: translateY(16px) scale(0.97); }

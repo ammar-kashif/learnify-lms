@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { CreditCard, Copy, Check, AlertCircle, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import ModernSubscriptionModal from './modern-subscription-modal';
+import { WHATSAPP_NUMBER } from '@/config/contact';
 
 interface PaymentPopupProps {
   isOpen: boolean;
@@ -129,7 +130,7 @@ export default function PaymentPopup({
       amount = payableAmount || course.amount || 5000;
     }
     
-    const phone = '923005299693';
+    const phone = WHATSAPP_NUMBER;
     const message = `Hi, I have completed the payment for ${course.title}.\nAmount: PKR ${amount}.\nI will share the screenshot here.`;
     const encoded = encodeURIComponent(message);
 
@@ -157,7 +158,7 @@ export default function PaymentPopup({
     } else {
       amount = payableAmount || course.amount || 5000;
     }
-    const phone = '923005299693';
+    const phone = WHATSAPP_NUMBER;
     const message = `Hi, I have completed the payment for ${course.title}.\nAmount: PKR ${amount}.\nI will share the screenshot here.`;
     const encoded = encodeURIComponent(message);
 

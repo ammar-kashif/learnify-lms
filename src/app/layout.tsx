@@ -7,12 +7,41 @@ import { ThemeProvider } from '@/components/providers/theme-provider';
 
 const inter = Inter({ subsets: ['latin'] });
 
+const DESCRIPTION =
+  'Join Learnify — Pakistan’s leading online academy for O Levels and IGCSE students. Get personalized tutoring, past paper practice, and guaranteed results in Maths, Physics, Chemistry, Biology, Computer Science and English.';
+
 export const metadata: Metadata = {
-  title: 'Learnify LMS',
-  description: 'Modern Learning Management System',
-  keywords: ['LMS', 'Education', 'Learning', 'Courses'],
+  title: {
+    default: 'Learnify — Online O Level & IGCSE Academy',
+    template: '%s | Learnify',
+  },
+  description: DESCRIPTION,
+  keywords: [
+    'O Level',
+    'IGCSE',
+    'online tutoring',
+    'Pakistan',
+    'past papers',
+    'Maths',
+    'Physics',
+    'Chemistry',
+    'Biology',
+    'Computer Science',
+    'English',
+  ],
   authors: [{ name: 'Learnify Team' }],
   viewport: 'width=device-width, initial-scale=1',
+  openGraph: {
+    title: 'Learnify — Online O Level & IGCSE Academy',
+    description: DESCRIPTION,
+    type: 'website',
+    siteName: 'Learnify',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Learnify — Online O Level & IGCSE Academy',
+    description: DESCRIPTION,
+  },
 };
 
 export default function RootLayout({
