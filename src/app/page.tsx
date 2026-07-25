@@ -10,7 +10,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {
-  BookOpen,
   Users,
   BarChart3,
   Play,
@@ -19,15 +18,10 @@ import {
   CheckCircle,
   Menu,
   X,
-  Sparkles,
-  Zap,
-  Globe,
-  Rocket,
   Mail,
   Phone,
   MapPin,
   ChevronDown,
-  HelpCircle,
   MessageCircle,
   GraduationCap,
   FileText,
@@ -47,6 +41,16 @@ export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [visibleElements, setVisibleElements] = useState<Set<string>>(new Set());
+  const [scrolled, setScrolled] = useState(false);
+
+  // The bar is transparent over the hero and only gains its background once
+  // you scroll, so it stops cutting a hard line across the animation.
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setIsVisible(true));
@@ -124,10 +128,6 @@ export default function HomePage() {
     },
   ];
 
-  const subjects = [
-    'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Computer Science', 'English',
-  ];
-
   const quickStats = [
     { value: '200+', label: 'Students Taught' },
     { value: '6', label: 'Expert Tutors' },
@@ -137,20 +137,27 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
       {/* Navigation Bar */}
-      <nav className="sticky top-0 z-50 border-b border-gray-200 bg-white/90 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/90">
+      <nav
+        className={`sticky top-0 z-50 transition-all duration-300 ${
+          scrolled
+            ? 'border-b border-gray-200/80 bg-white/80 shadow-sm backdrop-blur-xl dark:border-gray-800/80 dark:bg-gray-900/80'
+            : 'border-b border-transparent bg-transparent'
+        }`}
+      >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            {/* Logo and Brand */}
-            <div className="flex items-center space-x-3">
+            {/* Logo and Brand. The logo was h-24 inside an h-16 bar, so it
+                overflowed the nav and pushed the layout around. */}
+            <Link href="/" className="flex items-center gap-2.5">
               <img
                 src="/images/Logo.PNG"
-                alt="Learnify Logo"
-                className="h-24 w-24"
+                alt=""
+                className="h-9 w-9 object-contain"
               />
-              <span className="text-xl font-bold text-charcoal-900 dark:text-gray-100">
+              <span className="text-lg font-bold tracking-tight text-charcoal-900 dark:text-gray-100">
                 Learnify
               </span>
-            </div>
+            </Link>
 
             {/* Desktop Navigation */}
             <div className="hidden items-center space-x-8 md:flex">
@@ -313,7 +320,7 @@ export default function HomePage() {
           
           <h1 className="mb-6 text-5xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-6xl lg:text-7xl animate-slide-up">
             Ace Your O Levels &amp; IGCSE Exams with{' '}
-            <span className="bg-gradient-to-r from-primary via-primary-600 to-purple-600 bg-clip-text text-transparent animate-gradient-x">
+            <span className="bg-gradient-to-r from-primary via-primary-600 to-primary-700 bg-clip-text text-transparent animate-gradient-x">
               Learnify
             </span>
           </h1>
@@ -376,23 +383,6 @@ export default function HomePage() {
             ))}
           </div>
 
-          {/* Subjects Strip */}
-          <div className="mx-auto inline-flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
-            {subjects.map((subj, index) => (
-              <span
-                key={index}
-                id={`subj-${index}`}
-                data-animate
-                className={`inline-flex items-center rounded-full border border-gray-200 bg-white/80 px-3 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm font-medium text-gray-700 shadow-sm backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:border-primary/40 hover:text-primary dark:border-gray-700 dark:bg-gray-800/80 dark:text-gray-300 ${
-                  visibleElements.has(`subj-${index}`) ? 'animate-scale-in' : 'opacity-0 scale-90'
-                }`}
-                style={{ animationDelay: `${index * 80}ms` }}
-              >
-                <BookOpen className="mr-1.5 h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary/60" />
-                {subj}
-              </span>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -400,17 +390,12 @@ export default function HomePage() {
       <section id="features" className="relative px-4 py-20 overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-primary/5 dark:from-gray-900 dark:via-gray-900 dark:to-primary/5"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.05),transparent_50%)]"></div>
         
         <div className="relative mx-auto max-w-6xl">
           <div className="mb-16 text-center">
-            <div className="mb-4 inline-flex items-center rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary dark:bg-primary/20">
-              <Zap className="mr-2 h-4 w-4" />
-              Powerful Features
-            </div>
             <h2 className="mb-4 text-4xl font-bold text-gray-900 dark:text-gray-100">
               Why Choose{' '}
-              <span className="bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-primary to-primary-700 bg-clip-text text-transparent">
                 Learnify?
               </span>
             </h2>
@@ -458,10 +443,6 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-primary/5 dark:from-gray-900 dark:via-gray-900 dark:to-primary/5" />
         <div className="relative mx-auto max-w-6xl">
           <div className="mb-10 text-center">
-            <div className="mb-4 inline-flex items-center rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary dark:bg-primary/20">
-              <Rocket className="mr-2 h-4 w-4" />
-              Getting Started
-            </div>
             <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">How Learnify Works</h2>
             <p className="mx-auto mt-3 max-w-2xl text-lg text-gray-600 dark:text-gray-300">
               Learning that&apos;s structured, supportive, and success-driven.
@@ -495,15 +476,11 @@ export default function HomePage() {
       {/* Why Students Love Us */}
       <section id="about" className="relative bg-white/80 px-4 py-20 dark:bg-gray-900 overflow-hidden">
         {/* Background Effects */}
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-purple-600/5"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5"></div>
         <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent"></div>
         <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent"></div>
         
         <div className="relative mx-auto max-w-4xl text-center">
-          <div className="mb-4 inline-flex items-center rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary dark:bg-primary/20">
-            <Star className="mr-2 h-4 w-4" />
-            Why Students Love Us
-          </div>
           <h2 className="mb-8 text-3xl font-bold text-gray-900 dark:text-gray-100">
             Built for O Level &amp; IGCSE Students
           </h2>
@@ -601,10 +578,6 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-primary/5 dark:from-gray-900 dark:via-gray-900 dark:to-primary/5" />
         <div className="relative mx-auto max-w-3xl">
           <div className="mb-12 text-center">
-            <div className="mb-4 inline-flex items-center rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary dark:bg-primary/20">
-              <HelpCircle className="mr-2 h-4 w-4" />
-              Common Questions
-            </div>
             <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
               Frequently Asked Questions
             </h2>
@@ -619,25 +592,12 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-primary/5 dark:from-gray-900 dark:via-gray-900 dark:to-primary/5"></div>
         
         <div className="relative mx-auto max-w-4xl text-center">
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary via-primary-600 to-purple-600 p-12 text-white shadow-2xl">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary via-primary-600 to-primary-700 p-12 text-white shadow-2xl">
             {/* Animated Background Elements */}
             <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-primary-600/20"></div>
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]"></div>
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.1),transparent_50%)]"></div>
             
-            {/* Floating Elements */}
-            <div className="absolute top-4 left-4 animate-bounce-slow">
-              <Globe className="h-6 w-6 text-white/30" />
-            </div>
-            <div className="absolute top-8 right-8 animate-bounce-slow" style={{ animationDelay: '1s' }}>
-              <Rocket className="h-5 w-5 text-white/30" />
-            </div>
-            <div className="absolute bottom-6 left-8 animate-bounce-slow" style={{ animationDelay: '2s' }}>
-              <Sparkles className="h-4 w-4 text-white/30" />
-            </div>
-            <div className="absolute bottom-4 right-6 animate-bounce-slow" style={{ animationDelay: '3s' }}>
-              <Zap className="h-5 w-5 text-white/30" />
-            </div>
             
             <div className="relative">
               <h2 className="mb-6 text-4xl font-bold">
