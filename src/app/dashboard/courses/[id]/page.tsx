@@ -114,16 +114,29 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
         setLoading(true);
         
         if (userProfile?.role === 'student') {
-          // Students: fetch course directly by ID
+          // Students: fetch course directly by ID.
+          // `courses` only has these columns — subject/price/current_students are
+          // derived, matching what /api/teacher/courses returns.
           const { data: courseData, error: courseErr } = await supabase
             .from('courses')
-            .select('id,title,description,subject,created_at,updated_at,current_students,price')
+            .select('id,title,description,created_at,updated_at')
             .eq('id', params.id)
             .single();
           if (courseErr || !courseData) {
             throw new Error('Course not found');
           }
-          setCourse(courseData as unknown as Course);
+
+          const { count: enrolledCount } = await supabase
+            .from('student_enrollments')
+            .select('student_id', { count: 'exact', head: true })
+            .eq('course_id', params.id);
+
+          setCourse({
+            ...courseData,
+            subject: 'General',
+            current_students: enrolledCount ?? 0,
+            price: 0,
+          } as unknown as Course);
         } else {
           // Teachers/Admins: use teacher-scoped APIs
           const courseResponse = await fetch(`/api/teacher/courses?teacherId=${user.id}`);

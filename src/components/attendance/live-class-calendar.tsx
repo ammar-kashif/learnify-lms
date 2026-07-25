@@ -404,15 +404,15 @@ export default function LiveClassCalendar({
                 </div>
               </div>
 
-              {selectedEvent.meeting_id && (
+              {selectedEvent.meeting_link && (
                 <div className="pt-4 border-t">
-                  <Button 
-                    asChild 
+                  <Button
+                    asChild
                     className="w-full"
                   >
-                    <a 
-                      href={selectedEvent.meeting_id} 
-                      target="_blank" 
+                    <a
+                      href={selectedEvent.meeting_link}
+                      target="_blank"
                       rel="noopener noreferrer"
                     >
                       Join Meeting

@@ -67,7 +67,7 @@ export default function LiveClassForm({
         description: liveClass.description || '',
         scheduled_date: new Date(liveClass.scheduled_date).toISOString().slice(0, 16),
         duration_minutes: liveClass.duration_minutes,
-        meeting_link: liveClass.meeting_id || '',
+        meeting_link: liveClass.meeting_link || '',
         selected_course_id: liveClass.course_id,
         is_demo: (liveClass as any).is_demo ?? false
       });

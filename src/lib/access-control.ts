@@ -194,12 +194,13 @@ export async function isEnrolledInCourse(
   courseId: string
 ): Promise<boolean> {
   try {
+    // student_enrollments has no `id` — its PK is (student_id, course_id).
     const { data: enrollment, error } = await supabase
       .from('student_enrollments')
-      .select('id')
+      .select('student_id')
       .eq('student_id', userId)
       .eq('course_id', courseId)
-      .single();
+      .maybeSingle();
 
     return !error && !!enrollment;
   } catch (error) {

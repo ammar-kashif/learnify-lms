@@ -22,11 +22,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Get student's enrolled courses
+    // student_enrollments has no `status` column — an enrolment row is the
+    // enrolment. Access tier lives in `enrollment_type` ('paid' | 'demo').
     const { data: enrollments, error: enrollmentsError } = await supabase
       .from('student_enrollments')
       .select('course_id')
-      .eq('student_id', userId)
-      .eq('status', 'active');
+      .eq('student_id', userId);
 
     if (enrollmentsError) throw enrollmentsError;
 
@@ -61,8 +62,7 @@ export async function GET(request: NextRequest) {
           title,
           courses (
             id,
-            title,
-            subject
+            title
           )
         )
       `

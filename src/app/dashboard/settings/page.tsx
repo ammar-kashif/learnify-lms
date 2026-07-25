@@ -22,7 +22,6 @@ import ThemeToggle from '@/components/theme-toggle';
 import AvatarUpload from '@/components/ui/avatar-upload';
 import Avatar from '@/components/ui/avatar';
 import TwoFactorSettings from '@/components/auth/two-factor-settings';
-import FeedbackForm from '@/components/feedback/feedback-form';
 import BugReportForm from '@/components/bug-reports/bug-report-form';
 
 export default function SettingsPage() {
@@ -339,18 +338,6 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                        Send Feedback
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-300">
-                        Share your thoughts, suggestions, or feature requests.
-                      </p>
-                    </div>
-                    <FeedbackForm />
-                  </div>
-                  <Separator />
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-lg font-medium text-gray-900 dark:text-white">

@@ -5,7 +5,6 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { X, Upload, FileText } from 'lucide-react';
 import { toast } from 'sonner';
@@ -20,7 +19,6 @@ interface AddChapterModalProps {
 export default function AddChapterModal({ isOpen, onClose, courseId, onChapterAdded }: AddChapterModalProps) {
   const [formData, setFormData] = useState({
     title: '',
-    content: '',
     file: null as File | null
   });
   const [uploading, setUploading] = useState(false);
@@ -77,7 +75,6 @@ export default function AddChapterModal({ isOpen, onClose, courseId, onChapterAd
         .insert({
           course_id: courseId,
           title: formData.title.trim(),
-          content: formData.content.trim() || null,
           file_url: fileUrl,
           file_type: fileType,
           file_size: fileSize
@@ -88,7 +85,7 @@ export default function AddChapterModal({ isOpen, onClose, courseId, onChapterAd
       }
 
       toast.success('Chapter added successfully!');
-      setFormData({ title: '', content: '', file: null });
+      setFormData({ title: '', file: null });
       onChapterAdded();
       onClose();
     } catch (error) {
@@ -125,17 +122,6 @@ export default function AddChapterModal({ isOpen, onClose, courseId, onChapterAd
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                 placeholder="Enter chapter title"
                 required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="content">Chapter Content</Label>
-              <Textarea
-                id="content"
-                value={formData.content}
-                onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                placeholder="Enter chapter description or content"
-                rows={4}
               />
             </div>
 

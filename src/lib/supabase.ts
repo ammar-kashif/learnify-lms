@@ -523,12 +523,10 @@ export interface Database {
           teacher_id: string;
           title: string;
           description: string | null;
-          meeting_url: string | null;
-          meeting_id: string | null;
+          meeting_link: string | null;
           scheduled_date: string;
           duration_minutes: number;
-          max_participants: number | null;
-          is_published: boolean;
+          status: 'scheduled' | 'live' | 'ended';
           is_demo: boolean;
           created_at: string;
           updated_at: string;
@@ -539,12 +537,10 @@ export interface Database {
           teacher_id: string;
           title: string;
           description?: string | null;
-          meeting_url?: string | null;
-          meeting_id?: string | null;
+          meeting_link?: string | null;
           scheduled_date: string;
           duration_minutes?: number;
-          max_participants?: number | null;
-          is_published?: boolean;
+          status?: 'scheduled' | 'live' | 'ended';
           is_demo?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -555,12 +551,10 @@ export interface Database {
           teacher_id?: string;
           title?: string;
           description?: string | null;
-          meeting_url?: string | null;
-          meeting_id?: string | null;
+          meeting_link?: string | null;
           scheduled_date?: string;
           duration_minutes?: number;
-          max_participants?: number | null;
-          is_published?: boolean;
+          status?: 'scheduled' | 'live' | 'ended';
           is_demo?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -757,53 +751,6 @@ export interface Database {
           created_at?: string;
         };
       };
-      feedback_messages: {
-        Row: {
-          id: string;
-          user_id: string | null;
-          email: string;
-          name: string;
-          subject: string;
-          message: string;
-          message_type: string;
-          status: string;
-          admin_notes: string | null;
-          replied_at: string | null;
-          replied_by: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id?: string | null;
-          email: string;
-          name: string;
-          subject: string;
-          message: string;
-          message_type?: string;
-          status?: string;
-          admin_notes?: string | null;
-          replied_at?: string | null;
-          replied_by?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          user_id?: string | null;
-          email?: string;
-          name?: string;
-          subject?: string;
-          message?: string;
-          message_type?: string;
-          status?: string;
-          admin_notes?: string | null;
-          replied_at?: string | null;
-          replied_by?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
       bug_reports: {
         Row: {
           id: string;
@@ -858,6 +805,125 @@ export interface Database {
           priority?: number;
           created_at?: string;
           updated_at?: string;
+        };
+      };
+      guest_demo_leads: {
+        Row: {
+          id: string;
+          email: string;
+          course_id: string;
+          course_title: string | null;
+          access_type: string;
+          created_at: string;
+          converted_at: string | null;
+          converted_user_id: string | null;
+          notes: string | null;
+        };
+        Insert: {
+          id?: string;
+          email: string;
+          course_id: string;
+          course_title?: string | null;
+          access_type: string;
+          created_at?: string;
+          converted_at?: string | null;
+          converted_user_id?: string | null;
+          notes?: string | null;
+        };
+        Update: {
+          id?: string;
+          email?: string;
+          course_id?: string;
+          course_title?: string | null;
+          access_type?: string;
+          created_at?: string;
+          converted_at?: string | null;
+          converted_user_id?: string | null;
+          notes?: string | null;
+        };
+      };
+      user_2fa_settings: {
+        Row: {
+          id: string;
+          user_id: string;
+          secret: string;
+          enabled: boolean;
+          created_at: string;
+          updated_at: string;
+          last_used_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          secret: string;
+          enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          last_used_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          secret?: string;
+          enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          last_used_at?: string | null;
+        };
+      };
+      user_backup_codes: {
+        Row: {
+          id: string;
+          user_id: string;
+          code_hash: string;
+          used: boolean;
+          used_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          code_hash: string;
+          used?: boolean;
+          used_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          code_hash?: string;
+          used?: boolean;
+          used_at?: string | null;
+          created_at?: string;
+        };
+      };
+      user_2fa_attempts: {
+        Row: {
+          id: string;
+          user_id: string;
+          attempt_type: string;
+          success: boolean;
+          ip_address: string | null;
+          user_agent: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          attempt_type: string;
+          success: boolean;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          attempt_type?: string;
+          success?: boolean;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          created_at?: string;
         };
       };
     };

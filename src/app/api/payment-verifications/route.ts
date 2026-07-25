@@ -104,13 +104,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if student is already enrolled in this course
+    // Check if student is already enrolled in this course.
+    // student_enrollments has no `id` — its PK is (student_id, course_id).
     const { data: existingEnrollment } = await supabaseAdmin
       .from('student_enrollments')
-      .select('id, enrollment_type')
+      .select('student_id, enrollment_type')
       .eq('student_id', user.id)
       .eq('course_id', courseId)
-      .single();
+      .maybeSingle();
 
     // Allow demo users to upgrade to paid, but block if already paid
     if (existingEnrollment) {

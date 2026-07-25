@@ -32,7 +32,7 @@ export async function GET(
       .from('live_classes')
       .select(`
         *,
-        courses!inner(title, teacher_id),
+        courses!inner(title),
         users!live_classes_teacher_id_fkey(full_name, email)
       `)
       .eq('id', id)

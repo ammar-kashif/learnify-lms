@@ -28,7 +28,6 @@ interface Course {
   created_at: string;
   updated_at: string;
   current_students: number;
-  max_students: number;
   price: number;
 }
 

@@ -9,14 +9,33 @@ yarn-error.log*
 out/
 build/
 dist/
-*.sql
 
-# Environment variables
+# Environment variables & secrets
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+.mcp.json
+
+# SQL scratch / schema dumps (may contain data, policies, or PII)
+*.sql
+sql.txt
+*.sql.txt
+schema.txt
+dump.txt
+*.dump
+
+# AI assistant config & generated notes (local only)
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+.cursor/
+.cursorrules
+.aider*
+.windsurfrules
 
 # Vercel
 .vercel
