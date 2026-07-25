@@ -289,34 +289,42 @@ export default function HomePage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden px-4 py-20 sm:py-24">
+      <section className="relative overflow-hidden px-4 py-24 text-center sm:py-28">
         {/* Base wash */}
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-white to-white dark:from-primary/10 dark:via-gray-900 dark:to-gray-900" />
 
-        {/* Fade into the page below */}
+        {/* 3D scene. Renders a static aurora immediately and layers WebGL over
+            it only on capable, non-reduced-motion, larger-than-mobile devices. */}
+        <Hero3D className="pointer-events-none absolute inset-0" />
+
+        {/* Readability scrim. The 3D sits directly behind the headline, and a
+            metallic orange sphere drifting under dark text destroys contrast.
+            This keeps a page-coloured wash under the copy while leaving the
+            scene visible around the edges. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_45%,rgba(255,255,255,0.92),rgba(255,255,255,0.65)_55%,transparent_80%)] dark:bg-[radial-gradient(ellipse_60%_50%_at_50%_45%,rgba(17,24,39,0.92),rgba(17,24,39,0.7)_55%,transparent_80%)]"
+        />
+
+        {/* Fade the scene into the page below */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-white to-transparent dark:from-gray-900" />
 
-        {/* Asymmetric: copy left, scene right. Nothing overlaps, so no
-            readability scrim is needed — the contrast problem is solved by
-            layout rather than patched with a wash. */}
-        <div className="relative mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] lg:gap-12">
-          <div
-            className={`text-center will-change-transform transition-all duration-1000 lg:text-left ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'}`}
-          >
-            <h1 className="mb-6 text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-5xl lg:text-6xl">
-              Ace Your O Levels &amp; IGCSE Exams with{' '}
-              <span className="bg-gradient-to-r from-primary via-primary-600 to-purple-600 bg-clip-text text-transparent animate-gradient-x">
-                Learnify
-              </span>
-            </h1>
+        <div className={`relative mx-auto max-w-4xl will-change-transform transition-transform duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
+          
+          <h1 className="mb-6 text-5xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-6xl lg:text-7xl animate-slide-up">
+            Ace Your O Levels &amp; IGCSE Exams with{' '}
+            <span className="bg-gradient-to-r from-primary via-primary-600 to-purple-600 bg-clip-text text-transparent animate-gradient-x">
+              Learnify
+            </span>
+          </h1>
 
-            <p className="mx-auto mb-8 max-w-2xl text-lg leading-relaxed text-gray-600 dark:text-gray-300 sm:text-xl lg:mx-0">
-              Personalized online classes designed to help every student master
-              concepts, practice past papers, and achieve A* results with the
-              support of expert tutors who truly care.
-            </p>
+          <p className="mx-auto mb-8 max-w-3xl text-xl leading-relaxed text-gray-600 dark:text-gray-300">
+            Personalized online classes designed to help every student master
+            concepts, practice past papers, and achieve A* results with the
+            support of expert tutors who truly care.
+          </p>
 
-          <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:justify-center lg:justify-start">
+          <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:justify-center">
             <Button
               asChild
               size="lg"
@@ -347,13 +355,13 @@ export default function HomePage() {
           </div>
 
           {/* Quick Stats */}
-          <div className="mb-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 sm:gap-x-12 lg:justify-start">
+          <div className="mb-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 sm:gap-x-12">
             {quickStats.map((stat, index) => (
               <div
                 key={index}
                 id={`stat-${index}`}
                 data-animate
-                className={`text-center transition-all duration-500 lg:text-left ${
+                className={`text-center transition-all duration-500 ${
                   visibleElements.has(`stat-${index}`) ? 'animate-scale-in' : 'opacity-0 scale-90'
                 }`}
                 style={{ animationDelay: `${index * 120}ms` }}
@@ -368,29 +376,22 @@ export default function HomePage() {
             ))}
           </div>
 
-            {/* Subjects Strip */}
-            <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 lg:justify-start">
-              {subjects.map((subj, index) => (
-                <span
-                  key={index}
-                  id={`subj-${index}`}
-                  data-animate
-                  className={`inline-flex items-center rounded-full border border-gray-200 bg-white/80 px-3 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm font-medium text-gray-700 shadow-sm backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:border-primary/40 hover:text-primary dark:border-gray-700 dark:bg-gray-800/80 dark:text-gray-300 ${
-                    visibleElements.has(`subj-${index}`) ? 'animate-scale-in' : 'opacity-0 scale-90'
-                  }`}
-                  style={{ animationDelay: `${index * 80}ms` }}
-                >
-                  <BookOpen className="mr-1.5 h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary/60" />
-                  {subj}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Scene column. Fixed aspect so the layout never jumps, and it sits
-              below the copy on mobile where the 3D is disabled anyway. */}
-          <div className="relative order-first aspect-square w-full max-w-md justify-self-center lg:order-last lg:max-w-none">
-            <Hero3D className="absolute inset-0" />
+          {/* Subjects Strip */}
+          <div className="mx-auto inline-flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
+            {subjects.map((subj, index) => (
+              <span
+                key={index}
+                id={`subj-${index}`}
+                data-animate
+                className={`inline-flex items-center rounded-full border border-gray-200 bg-white/80 px-3 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm font-medium text-gray-700 shadow-sm backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:border-primary/40 hover:text-primary dark:border-gray-700 dark:bg-gray-800/80 dark:text-gray-300 ${
+                  visibleElements.has(`subj-${index}`) ? 'animate-scale-in' : 'opacity-0 scale-90'
+                }`}
+                style={{ animationDelay: `${index * 80}ms` }}
+              >
+                <BookOpen className="mr-1.5 h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary/60" />
+                {subj}
+              </span>
+            ))}
           </div>
         </div>
       </section>
