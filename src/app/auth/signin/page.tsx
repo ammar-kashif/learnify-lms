@@ -15,8 +15,9 @@ import { useAuth } from '@/contexts/auth-context';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import TwoFactorVerify from '@/components/auth/two-factor-verify';
+import AuthShell from '@/components/auth/auth-shell';
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
@@ -100,7 +101,11 @@ export default function SignInPage() {
   // Render 2FA verification step
   if (step === '2fa') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-white to-primary-50 p-4 dark:from-gray-900 dark:via-gray-950 dark:to-black">
+      <AuthShell
+        title="One more step."
+        subtitle="Two-factor authentication keeps your account and your progress safe."
+        showHighlights={false}
+      >
         <TwoFactorVerify
           onSuccess={handle2FASuccess}
           onBack={handleBackToLogin}
@@ -110,7 +115,7 @@ export default function SignInPage() {
             setStep('backup');
           }}
         />
-      </div>
+      </AuthShell>
     );
   }
 
@@ -159,10 +164,14 @@ export default function SignInPage() {
     };
 
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-white to-primary-50 p-4 dark:from-gray-900 dark:via-gray-950 dark:to-black">
-        <div className="w-full max-w-md">
-          <Card className="border-charcoal-200 shadow-lg dark:border-gray-800 dark:bg-gray-900">
-            <CardHeader className="text-center">
+      <AuthShell
+        title="Locked out?"
+        subtitle="Use one of the backup codes you saved when you set up two-factor authentication."
+        showHighlights={false}
+      >
+        <div className="w-full">
+          <Card className="border-charcoal-200 shadow-depth dark:border-gray-800 dark:bg-gray-900">
+            <CardHeader>
               <CardTitle className="text-xl text-charcoal-900 dark:text-gray-100">Use a backup code</CardTitle>
               <CardDescription className="text-charcoal-600 dark:text-gray-300">Enter one of your unused backup codes</CardDescription>
             </CardHeader>
@@ -195,7 +204,7 @@ export default function SignInPage() {
             </CardContent>
           </Card>
         </div>
-      </div>
+      </AuthShell>
     );
   }
 
@@ -210,39 +219,14 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-white to-primary-50 p-4 dark:from-gray-900 dark:via-gray-950 dark:to-black">
-      <div className="w-full max-w-md">
-        {/* Back to home link */}
-        <div className="mb-6">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Home
-          </Link>
-        </div>
-
-        {/* Logo and title */}
-        <div className="mb-8 text-center">
-          <div className="mb-4 flex items-center justify-center">
-            <img
-              src="/images/Logo.PNG"
-              alt="Learnify Logo"
-              className="h-12 w-12"
-            />
-          </div>
-          <h1 className="text-2xl font-bold text-charcoal-900 dark:text-gray-100">
-            Welcome back
-          </h1>
-          <p className="mt-2 text-charcoal-600 dark:text-gray-300">
-            Sign in to your Learnify account
-          </p>
-        </div>
-
-        <Card className="border-charcoal-200 shadow-lg dark:border-gray-800 dark:bg-gray-900">
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl text-charcoal-900 dark:text-gray-100">
+    <AuthShell
+      title="Welcome back."
+      subtitle="Pick up where you left off — your lectures, live classes and past paper practice are waiting."
+    >
+      <div className="w-full">
+        <Card className="border-charcoal-200 shadow-depth dark:border-gray-800 dark:bg-gray-900">
+          <CardHeader>
+            <CardTitle className="text-2xl text-charcoal-900 dark:text-gray-100">
               Sign In
             </CardTitle>
             <CardDescription className="text-charcoal-600 dark:text-gray-300">
@@ -359,6 +343,6 @@ export default function SignInPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </AuthShell>
   );
 }

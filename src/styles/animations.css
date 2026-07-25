@@ -34,6 +34,89 @@
   animation: gradient-x 4s ease infinite;
 }
 
+/* ===== Skeleton shimmer ===== */
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.skeleton-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.55),
+    transparent
+  );
+  animation: skeleton-shimmer 1.6s infinite;
+}
+.dark .skeleton-shimmer::after {
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.07),
+    transparent
+  );
+}
+
+/* Used by the 3D hero canvas to fade in over its static fallback */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ===== Depth & glass ===== */
+/* Opacity is deliberately high: below ~0.85 the section background bleeds
+   through enough to drop body text under the 4.5:1 contrast floor. */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+.dark .glass-panel {
+  background: rgba(17, 24, 39, 0.88);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* No backdrop-filter support (older Android WebView): fall back to solid,
+   otherwise the panel renders fully transparent and text sits on the page. */
+@supports not (backdrop-filter: blur(1px)) {
+  .glass-panel {
+    background: rgb(255, 255, 255);
+  }
+  .dark .glass-panel {
+    background: rgb(17, 24, 39);
+  }
+}
+
+/* Soft layered elevation, warmer than a plain black shadow */
+.shadow-depth {
+  box-shadow:
+    0 1px 2px rgba(62, 62, 60, 0.04),
+    0 4px 12px rgba(62, 62, 60, 0.06),
+    0 16px 32px -8px rgba(62, 62, 60, 0.08);
+}
+.shadow-depth-lg {
+  box-shadow:
+    0 2px 4px rgba(62, 62, 60, 0.05),
+    0 8px 24px rgba(62, 62, 60, 0.08),
+    0 32px 64px -16px rgba(223, 102, 57, 0.14);
+}
+
+/* Animated aurora backdrop in brand colours */
+@keyframes aurora-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33% { transform: translate3d(3%, -4%, 0) scale(1.08); }
+  66% { transform: translate3d(-3%, 3%, 0) scale(0.96); }
+}
+.animate-aurora { animation: aurora-drift 18s ease-in-out infinite; }
+
 /* ===== Floating WhatsApp bubble ===== */
 @keyframes ping-slow {
   0% { transform: scale(1); opacity: 0.5; }
@@ -63,4 +146,22 @@
 }
 .testimonial-slide-out-right {
   animation: testimonial-out-right 0.35s ease-in forwards;
+}
+
+/* ===== Reduced motion =====
+   One global guard so every animation in the app degrades, including any
+   added later that forgets to handle it. Framer Motion is handled separately
+   in JS via useReducedMotion (it animates inline styles, not CSS). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .skeleton-shimmer::after {
+    display: none;
+  }
 }

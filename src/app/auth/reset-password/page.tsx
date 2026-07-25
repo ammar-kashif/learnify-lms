@@ -1,16 +1,60 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import Link from 'next/link';
-import { Lock, ArrowLeft } from 'lucide-react';
+import AuthShell from '@/components/auth/auth-shell';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Lock } from 'lucide-react';
 
+/**
+ * `useSearchParams` opts a route out of prerendering unless it sits inside a
+ * Suspense boundary. Without one the whole page deopts to client-side
+ * rendering, so someone arriving from a reset email sees a blank screen until
+ * the JS bundle lands. The boundary keeps the shell server-rendered.
+ */
 export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<ResetPasswordShell />}>
+      <ResetPasswordForm />
+    </Suspense>
+  );
+}
+
+/** Static shell shown while the client resolves the recovery params. */
+function ResetPasswordShell() {
+  return (
+    <AuthShell
+      title="Set a new password."
+      subtitle="Choose something you haven't used before, then sign back in."
+      showHighlights={false}
+    >
+      <div className="w-full">
+        <Card className="border-charcoal-200 bg-white shadow-depth dark:border-gray-700 dark:bg-gray-800">
+          <CardHeader>
+            <CardTitle className="text-xl text-charcoal-900 dark:text-white">
+              Set a new password
+            </CardTitle>
+            <CardDescription className="text-charcoal-600 dark:text-gray-300">
+              Enter and confirm your new password
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-11 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    </AuthShell>
+  );
+}
+
+function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [newPassword, setNewPassword] = useState('');
@@ -57,17 +101,14 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-950 dark:to-black p-4">
-      <div className="w-full max-w-md">
-        <div className="mb-6">
-          <Link href="/" className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Home
-          </Link>
-        </div>
-
-        <Card className="border-charcoal-200 dark:border-gray-700 shadow-lg bg-white dark:bg-gray-800">
-          <CardHeader className="text-center">
+    <AuthShell
+      title="Set a new password."
+      subtitle="Choose something you haven't used before, then sign back in."
+      showHighlights={false}
+    >
+      <div className="w-full">
+        <Card className="border-charcoal-200 bg-white shadow-depth dark:border-gray-700 dark:bg-gray-800">
+          <CardHeader>
             <CardTitle className="text-xl text-charcoal-900 dark:text-white">Set a new password</CardTitle>
             <CardDescription className="text-charcoal-600 dark:text-gray-300">
               Enter and confirm your new password
@@ -127,7 +168,7 @@ export default function ResetPasswordPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </AuthShell>
   );
 }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +18,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth-context';
+import { EmptyState, panel } from '@/components/course/course-ui';
+import { cn } from '@/lib/utils';
 
 interface Assignment {
   id: string;
@@ -66,6 +69,8 @@ interface AssignmentListProps {
   onViewSubmissions?: (assignment: Assignment) => void;
   onSubmitAssignment?: (assignment: Assignment) => void;
   onViewGrade?: (assignment: Assignment) => void;
+  /** Off when the page already renders its own section heading above the list. */
+  showHeading?: boolean;
 }
 
 export default function AssignmentList({
@@ -75,7 +80,8 @@ export default function AssignmentList({
   onEditAssignment,
   onViewSubmissions,
   onSubmitAssignment,
-  onViewGrade
+  onViewGrade,
+  showHeading = true
 }: AssignmentListProps) {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -195,21 +201,25 @@ export default function AssignmentList({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        <span className="ml-2 text-gray-600">Loading assignments...</span>
+      <div role="status" aria-live="polite" aria-busy="true" className="py-4">
+        <span className="sr-only">Loading assignments…</span>
+        <SkeletonList rows={4} />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-8">
-        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Assignments</h3>
-        <p className="text-gray-600 mb-4">{error}</p>
-        <Button onClick={fetchAssignments} variant="outline">
-          Try Again
+      <div className={cn(panel, 'flex flex-col items-center px-6 py-16 text-center')}>
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 dark:bg-red-950/40">
+          <AlertCircle className="h-7 w-7 text-red-500" />
+        </div>
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+          Couldn&apos;t load assignments
+        </h3>
+        <p className="mt-1.5 text-sm text-gray-600 dark:text-gray-400">{error}</p>
+        <Button onClick={fetchAssignments} variant="outline" className="mt-5 rounded-xl">
+          Try again
         </Button>
       </div>
     );
@@ -217,61 +227,90 @@ export default function AssignmentList({
 
   if (assignments.length === 0) {
     return (
-      <div className="text-center py-8">
-        <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No Assignments</h3>
-        <p className="text-gray-600 mb-4">
-          {userRole === 'student' 
-            ? 'No assignments have been published yet.' 
-            : 'No assignments have been created for this course.'}
-        </p>
-        {userRole !== 'student' && onCreateAssignment && (
-          <Button onClick={onCreateAssignment} className="bg-primary hover:bg-primary-600">
-            <Plus className="h-4 w-4 mr-2" />
-            Create First Assignment
-          </Button>
-        )}
-      </div>
+      <EmptyState
+        icon={FileText}
+        title="No assignments"
+        description={
+          userRole === 'student'
+            ? 'No assignments have been published yet.'
+            : 'No assignments have been created for this course.'
+        }
+        action={
+          userRole !== 'student' && onCreateAssignment ? (
+            <Button
+              onClick={onCreateAssignment}
+              className="rounded-xl bg-primary text-white shadow-sm shadow-primary/25 hover:bg-primary-600"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create first assignment
+            </Button>
+          ) : undefined
+        }
+      />
     );
   }
 
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-gray-900">Assignments</h2>
-        {userRole !== 'student' && onCreateAssignment && (
-          <Button onClick={onCreateAssignment} className="bg-primary hover:bg-primary-600">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Assignment
-          </Button>
-        )}
-      </div>
+      {(showHeading || (userRole !== 'student' && onCreateAssignment)) && (
+        <div className="flex items-center justify-between gap-3">
+          {showHeading ? (
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Assignments</h2>
+          ) : (
+            <span />
+          )}
+          {userRole !== 'student' && onCreateAssignment && (
+            <Button
+              onClick={onCreateAssignment}
+              className="rounded-xl bg-primary text-white shadow-sm shadow-primary/25 hover:bg-primary-600"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create assignment
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Assignments List */}
       <div className="grid gap-4">
         {assignments.map((assignment) => (
-          <Card key={assignment.id} className="hover:shadow-md transition-shadow">
+          <Card
+            key={assignment.id}
+            className={cn(panel, 'transition-all duration-300 hover:border-primary/30 hover:shadow-depth-lg')}
+          >
             <CardHeader className="pb-3">
-              <div className="flex justify-between items-start">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex-1">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
+                  <CardTitle className="flex flex-wrap items-center gap-2 text-lg text-gray-900 dark:text-white">
+                    <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10 dark:bg-primary/15">
+                      <FileText className="h-[18px] w-[18px] text-primary" />
+                    </span>
                     {assignment.title}
                     {userRole === 'student' ? (
                       getSubmissionStatus(assignment) === 'graded' ? (
-                        <Badge variant="outline" className="border-green-300 text-green-800">Submitted</Badge>
+                        <Badge
+                          variant="outline"
+                          className="border-emerald-300 text-emerald-700 dark:border-emerald-900/60 dark:text-emerald-400"
+                        >
+                          Graded
+                        </Badge>
                       ) : getSubmissionStatus(assignment) === 'submitted' ? (
-                        <Badge variant="outline" className="border-yellow-300 text-yellow-800">Submitted</Badge>
+                        <Badge
+                          variant="outline"
+                          className="border-amber-300 text-amber-700 dark:border-amber-900/60 dark:text-amber-400"
+                        >
+                          Submitted
+                        </Badge>
                       ) : (
-                        <Badge variant="secondary">Not Submitted</Badge>
+                        <Badge variant="secondary">Not submitted</Badge>
                       )
                     ) : (
                       getStatusBadge(assignment)
                     )}
                   </CardTitle>
                   {assignment.chapters && (
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="mt-1.5 text-sm text-gray-600 dark:text-gray-400">
                       Chapter: {assignment.chapters.title}
                     </p>
                   )}
@@ -311,34 +350,47 @@ export default function AssignmentList({
             </CardHeader>
             <CardContent>
               {assignment.description && (
-                <p className="text-gray-700 mb-3">{assignment.description}</p>
+                <p className="mb-3 leading-relaxed text-gray-700 dark:text-gray-300">
+                  {assignment.description}
+                </p>
               )}
 
               {/* Removed inline banner; status now shown via badge next to title */}
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+
+              <div className="grid grid-cols-1 gap-3 rounded-xl bg-gray-50 p-3 text-sm md:grid-cols-3 dark:bg-gray-800/50">
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-gray-500" />
-                  <span className={isOverdue(assignment.due_date) ? 'text-red-600' : 'text-gray-600'}>
+                  <Calendar className="h-4 w-4 flex-shrink-0 text-primary" />
+                  <span
+                    className={
+                      isOverdue(assignment.due_date)
+                        ? 'font-medium text-red-600 dark:text-red-400'
+                        : 'text-gray-700 dark:text-gray-300'
+                    }
+                  >
                     {formatDate(assignment.due_date)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-gray-500" />
-                  <span className="text-gray-600">{assignment.max_points} points</span>
+                  <CheckCircle className="h-4 w-4 flex-shrink-0 text-primary" />
+                  <span className="text-gray-700 dark:text-gray-300">
+                    {assignment.max_points} points
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Upload className="h-4 w-4 text-gray-500" />
-                  <span className="text-gray-600">
+                  <Upload className="h-4 w-4 flex-shrink-0 text-primary" />
+                  <span className="truncate text-gray-700 dark:text-gray-300">
                     {assignment.allowed_file_types.join(', ').toUpperCase()}
                   </span>
                 </div>
               </div>
 
               {assignment.instructions && (
-                <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-700">
-                    <strong>Instructions:</strong> {assignment.instructions}
+                <div className="mt-3 rounded-xl border border-gray-100 p-3 dark:border-gray-800">
+                  <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                    <strong className="font-semibold text-gray-900 dark:text-white">
+                      Instructions:
+                    </strong>{' '}
+                    {assignment.instructions}
                   </p>
                   {assignment.attachment_url && (
                     <div className="mt-2">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { SkeletonList } from '@/components/ui/skeleton';
 import {
   Card,
   CardContent,
@@ -11,7 +12,6 @@ import {
   Users,
   Mail,
   ArrowLeft,
-  Loader2,
   Search,
   MoreVertical,
   BookOpen,
@@ -147,13 +147,10 @@ export default function TeacherStudentsPage() {
 
         {/* Students List */}
         {loading ? (
-          <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200 dark:border-slate-700 shadow-lg">
-            <CardContent className="p-12 text-center">
-              <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-blue-500" />
-              <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">Loading students...</h3>
-              <p className="text-slate-500 dark:text-slate-400">Please wait while we fetch your student data</p>
-            </CardContent>
-          </Card>
+          <div role="status" aria-live="polite" aria-busy="true">
+            <span className="sr-only">Loading students…</span>
+            <SkeletonList rows={6} />
+          </div>
         ) : error ? (
           <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-red-200 dark:border-red-800 shadow-lg">
             <CardContent className="p-12 text-center">

@@ -1,9 +1,10 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/contexts/auth-context';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/components/providers/theme-provider';
+import MotionProvider from '@/components/providers/motion-provider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -30,7 +31,6 @@ export const metadata: Metadata = {
     'English',
   ],
   authors: [{ name: 'Learnify Team' }],
-  viewport: 'width=device-width, initial-scale=1',
   openGraph: {
     title: 'Learnify — Online O Level & IGCSE Academy',
     description: DESCRIPTION,
@@ -44,6 +44,12 @@ export const metadata: Metadata = {
   },
 };
 
+// Next 14 wants viewport as its own export, not a `metadata` key.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -54,7 +60,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <AuthProvider>
-            {children}
+            <MotionProvider>{children}</MotionProvider>
             <Toaster />
           </AuthProvider>
         </ThemeProvider>

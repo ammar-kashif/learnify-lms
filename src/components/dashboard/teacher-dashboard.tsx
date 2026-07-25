@@ -16,9 +16,10 @@ import {
   Award,
   Eye,
   MoreHorizontal,
-  Loader2,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
+import { Reveal, RevealItem } from '@/components/ui/reveal';
+import { SkeletonList } from '@/components/ui/skeleton';
 
 interface Course {
   id: string;
@@ -117,41 +118,45 @@ export default function TeacherDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="border-0 bg-gradient-to-br from-primary-50 to-primary-100 dark:from-gray-800 dark:to-gray-700 shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-primary-600 dark:text-primary-400">
-                  Total Courses
-                </p>
-                <p className="text-3xl font-bold text-primary-900 dark:text-white">
-                  {teacherCourses.length}
-                </p>
+      <Reveal stagger={0.07} className="grid gap-6 md:grid-cols-2">
+        <RevealItem>
+          <Card className="group border-0 bg-gradient-to-br from-primary-50 to-primary-100 shadow-depth transition-all duration-300 hover:-translate-y-1 hover:shadow-depth-lg dark:from-gray-800 dark:to-gray-700">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-primary-600 dark:text-primary-400">
+                    Total Courses
+                  </p>
+                  <p className="text-3xl font-bold text-primary-900 dark:text-white">
+                    {teacherCourses.length}
+                  </p>
+                </div>
+                <BookOpen className="h-8 w-8 text-primary-600 dark:text-primary-400" />
               </div>
-              <BookOpen className="h-8 w-8 text-primary-600 dark:text-primary-400" />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </RevealItem>
 
-        <Card className="border-0 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                  Total Students
-                </p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {totalStudents}
-                </p>
+        <RevealItem>
+          <Card className="group border-0 bg-gradient-to-br from-gray-50 to-gray-100 shadow-depth transition-all duration-300 hover:-translate-y-1 hover:shadow-depth-lg dark:from-gray-800 dark:to-gray-700">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                    Total Students
+                  </p>
+                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                    {totalStudents}
+                  </p>
+                </div>
+                <Users className="h-8 w-8 text-gray-600 dark:text-gray-300" />
               </div>
-              <Users className="h-8 w-8 text-gray-600 dark:text-gray-300" />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </RevealItem>
 
         
-      </div>
+      </Reveal>
 
       {/* Main Content Grid */}
       <div className="grid gap-8 lg:grid-cols-3">
@@ -213,9 +218,9 @@ export default function TeacherDashboard() {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="py-12 text-center">
-                <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-gray-400 dark:text-gray-500" />
-                <p className="text-gray-600 dark:text-gray-300">Loading your courses...</p>
+              <div role="status" aria-live="polite" aria-busy="true">
+                <span className="sr-only">Loading your courses…</span>
+                <SkeletonList rows={3} />
               </div>
             ) : error ? (
               <div className="py-12 text-center">

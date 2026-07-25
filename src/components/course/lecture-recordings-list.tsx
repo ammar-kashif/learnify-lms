@@ -18,8 +18,10 @@ import {
   Lock,
   Star,
   Crown,
-  Loader2
+  Check
 } from 'lucide-react';
+import { EmptyState, panel, TabSpinner } from '@/components/course/course-ui';
+import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth-context';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -55,14 +57,17 @@ interface LectureRecordingsListProps {
   refreshKey?: number;
   showAccessControls?: boolean;
   onAccessRequired?: () => void;
+  /** Off when the page already renders its own section heading above the list. */
+  showHeading?: boolean;
 }
 
-export default function LectureRecordingsList({ 
-  courseId, 
+export default function LectureRecordingsList({
+  courseId,
   userRole,
   refreshKey,
   showAccessControls = false,
-  onAccessRequired
+  onAccessRequired,
+  showHeading = true
 }: LectureRecordingsListProps) {
   const { session } = useAuth();
   const [recordings, setRecordings] = useState<LectureRecording[]>([]);
@@ -857,19 +862,22 @@ export default function LectureRecordingsList({
     );
   }
 
+  const heading = showHeading ? (
+    <div className="flex items-center gap-2">
+      <Video className="h-5 w-5 text-primary" />
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Lecture Recordings</h3>
+    </div>
+  ) : null;
+
   if (!loading && recordings.length === 0) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Video className="h-5 w-5" />
-          <h3 className="text-lg font-semibold">Lecture Recordings</h3>
-        </div>
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <FileVideo className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground text-center">No lecture recordings available.</p>
-          </CardContent>
-        </Card>
+        {heading}
+        <EmptyState
+          icon={FileVideo}
+          title="No recordings yet"
+          description="Lecture recordings will appear here once they've been uploaded."
+        />
       </div>
     );
   }
@@ -877,43 +885,40 @@ export default function LectureRecordingsList({
   // Show loading screen during initial load and enrollment check
   // This prevents any flashing of demo mode UI for paid users
   const isInitializing = checkingEnrollment || !hasLoadedOnce || (session && hasAccess === null);
-  
+
   if (isInitializing) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Video className="h-5 w-5" />
-          <h3 className="text-lg font-semibold">Lecture Recordings</h3>
-        </div>
-        <div className="flex flex-col items-center justify-center py-12">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-          <p className="text-muted-foreground">Loading your course content...</p>
-        </div>
+        {heading}
+        <TabSpinner label="Loading your course content…" />
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Video className="h-5 w-5" />
-        <h3 className="text-lg font-semibold">Lecture Recordings</h3>
-        <Badge className="bg-muted text-foreground border border-border">
-          {isDemoMode && demoVideoId ? 1 : recordings.length}
-        </Badge>
-      </div>
+      {showHeading && (
+        <div className="flex items-baseline gap-2.5">
+          <h3 className="text-lg font-semibold tracking-[-0.01em] text-gray-900 dark:text-white">
+            Lecture Recordings
+          </h3>
+          <span className="text-sm tabular-nums text-gray-400 dark:text-gray-500">
+            {isDemoMode && demoVideoId ? 1 : recordings.length}
+          </span>
+        </div>
+      )}
 
       {/* Guest Demo Countdown Timer */}
       {guestDemo && !session && (
-        <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+        <Card className="rounded-2xl border-primary/25 bg-primary/5 dark:bg-primary/10">
           <CardContent className="pt-6">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-semibold text-blue-900 dark:text-blue-100">Guest Demo Active</h4>
-                  <p className="text-sm text-blue-700 dark:text-blue-300">You can watch 1 video</p>
+                  <h4 className="font-semibold text-gray-900 dark:text-white">Guest demo active</h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">You can watch 1 video</p>
                 </div>
-                <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                <Badge variant="secondary" className="bg-primary/15 text-primary dark:bg-primary/25">
                   <Star className="h-3 w-3 mr-1" />
                   Demo
                 </Badge>
@@ -958,14 +963,18 @@ export default function LectureRecordingsList({
 
           {/* Show upgrade button for any demo user */}
           {!checkingEnrollment && !isPaidUser && (isDemoMode || hasUsedDemoForCourse) && (
-            <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
-              <Crown className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              <AlertDescription className="text-blue-800 dark:text-blue-200">
-                <div className="flex items-center justify-between">
-                  <span>Want unlimited access? Upgrade to full subscription now!</span>
-                  <Button size="sm" onClick={() => onAccessRequired?.()}>
-                    <Crown className="h-4 w-4 mr-2" />
-                    Upgrade Now
+            <Alert className="rounded-2xl border-primary/25 bg-primary/5 dark:bg-primary/10">
+              <Crown className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-gray-700 dark:text-gray-300">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <span>Want unlimited access? Upgrade to a full subscription.</span>
+                  <Button
+                    size="sm"
+                    onClick={() => onAccessRequired?.()}
+                    className="rounded-full bg-primary text-white hover:bg-primary-600"
+                  >
+                    <Crown className="h-4 w-4 mr-1.5" />
+                    Upgrade now
                   </Button>
                 </div>
               </AlertDescription>
@@ -973,14 +982,17 @@ export default function LectureRecordingsList({
           )}
 
           {isDemoMode && demoAccess && (
-            <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
-              <Star className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              <AlertDescription className="text-blue-800 dark:text-blue-200">
+            <Alert className="rounded-2xl border-primary/25 bg-primary/5 dark:bg-primary/10">
+              <Star className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-gray-700 dark:text-gray-300">
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span>🎬 Demo Mode: You can watch 1 video. Subscribe for unlimited access.</span>
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                      Demo Active
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <span>Demo mode: you can watch 1 video. Subscribe for unlimited access.</span>
+                    <Badge
+                      variant="secondary"
+                      className="w-fit whitespace-nowrap bg-primary/15 text-primary dark:bg-primary/25"
+                    >
+                      Demo active
                     </Badge>
                   </div>
                   <DemoCountdownTimer 
@@ -999,14 +1011,24 @@ export default function LectureRecordingsList({
           ? recordings.filter(r => r.id === demoVideoId)
           : recordings
         ).map((recording) => (
-          <Card key={recording.id}>
+          <Card
+            key={recording.id}
+            className={cn(
+              panel,
+              'transition-all duration-300 hover:border-primary/30 hover:shadow-depth-lg',
+              recording.is_accessible === false && 'opacity-80'
+            )}
+          >
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="space-y-1 flex-1">
                   <CardTitle className="text-base flex items-center gap-2">
                     {recording.title}
                     {!checkingEnrollment && recording.is_accessible === false && (
-                      <Badge variant="outline" className="text-xs border-amber-300 text-amber-700 bg-amber-50">
+                      <Badge
+                        variant="outline"
+                        className="border-amber-300 bg-amber-50 text-xs text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-400"
+                      >
                         <Lock className="h-3 w-3 mr-1" />
                         Locked
                       </Badge>
@@ -1018,15 +1040,21 @@ export default function LectureRecordingsList({
                       </Badge>
                     ) : null}
                     {!checkingEnrollment && ((recording as any).is_demo || (isDemoMode && demoVideoId && demoVideoId === recording.id)) ? (
-                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                      <Badge
+                        variant="secondary"
+                        className="bg-emerald-100 text-xs text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400"
+                      >
                         <Star className="h-3 w-3 mr-1" />
-                        Demo Video
+                        Demo video
                       </Badge>
                     ) : null}
                     {!checkingEnrollment && isDemoMode && watchedVideos.has(recording.id) && (
-                      <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
+                      <Badge
+                        variant="secondary"
+                        className="bg-gray-100 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                      >
                         <Star className="h-3 w-3 mr-1" />
-                        Demo Watched
+                        Demo watched
                       </Badge>
                     )}
                   </CardTitle>
@@ -1243,32 +1271,39 @@ export default function LectureRecordingsList({
 
       {/* Guest Demo Expired Modal */}
       {showGuestDemoExpiredModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <Card className="max-w-md w-full">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal-900/60 p-4 backdrop-blur-sm">
+          <Card className={cn(panel, 'w-full max-w-md shadow-depth-lg')}>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-red-600" />
-                Demo Expired
+              <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+                <Clock className="h-5 w-5 text-primary" />
+                Demo expired
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-gray-700 dark:text-gray-300">
                 Your 24-hour guest demo has expired. Sign up to get full access to all lecture recordings!
               </p>
-              <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg space-y-2">
-                <h4 className="font-semibold text-blue-900 dark:text-blue-100">Premium Features:</h4>
-                <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                  <li>✓ Unlimited lecture recordings</li>
-                  <li>✓ Live classes with teachers</li>
-                  <li>✓ Quizzes and assignments</li>
-                  <li>✓ Course certificates</li>
+              <div className="space-y-2 rounded-xl bg-primary/5 p-4 dark:bg-primary/10">
+                <h4 className="font-semibold text-gray-900 dark:text-white">What you unlock</h4>
+                <ul className="space-y-1.5 text-sm text-gray-700 dark:text-gray-300">
+                  {[
+                    'Unlimited lecture recordings',
+                    'Live classes with teachers',
+                    'Quizzes and assignments',
+                    'Course certificates',
+                  ].map((feature) => (
+                    <li key={feature} className="flex items-center gap-2">
+                      <Check className="h-4 w-4 flex-shrink-0 text-primary" />
+                      {feature}
+                    </li>
+                  ))}
                 </ul>
               </div>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
                   onClick={() => setShowGuestDemoExpiredModal(false)}
-                  className="flex-1"
+                  className="flex-1 rounded-xl"
                 >
                   Cancel
                 </Button>
@@ -1276,9 +1311,9 @@ export default function LectureRecordingsList({
                   onClick={() => {
                     window.location.href = `/auth/signup?redirect=/courses/${courseId}`;
                   }}
-                  className="flex-1"
+                  className="flex-1 rounded-xl bg-primary text-white hover:bg-primary-600"
                 >
-                  Sign Up Now
+                  Sign up now
                 </Button>
               </div>
             </CardContent>

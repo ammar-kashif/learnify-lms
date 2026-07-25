@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Skeleton, SkeletonCourseGrid } from '@/components/ui/skeleton';
 import {
   Card,
   CardContent,
@@ -15,7 +16,6 @@ import {
   BookOpen,
   Eye,
   MoreHorizontal,
-  Loader2,
   ArrowLeft,
   LayoutDashboard,
   Users,
@@ -113,11 +113,13 @@ export default function TeacherCoursesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-gray-400 dark:text-gray-500" />
-          <p className="text-gray-600 dark:text-gray-300">Loading courses...</p>
+      <div role="status" aria-live="polite" aria-busy="true" className="mx-auto max-w-7xl space-y-8 p-6">
+        <span className="sr-only">Loading courses…</span>
+        <div className="space-y-3">
+          <Skeleton className="h-9 w-56" />
+          <Skeleton className="h-4 w-80 max-w-full" />
         </div>
+        <SkeletonCourseGrid count={6} />
       </div>
     );
   }

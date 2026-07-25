@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -94,9 +95,11 @@ export default function TwoFactorSettings({ onClose }: TwoFactorSettingsProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <RefreshCw className="h-6 w-6 animate-spin" />
-        <span className="ml-2">Loading 2FA settings...</span>
+      <div role="status" aria-live="polite" aria-busy="true" className="space-y-4 p-2">
+        <span className="sr-only">Loading two-factor settings…</span>
+        <Skeleton className="h-5 w-48" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-10 w-40" />
       </div>
     );
   }

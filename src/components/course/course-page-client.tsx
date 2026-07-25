@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { supabase } from '@/lib/supabase';
-import Link from 'next/link';
 import ThemeToggle from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
 import QuizSection from '@/components/quiz/quiz-section';
@@ -21,20 +20,35 @@ import { createChapterFromFile } from '@/lib/chapters';
 import { formatDate } from '@/utils/date';
 import { trackPageView, trackCourseView } from '@/lib/tracking';
 import {
+  EmptyState,
+  Meta,
+  PageHeader,
+  SectionHeader,
+  StatusDot,
+  plural,
+  primaryButton,
+  quietButton,
+  row,
+  rowGroup,
+} from '@/components/course/course-ui';
+import { cn } from '@/lib/utils';
+import {
   BookOpen,
-  ChevronLeft,
   Play,
   Eye,
   Trash2,
-  Edit,
   Plus,
   FileText,
   Download,
   Calendar,
+  Menu,
   X,
   Crown,
-  Menu,
 } from 'lucide-react';
+import CourseSidebar, {
+  useSidebarCollapsed,
+  type CourseNavItem,
+} from '@/components/course/course-sidebar';
 
 type ChapterItem = {
   id: string;
@@ -58,9 +72,20 @@ interface CoursePageClientProps {
   chapters: ChapterItem[];
   courseId: string;
   activeTab: string;
+  /** Published recordings on this course — counted server-side for the header. */
+  lectureCount?: number;
+  /** Live classes still ahead of now and not ended. */
+  upcomingClassCount?: number;
 }
 
-export default function CoursePageClient({ course, chapters, courseId, activeTab }: CoursePageClientProps) {
+export default function CoursePageClient({
+  course,
+  chapters,
+  courseId,
+  activeTab,
+  lectureCount = 0,
+  upcomingClassCount = 0,
+}: CoursePageClientProps) {
   const { user, userRole, loading: authLoading } = useAuth();
   const [chaptersList, setChaptersList] = useState<ChapterItem[]>(chapters);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -68,10 +93,6 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
   const [hasLiveDemo, setHasLiveDemo] = useState(false);
   const [demoAccessLoading, setDemoAccessLoading] = useState(false); // Start as false to show tabs immediately
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [quizResults] = useState<any[]>([]);
-  const [showQuizResults, setShowQuizResults] = useState(false);
-  const [selectedAttempt, setSelectedAttempt] = useState<any>(null);
-  const [showAttemptDetails, setShowAttemptDetails] = useState(false);
   const [showRecordingUploadModal, setShowRecordingUploadModal] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showDemoModal, setShowDemoModal] = useState(false);
@@ -80,8 +101,26 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
   // Selected plan is handled via localStorage in signup flow; keep local state minimal
   const [subscriptionPlans, setSubscriptionPlans] = useState<any[]>([]);
   const [subscriptionPlansLoading, setSubscriptionPlansLoading] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isGuestLiveDemo, setIsGuestLiveDemo] = useState(false);
+
+  const { collapsed, toggle: toggleSidebar } = useSidebarCollapsed();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  // Once the course header scrolls past, the slim bar picks up the title so you
+  // never lose track of which course you're in.
+  const heroRef = useRef<HTMLElement>(null);
+  const [condensed, setCondensed] = useState(false);
+
+  useEffect(() => {
+    const el = heroRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setCondensed(!entry.isIntersecting),
+      { rootMargin: '-56px 0px 0px 0px', threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     setIsAdmin(userRole === 'admin' || userRole === 'superadmin');
@@ -468,16 +507,6 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
   };
 
 
-  const handleViewAttempt = async (attempt: any) => {
-    try {
-      // Since we now have the answers in the attempt data, we can show detailed breakdown
-      setSelectedAttempt(attempt);
-      setShowAttemptDetails(true);
-    } catch (error) {
-      alert('Failed to load attempt details');
-    }
-  };
-
   const fetchSubscriptionPlans = async () => {
     try {
       setSubscriptionPlansLoading(true);
@@ -552,783 +581,576 @@ export default function CoursePageClient({ course, chapters, courseId, activeTab
   // Show loading screen while auth is initializing to prevent flashing
   if (authLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-white dark:bg-gray-900">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 dark:bg-gray-950">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 border-4 border-indigo-200 dark:border-indigo-800 border-t-indigo-600 dark:border-t-indigo-400 rounded-full animate-spin"></div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{course.title}</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Loading course content...</p>
+          <span className="h-12 w-12 animate-spin rounded-full border-[3px] border-primary/25 border-t-primary" />
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{course.title}</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Loading course content…</p>
         </div>
       </div>
     );
   }
 
+  // The five entries used to be five near-identical copies of the same markup.
+  // Only the `show` flags differ, and they are the original conditions.
+  const resolvingAccess = demoAccessLoading && userRole === 'student' && !isAdmin;
+  const navItems: CourseNavItem[] = [
+    { key: 'chapters', label: 'Chapters', icon: BookOpen, show: !isGuestLiveDemo },
+    {
+      key: 'lectures',
+      label: 'Recorded Lectures',
+      icon: Play,
+      show: !isGuestLiveDemo && !(userRole === 'student' && !isAdmin && hasLiveDemo && !hasRecordingDemo),
+      busy: resolvingAccess,
+    },
+    { key: 'quizzes', label: 'Quizzes', icon: Eye, show: !isGuestLiveDemo },
+    { key: 'assignments', label: 'Assignments', icon: FileText, show: !isGuestLiveDemo },
+    {
+      key: 'live-classes',
+      label: 'Live Classes',
+      icon: Calendar,
+      show: !(userRole === 'student' && !isAdmin && hasRecordingDemo && !hasLiveDemo),
+      busy: resolvingAccess,
+    },
+  ].filter((item) => item.show);
+
+  const showUpgradeCta =
+    ((hasRecordingDemo || hasLiveDemo) && userRole === 'student' && !isAdmin) || isGuestLiveDemo;
+
   return (
-    <div className="space-y-0">
-      {/* Header bar */}
-      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3">
-        <div className="flex items-center gap-3">
-          {/* Hamburger menu button for mobile */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="lg:hidden p-2"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          <h1 className="text-sm font-semibold text-gray-900 dark:text-white">{course.title}</h1>
-          <span className="hidden md:inline text-xs text-gray-500 dark:text-gray-400">Course</span>
-          {isAdmin && (
-            <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
-              Admin View
-            </span>
-          )}
-        </div>
-        
-        <div className="flex items-center gap-2">
-        {/* Upgrade button for demo users (signed-in students or guest demo) */}
-        {((hasRecordingDemo || hasLiveDemo) && userRole === 'student' && !isAdmin || isGuestLiveDemo) && (
-          <Button 
-            size="sm" 
-            onClick={() => {
-              if (isGuestLiveDemo) {
-                // Guest demo: redirect to signup
-                window.location.href = `/auth/signup?redirect=/courses/${courseId}`;
-              } else {
-                setIsUpgrade(true);
-                setShowSubscriptionModal(true);
-              }
-            }}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-          >
-            <Crown className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">{isGuestLiveDemo ? 'Sign Up' : 'Upgrade Now'}</span>
-              <span className="sm:hidden">{isGuestLiveDemo ? 'Sign Up' : 'Upgrade'}</span>
-          </Button>
-        )}
-        
-        <ThemeToggle />
-      </div>
-      </div>
-      <div className="px-0 h-[calc(100vh-56px)] overflow-hidden flex gap-0 lg:gap-6">
-        {/* Sidebar (non-scrollable) */}
-        <aside 
-          className={`${sidebarOpen ? 'fixed inset-0 z-50 bg-black/50 lg:relative lg:bg-transparent' : 'hidden'} lg:block lg:w-[260px] lg:flex-shrink-0`}
-          role="presentation"
-          onClick={(e) => {
-            // Close sidebar when clicking on backdrop (but not on mobile sidebar content)
-            if (e.target === e.currentTarget && sidebarOpen) {
-              setSidebarOpen(false);
-            }
-          }}
-          onKeyDown={(e) => {
-            // Close sidebar on Escape key
-            if (e.key === 'Escape' && sidebarOpen) {
-              setSidebarOpen(false);
-            }
-          }}
-        >
-          <div className={`rounded-none border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0b1220] px-4 pt-3 pb-0 shadow-sm w-[260px] h-full flex flex-col text-gray-800 dark:text-slate-200 ${sidebarOpen ? 'relative' : ''}`}>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-              <h1 className="text-base font-semibold text-gray-900 dark:text-white">{course.title}</h1>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="lg:hidden"
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              {course.description && (
-                <p className="mt-1 line-clamp-2 text-xs text-gray-600 dark:text-slate-300">{course.description}</p>
-              )}
+    <div className="flex min-h-[100dvh] bg-gray-50 dark:bg-gray-950">
+      <CourseSidebar
+        items={navItems}
+        activeKey={activeTab}
+        courseId={courseId}
+        collapsed={collapsed}
+        onToggle={toggleSidebar}
+        mobileOpen={mobileNavOpen}
+        onMobileOpenChange={setMobileNavOpen}
+        courseTitle={course.title}
+        showBackLink={!isGuestLiveDemo}
+      />
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Slim command bar */}
+        <header className="sticky top-0 z-30 bg-gray-50/85 backdrop-blur-xl dark:bg-gray-950/85">
+          <div className="flex h-14 items-center justify-between gap-3 px-4 sm:px-6">
+            <div className="flex min-w-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setMobileNavOpen(true)}
+                aria-label="Open course menu"
+                className="-ml-1.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-900/[0.04] hover:text-gray-900 lg:hidden dark:text-gray-400 dark:hover:bg-white/[0.05] dark:hover:text-white"
+              >
+                <Menu className="h-[18px] w-[18px]" strokeWidth={1.75} />
+              </button>
+              {/* Course name appears here only once the header has scrolled away. */}
+              <span
+                className={`min-w-0 truncate text-sm font-medium text-gray-900 transition-opacity duration-200 dark:text-white ${
+                  condensed ? 'opacity-100' : 'pointer-events-none opacity-0'
+                }`}
+              >
+                {course.title}
+              </span>
             </div>
 
-            {/* Guest demo banner */}
+            <div className="flex flex-shrink-0 items-center gap-1">
+              {showUpgradeCta && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    if (isGuestLiveDemo) {
+                      window.location.href = `/auth/signup?redirect=/courses/${courseId}`;
+                    } else {
+                      setIsUpgrade(true);
+                      setShowSubscriptionModal(true);
+                    }
+                  }}
+                  className={cn(primaryButton, 'h-8 px-3 text-[13px]')}
+                >
+                  {isGuestLiveDemo ? 'Sign up' : 'Upgrade'}
+                </Button>
+              )}
+              <ThemeToggle />
+            </div>
+          </div>
+        </header>
+
+        <main className="min-w-0 flex-1">
+          <div className="mx-auto w-full max-w-5xl px-4 pb-16 sm:px-6 lg:px-8">
+            {/* Course header. Sits on the page background and is carried by the
+                title — the gradient band version read as a marketing hero
+                bolted onto an app. */}
+            <section ref={heroRef} className="pb-6 pt-1">
+              <PageHeader
+                eyebrow={
+                  <>
+                    <span className="uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">
+                      Course
+                    </span>
+                    {isAdmin && (
+                      <>
+                        <span aria-hidden="true" className="text-gray-300 dark:text-gray-700">
+                          ·
+                        </span>
+                        <span>Admin view</span>
+                      </>
+                    )}
+                  </>
+                }
+                title={course.title}
+                description={course.description}
+                meta={
+                  <Meta
+                    items={[
+                      plural(chaptersList.length, 'chapter'),
+                      plural(lectureCount, 'lecture'),
+                      upcomingClassCount > 0 ? (
+                        <>
+                          <StatusDot tone="green" />
+                          {`${plural(upcomingClassCount, 'class', 'classes')} upcoming`}
+                        </>
+                      ) : (
+                        'No upcoming classes'
+                      ),
+                    ]}
+                  />
+                }
+              />
+            </section>
+
+            <div className="pt-1">
+            {/* Guest demo banner. Lived in the sidebar before the tabs moved up. */}
             {isGuestLiveDemo && (
-              <div className="mt-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2">
-                <p className="text-xs font-medium text-amber-800 dark:text-amber-200">🎓 Guest Demo Mode</p>
-                <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">Only Live Classes are available in demo mode.</p>
+              <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/60 dark:bg-amber-950/40">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                  Guest demo mode
+                </p>
+                <p className="mt-0.5 text-sm leading-relaxed text-amber-700 dark:text-amber-400/90">
+                  Only Live Classes are available in demo mode. Sign up to unlock the rest of the
+                  course.
+                </p>
               </div>
             )}
 
-            {/* Course section */}
-            <div className="pt-4">
-              <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-gray-700 dark:text-slate-400">This Course</p>
-              <ul className="space-y-1 text-sm text-gray-800 dark:text-slate-200">
-                {/* Hide Chapters for guest demo users */}
-                {!isGuestLiveDemo && (
-                <li>
-                  <Link 
-                    href={{ pathname: `/courses/${courseId}`, query: { tab: 'chapters' } }} 
-                    onClick={() => setSidebarOpen(false)}
-                    className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='chapters' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}
-                  >
-                    <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='chapters' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
-                    <BookOpen className="h-4 w-4" /> Chapters
-                  </Link>
-                </li>
-                )}
-                {/* Hide Recordings tab if guest demo OR if student has live class demo BUT NOT recording demo */}
-                {!isGuestLiveDemo && !(userRole === 'student' && !isAdmin && hasLiveDemo && !hasRecordingDemo) && (
-                  <li>
-                    <Link 
-                      href={{ pathname: `/courses/${courseId}`, query: { tab: 'lectures' } }} 
-                      onClick={() => setSidebarOpen(false)}
-                      className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='lectures' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}
-                    >
-                      <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='lectures' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
-                      <Play className="h-4 w-4" /> Recorded Lectures
-                      {demoAccessLoading && userRole === 'student' && !isAdmin && (
-                        <div className="ml-auto">
-                          <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                        </div>
-                      )}
-                    </Link>
-                  </li>
-                )}
-                {/* Hide Quizzes for guest demo users */}
-                {!isGuestLiveDemo && (
-                <li>
-                  <Link 
-                    href={{ pathname: `/courses/${courseId}`, query: { tab: 'quizzes' } }} 
-                    onClick={() => setSidebarOpen(false)}
-                    className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='quizzes' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}
-                  >
-                    <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='quizzes' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
-                    <Eye className="h-4 w-4" /> Quizzes
-                  </Link>
-                </li>
-                )}
-                {/* Hide Assignments for guest demo users */}
-                {!isGuestLiveDemo && (
-                <li>
-                  <Link 
-                    href={{ pathname: `/courses/${courseId}`, query: { tab: 'assignments' } }} 
-                    onClick={() => setSidebarOpen(false)}
-                    className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='assignments' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}
-                  >
-                    <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='assignments' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
-                    <FileText className="h-4 w-4" /> Assignments
-                  </Link>
-                </li>
-                )}
-                {/* Hide Live Classes tab ONLY if student has recording demo BUT NOT live class demo */}
-                {!(userRole === 'student' && !isAdmin && hasRecordingDemo && !hasLiveDemo) && (
-                  <li>
-                    <Link 
-                      href={{ pathname: `/courses/${courseId}`, query: { tab: 'live-classes' } }} 
-                      onClick={() => setSidebarOpen(false)}
-                      className={`group relative flex items-center gap-3 rounded-md px-3 py-2 transition ${activeTab==='live-classes' ? 'bg-gray-100 dark:bg-slate-800/70 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}
-                    >
-                      <span className={`absolute left-0 top-0 h-full w-1 rounded-l bg-indigo-500 transition ${activeTab==='live-classes' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
-                      <Calendar className="h-4 w-4" /> Live Classes
-                      {demoAccessLoading && userRole === 'student' && !isAdmin && (
-                        <div className="ml-auto">
-                          <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                        </div>
-                      )}
-                    </Link>
-                  </li>
-                )}
-              </ul>
-            </div>
-            <div className="mt-auto pt-2 pb-3 space-y-2">
-              {isGuestLiveDemo && (
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    window.location.href = `/auth/signup?redirect=/courses/${courseId}`;
-                  }}
-                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs"
-                >
-                  <Crown className="h-3.5 w-3.5 mr-1.5" />
-                  Sign Up for Full Access
-                </Button>
-              )}
-              {!isGuestLiveDemo && (
-              <Link
-                href="/dashboard"
-                onClick={() => setSidebarOpen(false)}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm text-gray-800 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800/70"
-              >
-                <ChevronLeft className="h-4 w-4" /> Back to Dashboard
-              </Link>
-              )}
-            </div>
-          </div>
-        </aside>
+            {/* Chapters */}
+            {activeTab === 'chapters' && (
+              <section id="chapters" className="space-y-4">
+                <SectionHeader
+                  title="Chapters"
+                  count={chaptersList.length || undefined}
+                  description="Notes, worksheets and reference material."
+                  actions={
+                    isAdmin && (
+                      <Button
+                        onClick={() => setShowUploadModal(true)}
+                        size="sm"
+                        className={cn(primaryButton, 'h-9')}
+                      >
+                        <Plus className="mr-1.5 h-4 w-4" />
+                        Add chapter
+                      </Button>
+                    )
+                  }
+                />
 
-        {/* Main content (scrollable) */}
-        <main className="flex-1 overflow-y-auto px-4 md:px-6 lg:pr-2 lg:pl-2 space-y-8" style={{height: 'calc(100vh - 56px)'}}>
+                {chaptersList.length === 0 ? (
+                  <EmptyState
+                    icon={BookOpen}
+                    title="No chapters yet"
+                    description={
+                      isAdmin
+                        ? 'Upload a file to create the first chapter for this course.'
+                        : 'Chapters will appear here once your teacher adds them.'
+                    }
+                    action={
+                      isAdmin && (
+                        <Button
+                          onClick={() => setShowUploadModal(true)}
+                          size="sm"
+                          className={cn(primaryButton, 'h-9')}
+                        >
+                          <Plus className="mr-1.5 h-4 w-4" />
+                          Add chapter
+                        </Button>
+                      )
+                    }
+                  />
+                ) : (
+                  /* A list, not a card grid. A file listing is a list, and one
+                     card stranded in a three-column grid is what made this page
+                     look unfinished. */
+                  <div className={rowGroup}>
+                    {chaptersList.map((ch) => (
+                      <div key={ch.id} className={cn(row, 'group')}>
+                        <FileText
+                          className="hidden h-[18px] w-[18px] flex-shrink-0 text-gray-400 dark:text-gray-500 sm:block"
+                          strokeWidth={1.75}
+                        />
 
-          {/* Chapters */}
-          {activeTab === 'chapters' && (
-            <section id="chapters" className="space-y-5">
-              <div className="flex items-center justify-between pl-0 pt-2">
-                <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">Chapters</h2>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{chaptersList.length} total</span>
-                  {isAdmin && (
-                    <button 
-                      onClick={() => setShowUploadModal(true)}
-                      className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add Chapter
-                    </button>
-                  )}
-                </div>
-              </div>
-              {chaptersList.length === 0 ? (
-                <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center shadow-sm">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-full">
-                      <BookOpen className="h-8 w-8 text-gray-400 dark:text-gray-500" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">No chapters yet</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {isAdmin ? "Start by adding the first chapter to this course" : "Chapters will appear here once they're added"}
-                      </p>
-                    </div>
-                    {isAdmin && (
-                      <button className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
-                        <Plus className="h-4 w-4" />
-                        Add First Chapter
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                  {chaptersList.map(ch => (
-                    <div key={ch.id} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800 transition-all">
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex items-center gap-2">
-                          <div className="p-2.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
-                            <FileText className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900 dark:text-white line-clamp-1">{ch.title}</p>
-                            {ch.created_at && (
-                              <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                                <Calendar className="h-3 w-3" />
-                                {formatDate(ch.created_at)}
-                              </div>
-                            )}
-                          </div>
+                        <div className="min-w-0 flex-1">
+                          <p
+                            className="truncate text-sm font-medium text-gray-900 dark:text-white"
+                            title={ch.title}
+                          >
+                            {ch.title}
+                          </p>
+                          <Meta
+                            className="mt-0.5 text-[13px]"
+                            items={[
+                              ch.created_at ? formatDate(ch.created_at) : null,
+                              ch.file_size
+                                ? `${(ch.file_size / 1024 / 1024).toFixed(1)} MB`
+                                : null,
+                              !ch.file_url ? 'No resource' : null,
+                            ]}
+                          />
+                          {ch.content && (
+                            <p className="mt-1 line-clamp-1 text-[13px] text-gray-500 dark:text-gray-400">
+                              {ch.content}
+                            </p>
+                          )}
                         </div>
-                        {isAdmin && (
-                          <div className="flex gap-1">
+
+                        <div className="flex flex-shrink-0 items-center gap-1.5">
+                          {ch.file_url && (
+                            <>
+                              <a
+                                href={ch.file_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={cn(
+                                  quietButton,
+                                  'inline-flex h-8 items-center gap-1.5 px-2.5 text-[13px] font-medium'
+                                )}
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                                View
+                              </a>
+                              <button
+                                onClick={() => handleDownloadFile(ch.file_url!, ch.title)}
+                                className={cn(
+                                  quietButton,
+                                  'inline-flex h-8 items-center gap-1.5 px-2.5 text-[13px] font-medium'
+                                )}
+                              >
+                                <Download className="h-3.5 w-3.5" />
+                                <span className="hidden sm:inline">Download</span>
+                              </button>
+                            </>
+                          )}
+                          {isAdmin && (
                             <button
                               onClick={() => handleDeleteChapter(ch.id)}
-                              className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition"
+                              className="rounded-lg p-2 text-gray-400 opacity-0 transition-all hover:bg-red-50 hover:text-red-600 focus-visible:opacity-100 group-hover:opacity-100 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                               title="Delete chapter"
+                              aria-label={`Delete ${ch.title}`}
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
-                            <button
-                              className="p-1.5 text-gray-600 hover:text-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition"
-                              title="Edit chapter"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
-                      
-                      {ch.content && (
-                        <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-3">{ch.content}</p>
-                      )}
-                      
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                        {ch.file_url ? (
-                          <div className="flex flex-wrap items-center gap-2">
-                            <a 
-                              href={ch.file_url} 
-                              target="_blank" 
-                              rel="noreferrer" 
-                              className="inline-flex items-center gap-1 text-xs sm:text-sm text-indigo-600 hover:text-indigo-800 hover:underline transition-colors"
-                            >
-                              <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
-                              View Resource
-                            </a>
-                            <button
-                              onClick={() => handleDownloadFile(ch.file_url!, ch.title)}
-                              className="inline-flex items-center gap-1 text-xs sm:text-sm text-green-600 hover:text-green-800 hover:underline transition-colors"
-                            >
-                              <Download className="h-3 w-3 sm:h-4 sm:w-4" />
-                              Download
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                            <FileText className="h-4 w-4" />
-                            No resource
-                          </span>
-                        )}
-                        
-                        {ch.file_size && (
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {(ch.file_size / 1024 / 1024).toFixed(1)} MB
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
 
-          {/* Recorded Lectures */}
-          {activeTab === 'lectures' && (
-            <section id="lectures" className="space-y-5">
-              <div className="flex items-center justify-between pl-0 pt-2">
-                <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">Recorded Lectures</h2>
-              </div>
-              
-              {isAdmin && (
-                <div className="flex items-center justify-end">
-                  <button 
-                    onClick={() => setShowRecordingUploadModal(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Upload Lecture Recording
-                  </button>
-                </div>
-              )}
-
-              <LectureRecordingsList
-                courseId={courseId}
-                userRole={isAdmin ? (userRole === 'superadmin' ? "superadmin" : "admin") : (user ? "student" : "guest")}
-                showAccessControls={!authLoading && userRole === 'student' && !!user}
-                onAccessRequired={() => {
-                  if (!user) {
-                    // Guest - redirect to signup
-                    window.location.href = `/auth/signup?redirect=/courses/${courseId}`;
-                  } else {
-                    // Student - show upgrade modal
-                    setIsUpgrade(true);
-                    setShowSubscriptionModal(true);
+            {/* Recorded Lectures */}
+            {activeTab === 'lectures' && (
+              <section id="lectures" className="space-y-6">
+                <SectionHeader
+                  title="Recorded Lectures"
+                  description="Every session is recorded — rewatch as many times as you like."
+                  actions={
+                    isAdmin && (
+                      <Button
+                        onClick={() => setShowRecordingUploadModal(true)}
+                        className="rounded-xl bg-primary text-white shadow-sm shadow-primary/25 hover:bg-primary-600"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Upload recording
+                      </Button>
+                    )
                   }
-                }}
-              />
-            </section>
-          )}
+                />
 
+                <LectureRecordingsList
+                  courseId={courseId}
+                  userRole={isAdmin ? (userRole === 'superadmin' ? 'superadmin' : 'admin') : (user ? 'student' : 'guest')}
+                  showHeading={false}
+                  showAccessControls={!authLoading && userRole === 'student' && !!user}
+                  onAccessRequired={() => {
+                    if (!user) {
+                      // Guest - redirect to signup
+                      window.location.href = `/auth/signup?redirect=/courses/${courseId}`;
+                    } else {
+                      // Student - show upgrade modal
+                      setIsUpgrade(true);
+                      setShowSubscriptionModal(true);
+                    }
+                  }}
+                />
+              </section>
+            )}
 
-          {/* Quizzes */}
-          {activeTab === 'quizzes' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">Quizzes</h2>
-              </div>
-              
-              <QuizSection 
-                courseId={courseId} 
-                userRole={isAdmin ? (userRole === 'superadmin' ? "superadmin" : "admin") : "student"} 
-                userId={user?.id || ""} 
-              />
+            {/* Quizzes */}
+            {activeTab === 'quizzes' && (
+              <section id="quizzes" className="space-y-6">
+                <SectionHeader
+                  title="Quizzes"
+                  description="Check what's stuck and what still needs work."
+                />
+                <QuizSection
+                  courseId={courseId}
+                  userRole={isAdmin ? (userRole === 'superadmin' ? 'superadmin' : 'admin') : 'student'}
+                  userId={user?.id || ''}
+                  showHeading={false}
+                />
+              </section>
+            )}
 
-              {/* Quiz Results Modal */}
-              {showQuizResults && isAdmin && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                  <div className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[80vh] overflow-y-auto">
-                    <div className="p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Quiz Attempts</h3>
-                        <button
-                          onClick={() => setShowQuizResults(false)}
-                          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                        >
-                          <X className="h-6 w-6" />
-                        </button>
-                      </div>
-                      
-                      {quizResults.length === 0 ? (
-                        <p className="text-gray-500 dark:text-gray-400 text-center py-8">No quiz attempts found</p>
-                      ) : (
-                        <div className="space-y-3">
-                          {quizResults.map((result, index) => (
-                            <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-3 mb-2">
-                                    <h4 className="font-medium text-gray-900 dark:text-white">{result.quiz_title}</h4>
-                                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                                      by {result.student_name}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
-                                    <span>Score: <span className="font-medium">{result.percentage || 0}%</span></span>
-                                    <span>Correct: <span className="font-medium">{result.correct_answers}/{result.total_questions}</span></span>
-                                    <span>Points: <span className="font-medium">{result.score}/{result.max_score}</span></span>
-                                    <span>Date: <span className="font-medium">{formatDate(result.completed_at)}</span></span>
-                                  </div>
-                                </div>
-                                <button
-                                  onClick={() => handleViewAttempt(result)}
-                                  className="ml-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                                >
-                                  View Attempt
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
+            {/* Assignments */}
+            {activeTab === 'assignments' && (
+              <section id="assignments" className="space-y-6">
+                <SectionHeader
+                  title="Assignments"
+                  description="Submit your work and pick up your teacher's feedback."
+                />
+                <AssignmentManagement
+                  courseId={courseId}
+                  userRole={isAdmin ? (userRole === 'superadmin' ? 'superadmin' : 'admin') : 'student'}
+                  chapters={[]}
+                  showHeading={false}
+                />
+              </section>
+            )}
 
-              {/* Attempt Details Modal */}
-              {showAttemptDetails && selectedAttempt && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                  <div className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                    <div className="p-6">
-                      <div className="flex items-center justify-between mb-6">
-                        <div>
-                          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">{selectedAttempt.quiz_title}</h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">Attempt by {selectedAttempt.student_name}</p>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setShowAttemptDetails(false);
-                            setSelectedAttempt(null);
-                          }}
-                          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                        >
-                          <X className="h-6 w-6" />
-                        </button>
-                      </div>
-
-                      {/* Attempt Summary */}
-                      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                          <div>
-                            <span className="text-gray-500 dark:text-gray-400">Score:</span>
-                            <span className="ml-2 font-medium text-lg">{selectedAttempt.percentage || 0}%</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500 dark:text-gray-400">Correct:</span>
-                            <span className="ml-2 font-medium">{selectedAttempt.correct_answers}/{selectedAttempt.total_questions}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500 dark:text-gray-400">Points:</span>
-                            <span className="ml-2 font-medium">{selectedAttempt.score}/{selectedAttempt.max_score}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500 dark:text-gray-400">Date:</span>
-                            <span className="ml-2 font-medium">{formatDate(selectedAttempt.completed_at)}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Questions and Answers */}
-                      <div className="space-y-4">
-                        <h4 className="text-lg font-medium text-gray-900 dark:text-white">Questions & Answers</h4>
-                        {selectedAttempt.answers && selectedAttempt.answers.length > 0 ? (
-                          <div className="space-y-4">
-                            {selectedAttempt.answers.map((answer: any, qIndex: number) => (
-                              <div key={qIndex} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                                <div className="flex items-start justify-between mb-3">
-                                  <h5 className="font-medium text-gray-900 dark:text-white">
-                                    Question {qIndex + 1}
-                                  </h5>
-                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                    answer.is_correct 
-                                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                                      : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                                  }`}>
-                                    {answer.is_correct ? 'Correct' : 'Incorrect'}
-                                  </span>
-                                </div>
-                                
-                                <div className="space-y-2">
-                                  <div>
-                                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Question:</span>
-                                    <p className="mt-1 text-gray-700 dark:text-gray-300">{answer.question_text || 'Question text not available'}</p>
-                                  </div>
-                                  
-                                  <div>
-                                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Student Answer:</span>
-                                    <p className="mt-1 p-2 bg-gray-50 dark:bg-gray-700 rounded border">
-                                      {answer.selected_answer || 'No answer provided'}
-                                    </p>
-                                  </div>
-                                  
-                                  <div>
-                                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Correct Answer:</span>
-                                    <p className="mt-1 p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-700">
-                                      {answer.correct_answer || 'Correct answer not available'}
-                                    </p>
-                                  </div>
-                                  
-                                  <div className="flex items-center justify-between text-sm">
-                                    <span className="text-gray-500 dark:text-gray-400">
-                                      Points: {answer.points_earned || 0} / {answer.points || 0}
-                                    </span>
-                                    <span className={`font-medium ${
-                                      answer.is_correct ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                                    }`}>
-                                      {answer.is_correct ? '✓ Correct' : '✗ Incorrect'}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-                            <p className="text-sm text-blue-800 dark:text-blue-200">
-                              <strong>Note:</strong> No detailed answer data available for this attempt.
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+            {/* Live Classes */}
+            {activeTab === 'live-classes' && (
+              <section id="live-classes" className="space-y-6">
+                <SectionHeader
+                  title="Live Classes"
+                  description="Scheduled sessions with your tutor. Join straight from the calendar."
+                />
+                <StudentLiveClassCalendar courseId={courseId} />
+              </section>
+            )}
             </div>
-          )}
-
-          {/* Assignments */}
-          {activeTab === 'assignments' && (
-            <section className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">Assignments</h2>
-              </div>
-              <AssignmentManagement
-                courseId={courseId}
-                userRole={isAdmin ? (userRole === 'superadmin' ? 'superadmin' : 'admin') : 'student'}
-                chapters={[]}
-              />
-            </section>
-          )}
-
-          {/* Live Classes */}
-          {activeTab === 'live-classes' && (
-            <section className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">Live Classes</h2>
-              </div>
-              <StudentLiveClassCalendar courseId={courseId} />
-            </section>
-          )}
+          </div>
         </main>
       </div>
-      
-      {/* Upload Modal */}
-      {showUploadModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Upload Chapter Files
-                </h3>
-                <button
-                  onClick={() => setShowUploadModal(false)}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-              <FileUpload
-                onUpload={handleFileUpload}
-                accept=".pdf,.doc,.docx,image/*,video/*"
-                maxFiles={10}
-                maxSize={50} // 50MB
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Recording Upload Modal */}
-      {showRecordingUploadModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Upload Lecture Recording
-                </h3>
-                <button
-                  onClick={() => setShowRecordingUploadModal(false)}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-              <LectureRecordingUpload
-                courseId={courseId}
-                onUploadSuccess={() => {
-                  setShowRecordingUploadModal(false);
-                  window.location.reload();
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Chapter upload */}
+      <Modal
+        open={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        title="Upload chapter files"
+        size="md"
+      >
+        <FileUpload
+          onUpload={handleFileUpload}
+          accept=".pdf,.doc,.docx,image/*,video/*"
+          maxFiles={10}
+          maxSize={50} // 50MB
+        />
+      </Modal>
 
-      {/* Subscription Plans Modal */}
-      {showSubscriptionModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                  {isUpgrade ? 'Upgrade to Full Access' : 'Choose Your Plan'}
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowSubscriptionModal(false);
-                    setIsUpgrade(false);
-                  }}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-              {isUpgrade && (
-                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-                  <p className="text-blue-800 dark:text-blue-200 text-sm">
-                    <strong>Upgrade from Demo:</strong> You&apos;ve used your demo access. Choose a plan below to get full access to all content.
-                  </p>
-                </div>
-              )}
-              <ModernSubscriptionModal
-                isOpen={showSubscriptionModal}
-                onClose={() => {
-                  setShowSubscriptionModal(false);
-                  setIsUpgrade(false);
-                }}
-                course={{
-                  id: courseId,
-                  title: course.title,
-                  subject: course.title
-                }}
-                onSelectPlan={handleSubscriptionPlanSelect}
-                subscriptionPlans={subscriptionPlans}
-                loading={subscriptionPlansLoading}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Recording upload */}
+      <Modal
+        open={showRecordingUploadModal}
+        onClose={() => setShowRecordingUploadModal(false)}
+        title="Upload lecture recording"
+        size="lg"
+      >
+        <LectureRecordingUpload
+          courseId={courseId}
+          onUploadSuccess={() => {
+            setShowRecordingUploadModal(false);
+            window.location.reload();
+          }}
+        />
+      </Modal>
 
-      {/* Demo Access Modal */}
-      {showDemoModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                  Try for Free
-                </h3>
-                <button
-                  onClick={() => setShowDemoModal(false)}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-              <DemoAccessRequest
-                courseId={courseId}
-                courseTitle={course.title}
-                onAccessGranted={() => {
-                  setShowDemoModal(false);
-                  // Navigate to the appropriate page based on demo type
-                  const liveDemo = localStorage.getItem(`guest-demo-${courseId}-live_class`);
-                  const recordingDemo = localStorage.getItem(`guest-demo-${courseId}-lecture_recording`);
-                  if (liveDemo) {
-                    window.location.href = `/courses/${courseId}?tab=live-classes`;
-                  } else if (recordingDemo) {
-                    window.location.href = `/courses/${courseId}/preview`;
-                  } else {
-                    window.location.reload();
-                  }
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Subscription plans. ModernSubscriptionModal brings its own overlay,
+          backdrop-close and header — wrapping it in a second one stacked two
+          dimmed layers and two close buttons on top of each other. */}
+      <ModernSubscriptionModal
+        isOpen={showSubscriptionModal}
+        onClose={() => {
+          setShowSubscriptionModal(false);
+          setIsUpgrade(false);
+        }}
+        course={{
+          id: courseId,
+          title: course.title,
+          subject: course.title,
+        }}
+        onSelectPlan={handleSubscriptionPlanSelect}
+        subscriptionPlans={subscriptionPlans}
+        loading={subscriptionPlansLoading}
+        notice={
+          isUpgrade ? (
+            <>
+              <strong className="font-semibold">Upgrade from demo:</strong> you&apos;ve used your
+              demo access. Choose a plan below to unlock all content.
+            </>
+          ) : undefined
+        }
+      />
+
+      {/* Demo access */}
+      <Modal open={showDemoModal} onClose={() => setShowDemoModal(false)} title="Try for free" size="md">
+        <DemoAccessRequest
+          courseId={courseId}
+          courseTitle={course.title}
+          onAccessGranted={() => {
+            setShowDemoModal(false);
+            // Navigate to the appropriate page based on demo type
+            const liveDemo = localStorage.getItem(`guest-demo-${courseId}-live_class`);
+            const recordingDemo = localStorage.getItem(`guest-demo-${courseId}-lecture_recording`);
+            if (liveDemo) {
+              window.location.href = `/courses/${courseId}?tab=live-classes`;
+            } else if (recordingDemo) {
+              window.location.href = `/courses/${courseId}/preview`;
+            } else {
+              window.location.reload();
+            }
+          }}
+        />
+      </Modal>
 
       {/* Choice Modal - Demo or Direct Subscription */}
-      {showChoiceModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">Choose Your Path</h3>
-                <button onClick={() => setShowChoiceModal(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-              <div className="grid md:grid-cols-2 gap-4">
-                <button
-                  className="rounded-lg border p-6 text-left hover:border-indigo-400"
-                  onClick={() => {
-                    // Open demo picker explicitly and ensure plans modal is closed
-                    setShowSubscriptionModal(false);
-                    setShowChoiceModal(false);
-                    setShowDemoModal(true);
-                  }}
-                >
-                  <div className="text-lg font-semibold mb-2">Try Demo First</div>
-                  <div className="text-sm text-muted-foreground">Get 24-hour free access to experience the content before subscribing</div>
-                </button>
-                <button
-                  className="rounded-lg border p-6 text-left hover:border-amber-400"
-                  onClick={() => {
-                    // Open plans explicitly and ensure demo modal is closed
-                    setShowDemoModal(false);
-                    setShowChoiceModal(false);
-                    setShowSubscriptionModal(true);
-                  }}
-                >
-                  <div className="text-lg font-semibold mb-2">Subscribe Now</div>
-                  <div className="text-sm text-muted-foreground">Get immediate full access with our flexible subscription plans</div>
-                </button>
-              </div>
+      <Modal
+        open={showChoiceModal}
+        onClose={() => setShowChoiceModal(false)}
+        title="Choose your path"
+        size="md"
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <button
+            className="group rounded-2xl border border-gray-200 p-6 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/5 hover:shadow-depth dark:border-gray-800 dark:hover:bg-primary/10"
+            onClick={() => {
+              // Open demo picker explicitly and ensure plans modal is closed
+              setShowSubscriptionModal(false);
+              setShowChoiceModal(false);
+              setShowDemoModal(true);
+            }}
+          >
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 dark:bg-primary/15">
+              <Play className="h-5 w-5 text-primary" />
             </div>
-          </div>
+            <div className="mb-1.5 font-semibold text-gray-900 dark:text-white">Try demo first</div>
+            <div className="text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+              Get 24-hour free access to experience the content before subscribing
+            </div>
+          </button>
+          <button
+            className="group rounded-2xl border border-gray-200 p-6 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/5 hover:shadow-depth dark:border-gray-800 dark:hover:bg-primary/10"
+            onClick={() => {
+              // Open plans explicitly and ensure demo modal is closed
+              setShowDemoModal(false);
+              setShowChoiceModal(false);
+              setShowSubscriptionModal(true);
+            }}
+          >
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 dark:bg-primary/15">
+              <Crown className="h-5 w-5 text-primary" />
+            </div>
+            <div className="mb-1.5 font-semibold text-gray-900 dark:text-white">Subscribe now</div>
+            <div className="text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+              Get immediate full access with our flexible subscription plans
+            </div>
+          </button>
         </div>
-      )}
+      </Modal>
 
       {/* Floating Upgrade Button for Demo Users */}
       {(hasRecordingDemo || hasLiveDemo) && userRole === 'student' && !isAdmin && (
-        <div className="fixed bottom-6 right-6 z-50">
-          <Button 
+        <div className="fixed bottom-6 right-6 z-40">
+          <Button
             size="lg"
             onClick={() => {
-              console.log('🔐 Floating upgrade button clicked - checking auth state:', { 
-                user: !!user, 
-                userRole, 
-                isAdmin,
-                hasRecordingDemo,
-                hasLiveDemo 
-              });
               setIsUpgrade(true);
               setShowSubscriptionModal(true);
             }}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+            className="rounded-full bg-primary text-white shadow-depth-lg transition-all duration-300 hover:scale-105 hover:bg-primary-600"
           >
-            <Crown className="h-5 w-5 mr-2" />
+            <Crown className="mr-2 h-5 w-5" />
             Upgrade to Full Access
           </Button>
         </div>
       )}
+    </div>
+  );
+}
+
+const MODAL_SIZES = {
+  md: 'max-w-2xl',
+  lg: 'max-w-3xl',
+} as const;
+
+/**
+ * Modal chrome.
+ *
+ * The page had five hand-rolled overlays that each differed slightly — some
+ * `bg-opacity-50`, some not, three different corner radii, close buttons in
+ * three styles. This is the one shell they all use.
+ */
+function Modal({
+  open,
+  onClose,
+  title,
+  size = 'md',
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  size?: keyof typeof MODAL_SIZES;
+  children: React.ReactNode;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        aria-hidden="true"
+        onClick={onClose}
+        className="absolute inset-0 bg-charcoal-900/50 backdrop-blur-sm"
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className={cn(
+          'relative z-10 max-h-[90vh] w-full overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-depth-lg dark:border-gray-800 dark:bg-gray-900',
+          MODAL_SIZES[size]
+        )}
+      >
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-gray-100 bg-white/90 px-6 py-4 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/90">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="-mr-2 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="p-6">{children}</div>
+      </div>
     </div>
   );
 }

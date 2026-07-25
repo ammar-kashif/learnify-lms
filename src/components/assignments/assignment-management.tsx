@@ -39,6 +39,8 @@ interface AssignmentManagementProps {
   courseId: string;
   userRole: string;
   chapters: Chapter[];
+  /** Off when the page already renders its own section heading above the list. */
+  showHeading?: boolean;
 }
 
 type ViewMode = 'list' | 'create' | 'edit' | 'submit' | 'grade' | 'view';
@@ -46,7 +48,8 @@ type ViewMode = 'list' | 'create' | 'edit' | 'submit' | 'grade' | 'view';
 export default function AssignmentManagement({
   courseId,
   userRole,
-  chapters
+  chapters,
+  showHeading = true
 }: AssignmentManagementProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
@@ -147,6 +150,7 @@ export default function AssignmentManagement({
           onViewSubmissions={userRole !== 'student' ? handleViewSubmissions : undefined}
           onSubmitAssignment={userRole === 'student' ? handleSubmitAssignment : undefined}
           onViewGrade={userRole === 'student' ? handleViewGrade : undefined}
+          showHeading={showHeading}
         />
       );
   }

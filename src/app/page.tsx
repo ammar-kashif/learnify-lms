@@ -10,53 +10,38 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {
-  BookOpen,
   Users,
   BarChart3,
   Play,
   ArrowRight,
   Star,
   CheckCircle,
-  Menu,
-  X,
-  Sparkles,
-  Zap,
-  Globe,
-  Rocket,
   Mail,
   Phone,
   MapPin,
   ChevronDown,
-  HelpCircle,
   MessageCircle,
   GraduationCap,
   FileText,
   Trophy,
-  Shield,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import ThemeToggle from '@/components/theme-toggle';
+import LandingNav from '@/components/landing/landing-nav';
 import Testimonials from '@/components/testimonials';
 import WhatsAppFloat from '@/components/whatsapp-float';
+import Hero3D from '@/components/hero/hero-3d';
+import TiltCard from '@/components/ui/tilt-card';
+import { Reveal, RevealItem } from '@/components/ui/reveal';
+import { scaleIn } from '@/lib/motion';
 import { whatsappLink, WHATSAPP_MESSAGES, WHATSAPP_DISPLAY } from '@/config/contact';
 
 export default function HomePage() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [visibleElements, setVisibleElements] = useState<Set<string>>(new Set());
-  const [particles, setParticles] = useState<Array<{ left: number; top: number; delay: number; duration: number }>>([]);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setIsVisible(true));
-    // Generate particle positions client-side to avoid hydration mismatches
-    const generated = Array.from({ length: 20 }).map(() => ({
-      left: Math.random() * 100,
-      top: Math.random() * 100,
-      delay: Math.random() * 10,
-      duration: 10 + Math.random() * 20,
-    }));
-    setParticles(generated);
-    
+
     // Scroll observer for animations
     const observer = new IntersectionObserver(
       (entries) => {
@@ -130,10 +115,6 @@ export default function HomePage() {
     },
   ];
 
-  const subjects = [
-    'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Computer Science', 'English',
-  ];
-
   const quickStats = [
     { value: '200+', label: 'Students Taught' },
     { value: '6', label: 'Expert Tutors' },
@@ -142,202 +123,35 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
-      {/* Navigation Bar */}
-      <nav className="sticky top-0 z-50 border-b border-gray-200 bg-white/90 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/90">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            {/* Logo and Brand */}
-            <div className="flex items-center space-x-3">
-              <img
-                src="/images/Logo.PNG"
-                alt="Learnify Logo"
-                className="h-24 w-24"
-              />
-              <span className="text-xl font-bold text-charcoal-900 dark:text-gray-100">
-                Learnify
-              </span>
-            </div>
+      <LandingNav />
 
-            {/* Desktop Navigation */}
-            <div className="hidden items-center space-x-8 md:flex">
-              <Link
-                href="/"
-                className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-              >
-                Home
-              </Link>
-              <Link
-                href="/courses"
-                className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-              >
-                Courses
-              </Link>
-              <Link
-                href="/blog"
-                className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-              >
-                Blog
-              </Link>
-              <Link
-                href="#features"
-                className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-              >
-                Features
-              </Link>
-              <Link
-                href="#about"
-                className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-              >
-                About
-              </Link>
-              <Link
-                href="#contact"
-                className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-              >
-                Contact
-              </Link>
-            </div>
+      {/* Hero Section. Top padding clears the fixed nav, which floats over the
+          3D scene rather than sitting above it. */}
+      <section className="relative overflow-hidden px-4 pb-24 pt-32 text-center sm:pb-28 sm:pt-36">
+        {/* Base wash */}
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-white to-white dark:from-primary/10 dark:via-gray-900 dark:to-gray-900" />
 
-            {/* Desktop Auth Buttons */}
-            <div className="hidden items-center space-x-2 md:flex">
-              <ThemeToggle />
-              <Button
-                asChild
-                variant="ghost"
-                className="text-gray-700 hover:bg-primary/10 hover:text-primary dark:text-gray-300"
-              >
-                <Link href="/auth/signin">Sign In</Link>
-              </Button>
-              <Button
-                asChild
-                className="bg-primary text-white hover:bg-primary-600"
-              >
-                <Link href="/auth/signup">Get Started</Link>
-              </Button>
-            </div>
+        {/* 3D scene. Renders a static aurora immediately and layers WebGL over
+            it only on capable, non-reduced-motion, larger-than-mobile devices. */}
+        <Hero3D className="pointer-events-none absolute inset-0" />
 
-            {/* Mobile menu button */}
-            <div className="md:hidden">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="text-gray-700 hover:bg-primary/10 hover:text-primary dark:text-gray-300"
-              >
-                {mobileMenuOpen ? (
-                  <X className="h-5 w-5" />
-                ) : (
-                  <Menu className="h-5 w-5" />
-                )}
-              </Button>
-            </div>
-          </div>
+        {/* Readability scrim. The 3D sits directly behind the headline, and a
+            metallic orange sphere drifting under dark text destroys contrast.
+            This keeps a page-coloured wash under the copy while leaving the
+            scene visible around the edges. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_45%,rgba(255,255,255,0.92),rgba(255,255,255,0.65)_55%,transparent_80%)] dark:bg-[radial-gradient(ellipse_60%_50%_at_50%_45%,rgba(17,24,39,0.92),rgba(17,24,39,0.7)_55%,transparent_80%)]"
+        />
 
-          {/* Mobile Navigation Menu */}
-          {mobileMenuOpen && (
-            <div className="border-t border-gray-200 py-4 dark:border-gray-800 md:hidden">
-              <div className="flex flex-col space-y-4">
-                <Link
-                  href="/"
-                  className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-                >
-                  Home
-                </Link>
-                <Link
-                  href="/courses"
-                  className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-                >
-                  Courses
-                </Link>
-                <Link
-                  href="/blog"
-                  className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-                >
-                  Blog
-                </Link>
-                <Link
-                  href="#features"
-                  className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-                >
-                  Features
-                </Link>
-                <Link
-                  href="#about"
-                  className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-                >
-                  About
-                </Link>
-                <Link
-                  href="#contact"
-                  className="font-medium text-gray-700 transition-colors hover:text-primary dark:text-gray-300"
-                >
-                  Contact
-                </Link>
-                <div className="border-t border-gray-200 pt-4 dark:border-gray-800">
-                  <Button
-                    asChild
-                    variant="ghost"
-                    className="mb-2 w-full justify-start text-gray-700 hover:bg-primary/10 hover:text-primary dark:text-gray-300"
-                  >
-                    <Link href="/auth/signin">Sign In</Link>
-                  </Button>
-                  <Button
-                    asChild
-                    className="w-full bg-primary text-white hover:bg-primary-600"
-                  >
-                    <Link href="/auth/signup">Get Started</Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </nav>
-
-      {/* Hero Section */}
-      <section className="relative overflow-hidden px-4 py-20 text-center">
-        {/* Animated Background Elements */}
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-primary/5 to-gray-100/50 dark:from-primary/10 dark:via-primary/5 dark:to-gray-800/50"></div>
-        
-        {/* Floating Particles */}
-        <div className="absolute inset-0 overflow-hidden">
-          {particles.map((p, i) => (
-            <div
-              key={i}
-              className="absolute animate-float"
-              style={{
-                left: `${p.left}%`,
-                top: `${p.top}%`,
-                animationDelay: `${p.delay}s`,
-                animationDuration: `${p.duration}s`,
-              }}
-            >
-              <div className="h-2 w-2 rounded-full bg-primary/20 animate-pulse"></div>
-            </div>
-          ))}
-        </div>
-
-        {/* Floating Icons */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-10 animate-bounce-slow">
-            <BookOpen className="h-8 w-8 text-primary/30" />
-          </div>
-          <div className="absolute top-32 right-20 animate-bounce-slow" style={{ animationDelay: '1s' }}>
-            <Users className="h-6 w-6 text-primary/30" />
-          </div>
-          <div className="absolute bottom-40 left-20 animate-bounce-slow" style={{ animationDelay: '2s' }}>
-            <BarChart3 className="h-7 w-7 text-primary/30" />
-          </div>
-          <div className="absolute bottom-20 right-10 animate-bounce-slow" style={{ animationDelay: '3s' }}>
-            <Shield className="h-6 w-6 text-primary/30" />
-          </div>
-        </div>
+        {/* Fade the scene into the page below */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-white to-transparent dark:from-gray-900" />
 
         <div className={`relative mx-auto max-w-4xl will-change-transform transition-transform duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
           
           <h1 className="mb-6 text-5xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-6xl lg:text-7xl animate-slide-up">
             Ace Your O Levels &amp; IGCSE Exams with{' '}
-            <span className="bg-gradient-to-r from-primary via-primary-600 to-purple-600 bg-clip-text text-transparent animate-gradient-x">
+            <span className="bg-gradient-to-r from-primary via-primary-600 to-primary-700 bg-clip-text text-transparent animate-gradient-x">
               Learnify
             </span>
           </h1>
@@ -400,41 +214,19 @@ export default function HomePage() {
             ))}
           </div>
 
-          {/* Subjects Strip */}
-          <div className="mx-auto inline-flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
-            {subjects.map((subj, index) => (
-              <span
-                key={index}
-                id={`subj-${index}`}
-                data-animate
-                className={`inline-flex items-center rounded-full border border-gray-200 bg-white/80 px-3 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm font-medium text-gray-700 shadow-sm backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:border-primary/40 hover:text-primary dark:border-gray-700 dark:bg-gray-800/80 dark:text-gray-300 ${
-                  visibleElements.has(`subj-${index}`) ? 'animate-scale-in' : 'opacity-0 scale-90'
-                }`}
-                style={{ animationDelay: `${index * 80}ms` }}
-              >
-                <BookOpen className="mr-1.5 h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary/60" />
-                {subj}
-              </span>
-            ))}
-          </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="relative px-4 py-20 overflow-hidden">
+      <section id="features" className="relative scroll-mt-24 px-4 py-20 overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-primary/5 dark:from-gray-900 dark:via-gray-900 dark:to-primary/5"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.05),transparent_50%)]"></div>
         
         <div className="relative mx-auto max-w-6xl">
           <div className="mb-16 text-center">
-            <div className="mb-4 inline-flex items-center rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary dark:bg-primary/20">
-              <Zap className="mr-2 h-4 w-4" />
-              Powerful Features
-            </div>
             <h2 className="mb-4 text-4xl font-bold text-gray-900 dark:text-gray-100">
               Why Choose{' '}
-              <span className="bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-primary to-primary-700 bg-clip-text text-transparent">
                 Learnify?
               </span>
             </h2>
@@ -444,41 +236,34 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          <Reveal stagger={0.08} className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {features.map((feature, index) => (
-              <Card
-                key={index}
-                id={`feature-${index}`}
-                data-animate
-                className={`group relative border-gray-200 bg-white/80 backdrop-blur-sm transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-primary/10 dark:border-gray-800 dark:bg-gray-900/80 overflow-hidden ${
-                  visibleElements.has(`feature-${index}`) ? 'animate-slide-up' : 'opacity-0 translate-y-10'
-                }`}
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                {/* Hover Effect Background */}
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                
-                <CardHeader className="relative pb-4 text-center">
-                  <div
-                    className={`mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full ${feature.bgColor} transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-lg`}
-                  >
-                    <feature.icon className={`h-8 w-8 ${feature.color} transition-transform duration-300 group-hover:scale-110`} />
-                  </div>
-                  <CardTitle className={`text-xl font-bold ${feature.color} group-hover:text-primary transition-colors duration-300`}>
-                    {feature.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="relative text-center">
-                  <CardDescription className="text-base leading-relaxed text-gray-600 dark:text-gray-300 group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors duration-300">
-                    {feature.description}
-                  </CardDescription>
-                </CardContent>
-                
-                {/* Animated Border */}
-                <div className="absolute inset-0 rounded-lg border-2 border-transparent bg-gradient-to-r from-primary/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              </Card>
+              <RevealItem key={index} className="h-full">
+                <TiltCard className="h-full" intensity={7}>
+                  <Card className="group relative flex h-full flex-col overflow-hidden border-gray-200 bg-white/80 backdrop-blur-sm transition-shadow duration-500 hover:shadow-depth-lg dark:border-gray-800 dark:bg-gray-900/80">
+                    {/* Warm wash on hover */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.07] to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+
+                    <CardHeader className="relative pb-4">
+                      <div
+                        className={`mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl ${feature.bgColor} shadow-sm transition-transform duration-500 [transform:translateZ(28px)] group-hover:scale-110`}
+                      >
+                        <feature.icon className={`h-7 w-7 ${feature.color}`} />
+                      </div>
+                      <CardTitle className="text-lg font-bold leading-snug text-gray-900 transition-colors duration-300 group-hover:text-primary dark:text-gray-100 [transform:translateZ(18px)]">
+                        {feature.title}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="relative">
+                      <CardDescription className="text-base leading-relaxed text-gray-600 dark:text-gray-300 [transform:translateZ(10px)]">
+                        {feature.description}
+                      </CardDescription>
+                    </CardContent>
+                  </Card>
+                </TiltCard>
+              </RevealItem>
             ))}
-          </div>
+          </Reveal>
         </div>
       </section>
 
@@ -489,47 +274,48 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-primary/5 dark:from-gray-900 dark:via-gray-900 dark:to-primary/5" />
         <div className="relative mx-auto max-w-6xl">
           <div className="mb-10 text-center">
-            <div className="mb-4 inline-flex items-center rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary dark:bg-primary/20">
-              <Rocket className="mr-2 h-4 w-4" />
-              Getting Started
-            </div>
             <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">How Learnify Works</h2>
             <p className="mx-auto mt-3 max-w-2xl text-lg text-gray-600 dark:text-gray-300">
               Learning that&apos;s structured, supportive, and success-driven.
             </p>
           </div>
-          <div className="grid gap-6 md:grid-cols-3">
+          <Reveal stagger={0.12} className="relative grid gap-6 md:grid-cols-3">
+            {/* Connecting rail behind the steps, desktop only */}
+            <div
+              aria-hidden="true"
+              className="absolute left-0 right-0 top-11 hidden h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent md:block"
+            />
             {[
               { step: '1', title: 'Enroll & Get Matched', desc: 'Choose your subjects and get placed in a small group led by an expert tutor.' },
               { step: '2', title: 'Learn & Revise', desc: 'Attend live interactive classes, access recorded lessons, and practice with topic-wise and past paper exercises.' },
               { step: '3', title: 'Track Progress & Improve', desc: 'Get detailed feedback after every quiz and monthly progress reports to keep you on track for your A*.' },
             ].map((s, i) => (
-              <div key={i} className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900 transition-all duration-300 hover:shadow-lg hover:border-primary/30">
-                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white font-bold text-lg">{s.step}</div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{s.title}</h3>
-                <p className="mt-2 text-gray-600 dark:text-gray-300">{s.desc}</p>
-              </div>
+              <RevealItem key={i}>
+                <div className="group relative h-full overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-depth dark:border-gray-800 dark:bg-gray-900">
+                  <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-full bg-primary text-lg font-bold text-white shadow-lg shadow-primary/25 transition-transform duration-300 group-hover:scale-110">
+                    {s.step}
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{s.title}</h3>
+                  <p className="mt-2 text-gray-600 dark:text-gray-300">{s.desc}</p>
+                </div>
+              </RevealItem>
             ))}
-          </div>
+          </Reveal>
         </div>
       </section>
 
       {/* Why Students Love Us */}
-      <section id="about" className="relative bg-white/80 px-4 py-20 dark:bg-gray-900 overflow-hidden">
+      <section id="about" className="relative scroll-mt-24 bg-white/80 px-4 py-20 dark:bg-gray-900 overflow-hidden">
         {/* Background Effects */}
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-purple-600/5"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5"></div>
         <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent"></div>
         <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent"></div>
         
         <div className="relative mx-auto max-w-4xl text-center">
-          <div className="mb-4 inline-flex items-center rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary dark:bg-primary/20">
-            <Star className="mr-2 h-4 w-4" />
-            Why Students Love Us
-          </div>
           <h2 className="mb-8 text-3xl font-bold text-gray-900 dark:text-gray-100">
             Built for O Level &amp; IGCSE Students
           </h2>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 text-left">
+          <Reveal stagger={0.05} className="grid gap-4 text-left sm:grid-cols-2 lg:grid-cols-4">
             {[
               { icon: CheckCircle, text: 'Syllabus-aligned content' },
               { icon: CheckCircle, text: 'Experienced O Level & IGCSE tutors' },
@@ -540,12 +326,14 @@ export default function HomePage() {
               { icon: CheckCircle, text: 'Free demo before subscribing' },
               { icon: CheckCircle, text: 'Works on any device' },
             ].map((item, i) => (
-              <div key={i} className="flex items-start gap-2.5 rounded-lg border border-gray-100 bg-gray-50/50 p-3 dark:border-gray-800 dark:bg-gray-800/30">
-                <item.icon className="h-5 w-5 flex-shrink-0 text-green-500 mt-0.5" />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{item.text}</span>
-              </div>
+              <RevealItem key={i} variants={scaleIn}>
+                <div className="flex h-full items-start gap-2.5 rounded-xl border border-gray-100 bg-gray-50/60 p-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-white hover:shadow-depth dark:border-gray-800 dark:bg-gray-800/30 dark:hover:bg-gray-800/60">
+                  <item.icon className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-500" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{item.text}</span>
+                </div>
+              </RevealItem>
             ))}
-          </div>
+          </Reveal>
         </div>
       </section>
 
@@ -575,7 +363,7 @@ export default function HomePage() {
           </div>
 
           {/* Written quotes */}
-          <div className="grid gap-6 md:grid-cols-2">
+          <Reveal stagger={0.12} className="grid gap-6 md:grid-cols-2">
             {[
               {
                 quote:
@@ -590,32 +378,26 @@ export default function HomePage() {
                 role: 'IGCSE Student',
               },
             ].map((t, i) => (
-              <figure
-                key={i}
-                id={`quote-${i}`}
-                data-animate
-                className={`relative rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-500 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900 ${
-                  visibleElements.has(`quote-${i}`) ? 'animate-slide-up' : 'opacity-0 translate-y-6'
-                }`}
-                style={{ animationDelay: `${i * 120}ms` }}
-              >
-                <div className="mb-3 flex" aria-hidden="true">
-                  {Array.from({ length: 5 }).map((_, s) => (
-                    <Star key={s} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  ))}
-                </div>
-                <blockquote className="text-base leading-relaxed text-gray-700 dark:text-gray-300">
-                  &ldquo;{t.quote}&rdquo;
-                </blockquote>
-                <figcaption className="mt-4 text-sm">
-                  <span className="font-semibold text-gray-900 dark:text-gray-100">
-                    {t.name}
-                  </span>
-                  <span className="text-gray-500 dark:text-gray-400"> — {t.role}</span>
-                </figcaption>
-              </figure>
+              <RevealItem key={i} className="h-full">
+                <figure className="glass-panel relative h-full rounded-2xl p-6 shadow-depth transition-all duration-500 hover:-translate-y-1 hover:shadow-depth-lg">
+                  <div className="mb-3 flex" aria-hidden="true">
+                    {Array.from({ length: 5 }).map((_, s) => (
+                      <Star key={s} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    ))}
+                  </div>
+                  <blockquote className="text-base leading-relaxed text-gray-700 dark:text-gray-300">
+                    &ldquo;{t.quote}&rdquo;
+                  </blockquote>
+                  <figcaption className="mt-4 text-sm">
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                      {t.name}
+                    </span>
+                    <span className="text-gray-500 dark:text-gray-400"> — {t.role}</span>
+                  </figcaption>
+                </figure>
+              </RevealItem>
             ))}
-          </div>
+          </Reveal>
         </div>
       </section>
 
@@ -627,10 +409,6 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-primary/5 dark:from-gray-900 dark:via-gray-900 dark:to-primary/5" />
         <div className="relative mx-auto max-w-3xl">
           <div className="mb-12 text-center">
-            <div className="mb-4 inline-flex items-center rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary dark:bg-primary/20">
-              <HelpCircle className="mr-2 h-4 w-4" />
-              Common Questions
-            </div>
             <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
               Frequently Asked Questions
             </h2>
@@ -640,30 +418,17 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section id="contact" className="relative px-4 py-20 overflow-hidden">
+      <section id="contact" className="relative scroll-mt-24 px-4 py-20 overflow-hidden">
         {/* Background Effects */}
         <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-primary/5 dark:from-gray-900 dark:via-gray-900 dark:to-primary/5"></div>
         
         <div className="relative mx-auto max-w-4xl text-center">
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary via-primary-600 to-purple-600 p-12 text-white shadow-2xl">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary via-primary-600 to-primary-700 p-12 text-white shadow-2xl">
             {/* Animated Background Elements */}
             <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-primary-600/20"></div>
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]"></div>
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.1),transparent_50%)]"></div>
             
-            {/* Floating Elements */}
-            <div className="absolute top-4 left-4 animate-bounce-slow">
-              <Globe className="h-6 w-6 text-white/30" />
-            </div>
-            <div className="absolute top-8 right-8 animate-bounce-slow" style={{ animationDelay: '1s' }}>
-              <Rocket className="h-5 w-5 text-white/30" />
-            </div>
-            <div className="absolute bottom-6 left-8 animate-bounce-slow" style={{ animationDelay: '2s' }}>
-              <Sparkles className="h-4 w-4 text-white/30" />
-            </div>
-            <div className="absolute bottom-4 right-6 animate-bounce-slow" style={{ animationDelay: '3s' }}>
-              <Zap className="h-5 w-5 text-white/30" />
-            </div>
             
             <div className="relative">
               <h2 className="mb-6 text-4xl font-bold">
@@ -794,14 +559,14 @@ export default function HomePage() {
 
           {/* Bottom bar */}
           <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-gray-200 pt-8 dark:border-gray-800 sm:flex-row">
-            <p className="text-sm text-gray-500 dark:text-gray-500">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               © {new Date().getFullYear()} Learnify LMS. All rights reserved.
             </p>
             <div className="flex items-center space-x-6">
-              <Link href="#" className="text-sm text-gray-500 transition-colors hover:text-primary dark:text-gray-500 dark:hover:text-primary">
+              <Link href="#" className="text-sm text-gray-600 transition-colors hover:text-primary dark:text-gray-400 dark:hover:text-primary">
                 Privacy Policy
               </Link>
-              <Link href="#" className="text-sm text-gray-500 transition-colors hover:text-primary dark:text-gray-500 dark:hover:text-primary">
+              <Link href="#" className="text-sm text-gray-600 transition-colors hover:text-primary dark:text-gray-400 dark:hover:text-primary">
                 Terms of Service
               </Link>
             </div>

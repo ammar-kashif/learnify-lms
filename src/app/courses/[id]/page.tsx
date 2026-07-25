@@ -56,6 +56,23 @@ export default async function CoursePage({ params, searchParams }: { params: { i
   const chapters = (chaptersData || []) as ChapterItem[];
   console.log('📖 Chapters result:', chapters.length, 'chapters');
 
+  // Counts for the course header. Head-only count queries — no rows come back,
+  // and these are the real columns (see .claude/supabase-schema.md), not the
+  // invented ones that used to feed the dashboard tiles.
+  const [{ count: lectureCount }, { count: upcomingClassCount }] = await Promise.all([
+    supabaseAdmin
+      .from('lecture_recordings')
+      .select('id', { count: 'exact', head: true })
+      .eq('course_id', courseId)
+      .eq('is_published', true),
+    supabaseAdmin
+      .from('live_classes')
+      .select('id', { count: 'exact', head: true })
+      .eq('course_id', courseId)
+      .neq('status', 'ended')
+      .gte('scheduled_date', new Date().toISOString()),
+  ]);
+
   if (!course) {
     notFound();
   }
@@ -64,11 +81,13 @@ export default async function CoursePage({ params, searchParams }: { params: { i
   const activeTab = (tabParam === 'lectures' || tabParam === 'quizzes' || tabParam === 'chapters' || tabParam === 'assignments' || tabParam === 'live-classes') ? tabParam : 'chapters';
 
   return (
-    <CoursePageClient 
+    <CoursePageClient
       course={course}
       chapters={chapters}
       courseId={courseId}
       activeTab={activeTab}
+      lectureCount={lectureCount ?? 0}
+      upcomingClassCount={upcomingClassCount ?? 0}
     />
   );
 }
