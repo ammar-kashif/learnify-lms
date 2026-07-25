@@ -47,7 +47,7 @@ interface EnrolledCourse {
 }
 
 export default function StudentCoursesPage() {
-  const { user, signOut } = useAuth();
+  const { user, session, signOut } = useAuth();
   const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,12 +80,14 @@ export default function StudentCoursesPage() {
   // Fetch student's enrolled courses
   useEffect(() => {
     const fetchEnrolledCourses = async () => {
-      if (!user?.id) return;
+      if (!user?.id || !session?.access_token) return;
 
       try {
         setLoading(true);
-        const response = await fetch(`/api/dashboard/courses?studentId=${user.id}`);
-        
+        const response = await fetch(`/api/dashboard/courses?studentId=${user.id}`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+
         if (!response.ok) {
           throw new Error('Failed to fetch enrolled courses');
         }
@@ -101,7 +103,7 @@ export default function StudentCoursesPage() {
     };
 
     fetchEnrolledCourses();
-  }, [user?.id]);
+  }, [user?.id, session?.access_token]);
 
   if (loading) {
     return (

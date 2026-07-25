@@ -48,6 +48,12 @@ export default function StudentDashboard() {
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [showChoiceModal, setShowChoiceModal] = useState(false);
   const [selectedSubscriptionPlan, setSelectedSubscriptionPlan] = useState<any>(null);
+  const [stats, setStats] = useState<{
+    quizzesCompleted: number;
+    averageQuizScore: number;
+    assignmentsSubmitted: number;
+    assignmentsGraded: number;
+  } | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -66,12 +72,15 @@ export default function StudentDashboard() {
 
       setLoading(true);
       try {
-        const [enrolledRes, availableRes, paymentsRes] = await Promise.all([
-          fetch(`/api/dashboard/courses?userId=${user.id}&role=student`, { next: { revalidate: 60 } } as any).then(r => r.json()),
+        const authHeaders = {
+          Authorization: `Bearer ${session?.access_token || ''}`,
+        };
+
+        const [enrolledRes, availableRes, paymentsRes, statsRes] = await Promise.all([
+          fetch(`/api/dashboard/courses?userId=${user.id}&role=student`, { headers: authHeaders }).then(r => r.json()),
           fetch(`/api/courses/available?studentId=${user.id}`, { next: { revalidate: 60 } } as any).then(r => r.json()),
-          fetch('/api/payment-verifications', {
-            headers: { 'Authorization': `Bearer ${session?.access_token || ''}` },
-          }).then(r => r.json()),
+          fetch('/api/payment-verifications', { headers: authHeaders }).then(r => r.json()),
+          fetch(`/api/dashboard/stats?role=student`, { headers: authHeaders }).then(r => r.json()),
         ]);
 
         const enrolled = enrolledRes?.courses || [];
@@ -79,6 +88,7 @@ export default function StudentDashboard() {
         setEnrolledCourses(enrolled);
         setAvailableCourses(available);
         setPaymentVerifications(paymentsRes?.paymentVerifications || []);
+        setStats(statsRes?.stats ?? null);
 
         // Cache for next mounts
         try {
@@ -100,17 +110,19 @@ export default function StudentDashboard() {
     load();
   }, [user, session?.access_token]);
 
-  // Calculate dashboard stats
+  // Dashboard stats. Lecture progress comes from `video_complete` tracking on
+  // each course; quiz and assignment figures come from /api/dashboard/stats.
   const totalCourses = enrolledCourses.length;
-  const averageProgress =
-    enrolledCourses.reduce(
-      (sum, c) => sum + (c.enrollment?.progress_percentage ?? 0),
-      0
-    ) / (enrolledCourses.length || 1);
-  const completedChapters = enrolledCourses.reduce((sum, c) => {
-    const progress = c.enrollment?.progress_percentage ?? 0;
-    return sum + Math.floor((progress / 100) * (c.duration_weeks || 0));
-  }, 0);
+  const totalLessons = enrolledCourses.reduce(
+    (sum, c) => sum + (c.total_lessons ?? 0),
+    0
+  );
+  const completedLessons = enrolledCourses.reduce(
+    (sum, c) => sum + (c.completed_lessons ?? 0),
+    0
+  );
+  const lessonProgress =
+    totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
 
   // Get upcoming assignments
   const upcomingAssignments = mockAssignments
@@ -409,16 +421,16 @@ export default function StudentDashboard() {
         <Card className="border-0 bg-gradient-to-br from-primary-50 to-primary-100 dark:from-gray-800 dark:to-gray-700 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-primary-600 dark:text-primary-400">
-              Average Progress
+              Lectures Watched
             </CardTitle>
             <TrendingUp className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary-900 dark:text-white">
-              {averageProgress.toFixed(1)}%
+              {loading ? '—' : `${lessonProgress.toFixed(0)}%`}
             </div>
             <p className="text-xs text-primary-600 dark:text-primary-400">
-              Across all courses
+              {completedLessons} of {totalLessons} lectures
             </p>
           </CardContent>
         </Card>
@@ -426,16 +438,17 @@ export default function StudentDashboard() {
         <Card className="border-0 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-              Completed Chapters
+              Average Quiz Score
             </CardTitle>
             <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {completedChapters}
+              {stats ? `${stats.averageQuizScore.toFixed(1)}%` : '—'}
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Total completed
+              Across {stats?.quizzesCompleted ?? 0} completed{' '}
+              {stats?.quizzesCompleted === 1 ? 'quiz' : 'quizzes'}
             </p>
           </CardContent>
         </Card>
@@ -443,16 +456,16 @@ export default function StudentDashboard() {
         <Card className="border-0 bg-gradient-to-br from-primary-50 to-primary-100 dark:from-gray-800 dark:to-gray-700 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-primary-600 dark:text-primary-400">
-              Study Streak
+              Assignments
             </CardTitle>
             <Award className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary-900 dark:text-white">
-              7 days
+              {stats ? stats.assignmentsSubmitted : '—'}
             </div>
             <p className="text-xs text-primary-600 dark:text-primary-400">
-              Current streak
+              {stats?.assignmentsGraded ?? 0} graded
             </p>
           </CardContent>
         </Card>
