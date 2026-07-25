@@ -33,6 +33,17 @@ module.exports = {
     'prefer-const': 'error',
     'no-var': 'error',
   },
+  overrides: [
+    {
+      // React Three Fiber renders three.js objects as intrinsic JSX elements
+      // (<mesh>, <icosahedronGeometry args={...} />). eslint-plugin-react only
+      // knows the DOM element whitelist, so it flags every three.js prop.
+      files: ['src/components/hero/**/*.tsx'],
+      rules: {
+        'react/no-unknown-property': 'off',
+      },
+    },
+  ],
   settings: {
     react: {
       version: 'detect',
