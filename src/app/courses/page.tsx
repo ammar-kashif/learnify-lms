@@ -9,13 +9,20 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { BookOpen, Clock, Users, Star, Loader2, X, CheckCircle, Crown, Video, ArrowLeft } from 'lucide-react';
+import { BookOpen, Clock, Star, Loader2, X, CheckCircle, Crown, Video, ArrowLeft, Search } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import DemoAccessRequest from '@/components/course/demo-access-request';
 import ModernSubscriptionModal from '@/components/modern-subscription-modal';
+import {
+  parseCourseTitle,
+  subjectIcon,
+  groupByLevel,
+  LEVEL_ORDER,
+  type CourseLevel,
+} from '@/lib/course-taxonomy';
 
 interface Course {
   id: string;
@@ -39,6 +46,34 @@ export default function CoursesPage() {
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [subscriptionPlans, setSubscriptionPlans] = useState<any[]>([]);
   const [subscriptionPlansLoading, setSubscriptionPlansLoading] = useState(false);
+  const [query, setQuery] = useState('');
+  const [activeLevel, setActiveLevel] = useState<CourseLevel | 'All'>('All');
+
+  // Which level tabs to offer — only those with courses behind them.
+  const availableLevels = useMemo(() => {
+    const present = new Set(courses.map(c => parseCourseTitle(c.title).level));
+    return LEVEL_ORDER.filter(level => present.has(level));
+  }, [courses]);
+
+  // Search matches subject or description, so "bio" and "genetics" both work.
+  const filteredCourses = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return courses.filter(course => {
+      const { level, subject } = parseCourseTitle(course.title);
+      if (activeLevel !== 'All' && level !== activeLevel) return false;
+      if (!needle) return true;
+      return (
+        subject.toLowerCase().includes(needle) ||
+        course.title.toLowerCase().includes(needle) ||
+        (course.description ?? '').toLowerCase().includes(needle)
+      );
+    });
+  }, [courses, query, activeLevel]);
+
+  const groupedCourses = useMemo(
+    () => groupByLevel(filteredCourses),
+    [filteredCourses]
+  );
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -197,7 +232,7 @@ export default function CoursesPage() {
               Explore Our Courses
             </h1>
             <p className="mx-auto mt-4 max-w-3xl text-xl text-gray-600">
-              Discover a wide range of Cambridge O Levels courses designed to
+              Discover a wide range of O Level and IGCSE courses designed to
               help you excel in your academic journey.
             </p>
             {!authLoading && user && userRole && userRole !== 'student' && (
@@ -241,83 +276,168 @@ export default function CoursesPage() {
             <p className="mt-2 text-gray-600">Check back later for new courses.</p>
           </div>
         ) : (
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {courses.map(course => (
-              <Card
-                key={course.id}
-                className="group border-gray-200 bg-white backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-2xl flex flex-col h-full"
-              >
-                <CardHeader className="pb-4 text-center">
-                  <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 transition-transform duration-300 group-hover:scale-110">
-                    <BookOpen className="h-8 w-8 text-primary" />
-                  </div>
-                  <CardTitle className="text-xl font-bold text-gray-900">
-                    {course.title}
-                  </CardTitle>
-                  <CardDescription className="text-gray-600 line-clamp-3 min-h-[60px]">
-                    {course.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col flex-grow text-center p-6">
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center justify-center space-x-4 text-sm text-gray-600">
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-4 w-4" />
-                        <span>Self-paced</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Users className="h-4 w-4" />
-                        <span>O Level</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-center space-x-1">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`h-4 w-4 ${i < 4 ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'}`}
-                        />
-                      ))}
-                      <span className="ml-2 text-sm text-gray-600">
-                        (4.5)
-                      </span>
-                    </div>
-                  </div>
+          <>
+            {/* Search + level filter */}
+            <div className="mb-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="relative w-full lg:max-w-sm">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  placeholder="Search subjects…"
+                  aria-label="Search courses"
+                  className="h-11 w-full rounded-full border border-gray-200 bg-white pl-10 pr-4 text-sm text-gray-900 shadow-sm outline-none transition-colors placeholder:text-gray-400 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
 
-                  <div className="border-t border-gray-200 pt-4 -mx-6 px-6 mt-auto">
-                    <div className="mb-4 flex items-center justify-center">
-                      <Badge
-                        variant="secondary"
-                        className="border-primary/20 bg-primary/10 text-primary-700"
-                      >
-                        O Level
-                      </Badge>
-                    </div>
-                    <div className="flex flex-col gap-2 w-full max-w-full">
-                    <Button 
-                        className="w-full max-w-full bg-primary text-white hover:bg-primary-600 transition-colors h-10 px-4 flex items-center justify-center overflow-hidden"
-                      onClick={() => handleEnroll(course)}
-                      disabled={authLoading || checkingEnrollment === course.id}
+              <div
+                role="tablist"
+                aria-label="Filter by qualification"
+                className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:overflow-visible lg:px-0 lg:pb-0"
+              >
+                {(['All', ...availableLevels] as const).map(level => {
+                  const isActive = activeLevel === level;
+                  const count =
+                    level === 'All'
+                      ? courses.length
+                      : courses.filter(
+                          c => parseCourseTitle(c.title).level === level
+                        ).length;
+                  return (
+                    <button
+                      key={level}
+                      role="tab"
+                      aria-selected={isActive}
+                      onClick={() => setActiveLevel(level)}
+                      className={`flex-shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200 ${
+                        isActive
+                          ? 'border-primary bg-primary text-white shadow-sm'
+                          : 'border-gray-200 bg-white text-gray-600 hover:border-primary/40 hover:text-primary'
+                      }`}
                     >
-                        <BookOpen className="mr-2 h-4 w-4 flex-shrink-0" />
-                        <span className="truncate">
-                      {authLoading ? 'Loading...' : 
-                       checkingEnrollment === course.id ? 'Checking...' : 'Enroll Now'}
-                        </span>
-                      </Button>
-                      <Link href={`/courses/${course.id}/preview`} className="w-full max-w-full block">
-                        <Button 
-                          className="w-full max-w-full bg-blue-700 text-white hover:bg-blue-800 transition-colors h-10 px-4 flex items-center justify-center overflow-hidden"
-                        >
-                          <Video className="mr-2 h-4 w-4 flex-shrink-0" />
-                          <span className="truncate">Watch a Video</span>
-                    </Button>
-                      </Link>
+                      {level}
+                      <span
+                        className={`ml-2 text-xs ${isActive ? 'text-white/70' : 'text-gray-400'}`}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {filteredCourses.length === 0 ? (
+              <div className="py-16 text-center">
+                <Search className="mx-auto h-12 w-12 text-gray-300" />
+                <h3 className="mt-4 text-lg font-medium text-gray-900">
+                  No courses match &ldquo;{query}&rdquo;
+                </h3>
+                <p className="mt-2 text-gray-600">
+                  Try a different subject, or clear the filters.
+                </p>
+                <Button
+                  variant="outline"
+                  className="mt-5"
+                  onClick={() => {
+                    setQuery('');
+                    setActiveLevel('All');
+                  }}
+                >
+                  Clear filters
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-14">
+                {groupedCourses.map(group => (
+                  <section key={group.level} aria-labelledby={`level-${group.level}`}>
+                    <div className="mb-6 flex items-center gap-4">
+                      <h2
+                        id={`level-${group.level}`}
+                        className="text-2xl font-bold text-gray-900"
+                      >
+                        {group.level}
+                      </h2>
+                      <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                        {group.courses.length}{' '}
+                        {group.courses.length === 1 ? 'course' : 'courses'}
+                      </span>
+                      <div className="h-px flex-1 bg-gray-200" />
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+
+                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                      {group.courses.map(course => {
+                        const { level, subject } = parseCourseTitle(course.title);
+                        const Icon = subjectIcon(subject);
+                        return (
+                          <Card
+                            key={course.id}
+                            className="group flex h-full flex-col border-gray-200 bg-white transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-xl"
+                          >
+                            <CardHeader className="pb-4">
+                              <div className="mb-4 flex items-start justify-between gap-3">
+                                <div className="inline-flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10 transition-transform duration-300 group-hover:scale-110">
+                                  <Icon className="h-6 w-6 text-primary" />
+                                </div>
+                                <Badge
+                                  variant="secondary"
+                                  className="border-primary/20 bg-primary/10 text-primary-700"
+                                >
+                                  {level}
+                                </Badge>
+                              </div>
+                              <CardTitle className="text-lg font-bold leading-snug text-gray-900">
+                                {subject}
+                              </CardTitle>
+                              <CardDescription className="line-clamp-3 text-gray-600">
+                                {course.description}
+                              </CardDescription>
+                            </CardHeader>
+
+                            <CardContent className="mt-auto flex flex-col p-6 pt-0">
+                              <div className="mb-4 flex items-center gap-1.5 text-sm text-gray-500">
+                                <Clock className="h-4 w-4" />
+                                <span>Self-paced</span>
+                              </div>
+
+                              <div className="flex flex-col gap-2 border-t border-gray-200 pt-4">
+                                <Button
+                                  className="h-10 w-full bg-primary text-white transition-colors hover:bg-primary-600"
+                                  onClick={() => handleEnroll(course)}
+                                  disabled={
+                                    authLoading || checkingEnrollment === course.id
+                                  }
+                                >
+                                  <BookOpen className="mr-2 h-4 w-4 flex-shrink-0" />
+                                  <span className="truncate">
+                                    {authLoading
+                                      ? 'Loading…'
+                                      : checkingEnrollment === course.id
+                                        ? 'Checking…'
+                                        : 'Enroll Now'}
+                                  </span>
+                                </Button>
+                                <Link
+                                  href={`/courses/${course.id}/preview`}
+                                  className="block w-full"
+                                >
+                                  <Button className="h-10 w-full bg-blue-700 text-white transition-colors hover:bg-blue-800">
+                                    <Video className="mr-2 h-4 w-4 flex-shrink-0" />
+                                    <span className="truncate">Watch a Video</span>
+                                  </Button>
+                                </Link>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 
