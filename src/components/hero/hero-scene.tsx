@@ -33,7 +33,7 @@ const BOUNDS = { x: 5.4, y: 3.1, z: 2.4 };
 const NODE_PALE = new Color('#EFE9E2');
 const NODE_ACCENT = new Color('#DF6639');
 const LINE_NEAR = new Color('#8A8F98');
-const LINE_FAR = new Color('#1A1B1F');
+const LINE_FAR = new Color('#111110');
 
 /** Deterministic PRNG — Math.random would differ between renders. */
 function makeRandom(seed: number) {

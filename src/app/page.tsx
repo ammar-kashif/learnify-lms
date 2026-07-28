@@ -129,11 +129,11 @@ export default function HomePage() {
           copy ranged left. The mesh needs a dark ground to read — thin light
           lines on white are invisible — so this section inverts while the rest
           of the page stays light. */}
-      <section className="relative isolate overflow-hidden bg-charcoal-900 px-4 pb-20 pt-32 sm:pb-24 sm:pt-36">
+      <section className="relative isolate overflow-hidden bg-charcoal-950 px-4 pb-20 pt-32 sm:pb-24 sm:pt-36">
         {/* Depth wash behind the mesh */}
         <div
           aria-hidden="true"
-          className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_70%_60%_at_70%_40%,#35322F,#1E1D1C_70%)]"
+          className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_70%_60%_at_70%_40%,#22211F,#0B0B0A_72%)]"
         />
 
         {/* Constellation. Masked so it dissolves toward the copy on the left
@@ -145,7 +145,7 @@ export default function HomePage() {
         {/* Settle the band into the page below */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-24 bg-gradient-to-t from-charcoal-900 to-transparent"
+          className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-24 bg-gradient-to-t from-charcoal-950 to-transparent"
         />
 
         <div
