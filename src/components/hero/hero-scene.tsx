@@ -22,18 +22,18 @@ import {
  * three.js ends up in the main bundle.
  */
 
-const NODES = 150;
+const NODES = 120;
 /** Nodes closer than this get joined. */
-const LINK_DIST = 1.55;
+const LINK_DIST = 1.02;
 /** Upper bound on segments so a dense frame cannot overflow the buffer. */
 const MAX_LINKS = 1500;
 
-const BOUNDS = { x: 5.4, y: 3.1, z: 2.4 };
+const BOUNDS = { x: 3.4, y: 2.1, z: 1.7 };
 
-const NODE_PALE = new Color('#EFE9E2');
+const NODE_PALE = new Color('#E6EAF2');
 const NODE_ACCENT = new Color('#DF6639');
 const LINE_NEAR = new Color('#8A8F98');
-const LINE_FAR = new Color('#111110');
+const LINE_FAR = new Color('#0E1220');
 
 /** Deterministic PRNG — Math.random would differ between renders. */
 function makeRandom(seed: number) {
@@ -60,7 +60,7 @@ function Constellation() {
       for (let i = 0; i < NODES; i++) {
         // Weighted to the right: the copy sits on the left, so bias the cloud
         // away from it rather than masking it out afterwards.
-        positions[i * 3] = (random() * 1.35 - 0.35) * BOUNDS.x;
+        positions[i * 3] = (random() * 2 - 1) * BOUNDS.x;
         positions[i * 3 + 1] = (random() * 2 - 1) * BOUNDS.y;
         positions[i * 3 + 2] = (random() * 2 - 1) * BOUNDS.z;
 
@@ -90,7 +90,7 @@ function Constellation() {
       );
 
       const pointMat = new PointsMaterial({
-        size: 0.055,
+        size: 0.04,
         sizeAttenuation: true,
         vertexColors: true,
         transparent: true,
@@ -193,7 +193,9 @@ function Constellation() {
   });
 
   return (
-    <group>
+    // Offset right rather than skewing the spread, so the cloud still
+    // rotates about its own centre.
+    <group position={[2.35, 0, 0]}>
       <points ref={pointsRef} geometry={pointGeom} material={pointMat} />
       <lineSegments ref={linesRef} geometry={lineGeom} material={lineMat} />
     </group>

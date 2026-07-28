@@ -32,13 +32,13 @@ export function HeroFallback() {
       className="absolute inset-0 overflow-hidden"
       data-testid="hero-fallback"
     >
-      <div className="animate-aurora absolute left-1/2 top-1/2 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/25 blur-3xl" />
+      <div className="animate-aurora absolute left-[68%] top-1/2 h-[340px] w-[340px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-3xl" />
       <div
-        className="animate-aurora absolute left-1/3 top-1/3 h-72 w-72 rounded-full bg-primary-700/30 blur-3xl"
+        className="animate-aurora absolute left-[60%] top-1/3 h-64 w-64 rounded-full bg-primary-900/25 blur-3xl"
         style={{ animationDelay: '-6s' }}
       />
       <div
-        className="animate-aurora absolute bottom-1/4 right-1/4 h-64 w-64 rounded-full bg-charcoal-700/40 blur-3xl"
+        className="animate-aurora absolute bottom-1/4 right-[18%] h-56 w-56 rounded-full bg-gray-700/30 blur-3xl"
         style={{ animationDelay: '-12s' }}
       />
     </div>

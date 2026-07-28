@@ -129,23 +129,23 @@ export default function HomePage() {
           copy ranged left. The mesh needs a dark ground to read — thin light
           lines on white are invisible — so this section inverts while the rest
           of the page stays light. */}
-      <section className="relative isolate overflow-hidden bg-charcoal-950 px-4 pb-20 pt-32 sm:pb-24 sm:pt-36">
+      <section className="relative isolate overflow-hidden bg-gray-900 px-4 pb-20 pt-32 sm:pb-24 sm:pt-36">
         {/* Depth wash behind the mesh */}
         <div
           aria-hidden="true"
-          className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_70%_60%_at_70%_40%,#22211F,#0B0B0A_72%)]"
+          className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_65%_55%_at_72%_45%,#182130,#090C14_70%)]"
         />
 
         {/* Constellation. Masked so it dissolves toward the copy on the left
             instead of competing with it. */}
         <Hero3D
-          className="pointer-events-none absolute inset-0 -z-10 opacity-90 [mask-image:linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.35)_28%,black_58%)] [-webkit-mask-image:linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.35)_28%,black_58%)]"
+          className="pointer-events-none absolute inset-0 -z-10 opacity-90 [mask-image:linear-gradient(to_right,transparent_0%,transparent_34%,rgba(0,0,0,0.5)_52%,black_72%)] [-webkit-mask-image:linear-gradient(to_right,transparent_0%,transparent_34%,rgba(0,0,0,0.5)_52%,black_72%)]"
         />
 
         {/* Settle the band into the page below */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-24 bg-gradient-to-t from-charcoal-950 to-transparent"
+          className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-24 bg-gradient-to-t from-gray-900 to-transparent"
         />
 
         <div
