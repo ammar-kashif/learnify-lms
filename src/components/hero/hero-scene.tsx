@@ -1,253 +1,201 @@
 'use client';
 
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Float } from '@react-three/drei';
-import { useRef, useMemo, type ReactNode } from 'react';
-import type { Group, Mesh } from 'three';
+import { useRef, useMemo } from 'react';
+import {
+  BufferAttribute,
+  BufferGeometry,
+  Color,
+  LineBasicMaterial,
+  PointsMaterial,
+  type LineSegments as ThreeLineSegments,
+  type Points as ThreePoints,
+} from 'three';
 
 /**
- * The subjects Learnify teaches, orbiting a core.
+ * Network constellation.
  *
- * Physics as an atom, Chemistry as a molecule, Biology as a helix, Maths as a
- * polyhedron, Computer Science as a bracket pair, English as a book. Reads as
- * "an academy" rather than generic abstract 3D.
+ * Drifting nodes joined by a line whenever two come within range, so the mesh
+ * continuously forms and dissolves. Nodes ease away from the cursor.
  *
  * Loaded only via `next/dynamic` from `<Hero3D>`; never import it directly, or
  * three.js ends up in the main bundle.
  */
 
-const PRIMARY = '#DF6639';
-const PRIMARY_LIGHT = '#F48D75';
-const CHARCOAL = '#66625C';
-const PAPER = '#F2EEE9';
+const NODES = 150;
+/** Nodes closer than this get joined. */
+const LINK_DIST = 1.55;
+/** Upper bound on segments so a dense frame cannot overflow the buffer. */
+const MAX_LINKS = 1500;
 
-/* ---------------------------------------------------------------- subjects */
+const BOUNDS = { x: 5.4, y: 3.1, z: 2.4 };
 
-function Atom({ color }: { color: string }) {
-  const rings = useRef<Group>(null);
-  useFrame((_, delta) => {
-    if (rings.current) rings.current.rotation.z += delta * 0.6;
-  });
-  return (
-    <group>
-      <mesh>
-        <sphereGeometry args={[0.18, 16, 16]} />
-        <meshStandardMaterial color={color} roughness={0.3} metalness={0.4} />
-      </mesh>
-      <group ref={rings}>
-        {[0, Math.PI / 3, -Math.PI / 3].map((tilt, i) => (
-          <mesh key={i} rotation={[Math.PI / 2, tilt, 0]}>
-            <torusGeometry args={[0.46, 0.022, 8, 48]} />
-            <meshStandardMaterial color={color} roughness={0.4} metalness={0.3} />
-          </mesh>
-        ))}
-      </group>
-    </group>
-  );
+const NODE_PALE = new Color('#EFE9E2');
+const NODE_ACCENT = new Color('#DF6639');
+const LINE_NEAR = new Color('#8A8F98');
+const LINE_FAR = new Color('#1A1B1F');
+
+/** Deterministic PRNG — Math.random would differ between renders. */
+function makeRandom(seed: number) {
+  let state = seed;
+  return () => {
+    state = (state * 1664525 + 1013904223) % 4294967296;
+    return state / 4294967296;
+  };
 }
 
-function Molecule({ color }: { color: string }) {
-  // Tetrahedral-ish arrangement: a centre bonded to three outer atoms.
-  const bonds: Array<[number, number, number]> = [
-    [0.42, 0.28, 0],
-    [-0.42, 0.24, 0.18],
-    [0.05, -0.44, -0.22],
-  ];
-  return (
-    <group>
-      <mesh>
-        <sphereGeometry args={[0.2, 16, 16]} />
-        <meshStandardMaterial color={color} roughness={0.35} metalness={0.35} />
-      </mesh>
-      {bonds.map((position, i) => (
-        <group key={i}>
-          <mesh position={position}>
-            <sphereGeometry args={[0.13, 14, 14]} />
-            <meshStandardMaterial color={PAPER} roughness={0.5} />
-          </mesh>
-          {/* Bond: a thin box stretched from centre to the outer atom */}
-          <mesh
-            position={[position[0] / 2, position[1] / 2, position[2] / 2]}
-            scale={[
-              Math.hypot(...position),
-              0.035,
-              0.035,
-            ]}
-            rotation={[0, Math.atan2(-position[2], position[0]), Math.atan2(position[1], Math.hypot(position[0], position[2]))]}
-          >
-            <boxGeometry args={[1, 1, 1]} />
-            <meshStandardMaterial color={CHARCOAL} roughness={0.6} />
-          </mesh>
-        </group>
-      ))}
-    </group>
-  );
-}
+function Constellation() {
+  const pointsRef = useRef<ThreePoints>(null);
+  const linesRef = useRef<ThreeLineSegments>(null);
+  const pointer = useRef({ x: 0, y: 0 });
 
-function Helix({ color }: { color: string }) {
-  const beads = useMemo(
-    () =>
-      Array.from({ length: 14 }, (_, i) => {
-        const t = (i / 13) * Math.PI * 2.2;
-        const y = (i / 13 - 0.5) * 1.0;
-        return { t, y };
-      }),
-    []
-  );
-  return (
-    <group>
-      {beads.map(({ t, y }, i) => (
-        <group key={i}>
-          <mesh position={[Math.cos(t) * 0.26, y, Math.sin(t) * 0.26]}>
-            <sphereGeometry args={[0.062, 10, 10]} />
-            <meshStandardMaterial color={color} roughness={0.4} metalness={0.3} />
-          </mesh>
-          <mesh position={[-Math.cos(t) * 0.26, y, -Math.sin(t) * 0.26]}>
-            <sphereGeometry args={[0.062, 10, 10]} />
-            <meshStandardMaterial color={PAPER} roughness={0.5} />
-          </mesh>
-        </group>
-      ))}
-    </group>
-  );
-}
+  const { positions, velocities, pointGeom, lineGeom, pointMat, lineMat } =
+    useMemo(() => {
+      const random = makeRandom(20260727);
 
-function Polyhedron({ color }: { color: string }) {
-  return (
-    <mesh>
-      <icosahedronGeometry args={[0.42, 0]} />
-      <meshStandardMaterial color={color} roughness={0.25} metalness={0.55} flatShading />
-    </mesh>
-  );
-}
+      const positions = new Float32Array(NODES * 3);
+      const velocities = new Float32Array(NODES * 3);
+      const colors = new Float32Array(NODES * 3);
 
-/** Angle brackets — `{ }` rendered as chunky geometry. */
-function Brackets({ color }: { color: string }) {
-  const bar = (
-    key: string,
-    position: [number, number, number],
-    rotation: number
-  ) => (
-    <mesh key={key} position={position} rotation={[0, 0, rotation]}>
-      <boxGeometry args={[0.34, 0.07, 0.07]} />
-      <meshStandardMaterial color={color} roughness={0.4} metalness={0.35} />
-    </mesh>
-  );
-  return (
-    <group>
-      {bar('lt', [-0.26, 0.16, 0], -0.9)}
-      {bar('lb', [-0.26, -0.16, 0], 0.9)}
-      {bar('rt', [0.26, 0.16, 0], 0.9)}
-      {bar('rb', [0.26, -0.16, 0], -0.9)}
-    </group>
-  );
-}
+      for (let i = 0; i < NODES; i++) {
+        // Weighted to the right: the copy sits on the left, so bias the cloud
+        // away from it rather than masking it out afterwards.
+        positions[i * 3] = (random() * 1.35 - 0.35) * BOUNDS.x;
+        positions[i * 3 + 1] = (random() * 2 - 1) * BOUNDS.y;
+        positions[i * 3 + 2] = (random() * 2 - 1) * BOUNDS.z;
 
-function Book({ color }: { color: string }) {
-  return (
-    <group rotation={[0.2, 0.4, 0]}>
-      <mesh>
-        <boxGeometry args={[0.62, 0.82, 0.1]} />
-        <meshStandardMaterial color={color} roughness={0.5} metalness={0.15} />
-      </mesh>
-      {/* Pages peeking out of the cover */}
-      <mesh position={[0.02, 0, 0.055]}>
-        <boxGeometry args={[0.56, 0.76, 0.02]} />
-        <meshStandardMaterial color={PAPER} roughness={0.8} />
-      </mesh>
-    </group>
-  );
-}
+        velocities[i * 3] = (random() - 0.5) * 0.06;
+        velocities[i * 3 + 1] = (random() - 0.5) * 0.06;
+        velocities[i * 3 + 2] = (random() - 0.5) * 0.04;
 
-/* ------------------------------------------------------------------- scene */
+        // Every seventh node picks up the brand orange
+        const c = i % 7 === 0 ? NODE_ACCENT : NODE_PALE;
+        colors[i * 3] = c.r;
+        colors[i * 3 + 1] = c.g;
+        colors[i * 3 + 2] = c.b;
+      }
 
-const SUBJECTS: Array<{ node: (color: string) => ReactNode; color: string }> = [
-  { node: c => <Atom color={c} />, color: PRIMARY },
-  { node: c => <Molecule color={c} />, color: PRIMARY_LIGHT },
-  { node: c => <Helix color={c} />, color: PRIMARY },
-  { node: c => <Polyhedron color={c} />, color: CHARCOAL },
-  { node: c => <Brackets color={c} />, color: PRIMARY_LIGHT },
-  { node: c => <Book color={c} />, color: PRIMARY },
-];
+      const pointGeom = new BufferGeometry();
+      pointGeom.setAttribute('position', new BufferAttribute(positions, 3));
+      pointGeom.setAttribute('color', new BufferAttribute(colors, 3));
 
-function Orbiter({
-  children,
-  angle,
-  radius,
-  height,
-  speed,
-}: {
-  children: ReactNode;
-  angle: number;
-  radius: number;
-  height: number;
-  speed: number;
-}) {
-  const spin = useRef<Mesh | Group | null>(null);
-  useFrame((_, delta) => {
-    if (spin.current) spin.current.rotation.y += delta * speed;
-  });
-  return (
-    <group
-      position={[Math.cos(angle) * radius, height, Math.sin(angle) * radius]}
-    >
-      <Float speed={1.1} rotationIntensity={0.3} floatIntensity={0.7}>
-        <group ref={spin as never}>{children}</group>
-      </Float>
-    </group>
-  );
-}
+      const lineGeom = new BufferGeometry();
+      lineGeom.setAttribute(
+        'position',
+        new BufferAttribute(new Float32Array(MAX_LINKS * 6), 3)
+      );
+      lineGeom.setAttribute(
+        'color',
+        new BufferAttribute(new Float32Array(MAX_LINKS * 6), 3)
+      );
 
-function Core() {
-  const mesh = useRef<Mesh>(null);
-  useFrame((_, delta) => {
-    if (!mesh.current) return;
-    mesh.current.rotation.y += delta * 0.2;
-    mesh.current.rotation.x += delta * 0.08;
-  });
-  return (
-    <Float speed={1} rotationIntensity={0.2} floatIntensity={0.5}>
-      <mesh ref={mesh}>
-        <icosahedronGeometry args={[0.62, 1]} />
-        <meshStandardMaterial
-          color={PRIMARY}
-          emissive={PRIMARY}
-          emissiveIntensity={0.35}
-          roughness={0.2}
-          metalness={0.7}
-          flatShading
-        />
-      </mesh>
-    </Float>
-  );
-}
+      const pointMat = new PointsMaterial({
+        size: 0.055,
+        sizeAttenuation: true,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.95,
+        depthWrite: false,
+      });
 
-function System() {
-  const group = useRef<Group>(null);
+      // LineBasicMaterial has no per-vertex alpha, so distance is expressed by
+      // darkening toward the background colour instead.
+      const lineMat = new LineBasicMaterial({
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.6,
+        depthWrite: false,
+      });
+
+      return { positions, velocities, pointGeom, lineGeom, pointMat, lineMat };
+    }, []);
 
   useFrame((state, delta) => {
-    if (!group.current) return;
-    group.current.rotation.y += delta * 0.14;
-    // Ease toward the pointer for parallax rather than snapping
-    const { x, y } = state.pointer;
-    group.current.rotation.x += (y * 0.18 - group.current.rotation.x) * 0.04;
-    group.current.position.x += (x * 0.25 - group.current.position.x) * 0.03;
+    // Clamp: a backgrounded tab hands back a huge delta on return and would
+    // fling every node out of bounds at once.
+    const step = Math.min(delta, 0.05);
+
+    pointer.current.x += (state.pointer.x * BOUNDS.x - pointer.current.x) * 0.05;
+    pointer.current.y += (state.pointer.y * BOUNDS.y - pointer.current.y) * 0.05;
+
+    // --- drift, bounce, ease away from the cursor
+    for (let i = 0; i < NODES; i++) {
+      const ix = i * 3;
+      positions[ix] += velocities[ix] * step;
+      positions[ix + 1] += velocities[ix + 1] * step;
+      positions[ix + 2] += velocities[ix + 2] * step;
+
+      if (Math.abs(positions[ix]) > BOUNDS.x) velocities[ix] *= -1;
+      if (Math.abs(positions[ix + 1]) > BOUNDS.y) velocities[ix + 1] *= -1;
+      if (Math.abs(positions[ix + 2]) > BOUNDS.z) velocities[ix + 2] *= -1;
+
+      const dx = positions[ix] - pointer.current.x;
+      const dy = positions[ix + 1] - pointer.current.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < 2.6 && d2 > 0.0001) {
+        const push = (1 - d2 / 2.6) * 0.9 * step;
+        const inv = 1 / Math.sqrt(d2);
+        positions[ix] += dx * inv * push;
+        positions[ix + 1] += dy * inv * push;
+      }
+    }
+    pointGeom.getAttribute('position').needsUpdate = true;
+
+    // --- rebuild the links
+    const linePos = lineGeom.getAttribute('position') as BufferAttribute;
+    const lineCol = lineGeom.getAttribute('color') as BufferAttribute;
+    const posArr = linePos.array as Float32Array;
+    const colArr = lineCol.array as Float32Array;
+
+    let link = 0;
+    for (let i = 0; i < NODES && link < MAX_LINKS; i++) {
+      const ix = i * 3;
+      for (let j = i + 1; j < NODES && link < MAX_LINKS; j++) {
+        const jx = j * 3;
+        const dx = positions[ix] - positions[jx];
+        const dy = positions[ix + 1] - positions[jx + 1];
+        const dz = positions[ix + 2] - positions[jx + 2];
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (dist > LINK_DIST) continue;
+
+        const o = link * 6;
+        posArr[o] = positions[ix];
+        posArr[o + 1] = positions[ix + 1];
+        posArr[o + 2] = positions[ix + 2];
+        posArr[o + 3] = positions[jx];
+        posArr[o + 4] = positions[jx + 1];
+        posArr[o + 5] = positions[jx + 2];
+
+        // Fade toward the background as the pair separates
+        const t = 1 - dist / LINK_DIST;
+        const r = LINE_FAR.r + (LINE_NEAR.r - LINE_FAR.r) * t;
+        const g = LINE_FAR.g + (LINE_NEAR.g - LINE_FAR.g) * t;
+        const b = LINE_FAR.b + (LINE_NEAR.b - LINE_FAR.b) * t;
+        colArr[o] = colArr[o + 3] = r;
+        colArr[o + 1] = colArr[o + 4] = g;
+        colArr[o + 2] = colArr[o + 5] = b;
+
+        link++;
+      }
+    }
+
+    // Collapse unused slots to a degenerate segment so they render as nothing
+    if (link < MAX_LINKS) posArr.fill(0, link * 6);
+
+    linePos.needsUpdate = true;
+    lineCol.needsUpdate = true;
+
+    // Very slow yaw so the mesh reads as volumetric rather than flat
+    if (pointsRef.current && linesRef.current) {
+      pointsRef.current.rotation.y += step * 0.025;
+      linesRef.current.rotation.y = pointsRef.current.rotation.y;
+    }
   });
 
   return (
-    <group ref={group}>
-      <Core />
-      {SUBJECTS.map((subject, i) => (
-        <Orbiter
-          key={i}
-          angle={(i / SUBJECTS.length) * Math.PI * 2}
-          radius={3.05}
-          height={i % 2 === 0 ? 0.75 : -0.8}
-          speed={0.3 + (i % 3) * 0.15}
-        >
-          {subject.node(subject.color)}
-        </Orbiter>
-      ))}
+    <group>
+      <points ref={pointsRef} geometry={pointGeom} material={pointMat} />
+      <lineSegments ref={linesRef} geometry={lineGeom} material={lineMat} />
     </group>
   );
 }
@@ -257,17 +205,11 @@ export default function HeroScene() {
     <Canvas
       // Cap DPR: retina phones would otherwise render at 3x and tank framerate.
       dpr={[1, 1.75]}
-      camera={{ position: [0, 0.2, 7.2], fov: 45 }}
-      // `default` power preference lets laptops stay on the integrated GPU,
-      // which keeps fans quiet on a marketing page.
+      camera={{ position: [0, 0, 7.6], fov: 45 }}
       gl={{ antialias: true, alpha: true, powerPreference: 'default' }}
       style={{ background: 'transparent' }}
     >
-      <ambientLight intensity={0.9} />
-      <directionalLight position={[3, 4, 5]} intensity={1.9} color="#FFF6F0" />
-      <directionalLight position={[-4, -1, 2]} intensity={0.8} color={PRIMARY} />
-      <pointLight position={[0, 0, 1.5]} intensity={2.4} color={PRIMARY} distance={6} />
-      <System />
+      <Constellation />
     </Canvas>
   );
 }

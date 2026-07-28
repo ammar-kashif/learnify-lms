@@ -229,7 +229,14 @@ export default function LandingNav() {
                 scrolled ? 'h-8 w-8' : 'h-9 w-9'
               )}
             />
-            <span className="text-lg font-bold tracking-tight text-charcoal-900 dark:text-gray-100">
+            <span
+              className={cn(
+                'text-lg font-bold tracking-tight transition-colors duration-300',
+                scrolled
+                  ? 'text-charcoal-900 dark:text-gray-100'
+                  : 'text-white'
+              )}
+            >
               Learnify
             </span>
           </Link>
@@ -264,8 +271,12 @@ export default function LandingNav() {
                   className={cn(
                     'relative rounded-full px-3.5 py-2 text-sm font-medium transition-colors lg:px-4',
                     isActive
-                      ? 'text-primary'
-                      : 'text-gray-700 hover:text-primary dark:text-gray-300 dark:hover:text-primary'
+                      ? scrolled
+                        ? 'text-primary'
+                        : 'text-primary-300'
+                      : scrolled
+                        ? 'text-gray-700 hover:text-primary dark:text-gray-300 dark:hover:text-primary'
+                        : 'text-white/75 hover:text-white'
                   )}
                 >
                   {link.label}
@@ -280,7 +291,12 @@ export default function LandingNav() {
               asChild
               variant="ghost"
               size="sm"
-              className="rounded-full text-gray-700 hover:bg-primary/10 hover:text-primary dark:text-gray-300"
+              className={cn(
+                'rounded-full transition-colors',
+                scrolled
+                  ? 'text-gray-700 hover:bg-primary/10 hover:text-primary dark:text-gray-300'
+                  : 'text-white/90 hover:bg-white/10 hover:text-white'
+              )}
             >
               <Link href="/auth/signin">Sign In</Link>
             </Button>
@@ -299,7 +315,12 @@ export default function LandingNav() {
             aria-expanded={menuOpen}
             aria-controls="landing-mobile-menu"
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            className="relative z-10 inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-700 transition-colors hover:bg-primary/10 hover:text-primary dark:text-gray-300 md:hidden"
+            className={cn(
+              'relative z-10 inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors md:hidden',
+              scrolled
+                ? 'text-gray-700 hover:bg-primary/10 hover:text-primary dark:text-gray-300'
+                : 'text-white/90 hover:bg-white/10 hover:text-white'
+            )}
           >
             {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
