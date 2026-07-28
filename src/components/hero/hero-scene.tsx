@@ -4,6 +4,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useRef, useMemo, useEffect } from 'react';
 import {
   BufferAttribute,
+  CanvasTexture,
   BufferGeometry,
   Color,
   LineBasicMaterial,
@@ -42,17 +43,17 @@ const RESPONSE = 16;
  *  colour has to match whichever ground the mesh is sitting on. */
 const PALETTE = {
   dark: {
-    pale: new Color('#E6EAF2'),
-    accent: new Color('#DF6639'),
-    hot: new Color('#FF9E6B'),
+    pale: new Color('#FFFFFF'),
+    accent: new Color('#FF8A4C'),
+    hot: new Color('#FFD2B0'),
     lineNear: new Color('#8A8F98'),
     lineFar: new Color('#0E1220'),
   },
   light: {
     // Much darker than the dark-mode set: thin marks on near-white have far
     // less contrast to work with than light marks on near-black.
-    pale: new Color('#3F4653'),
-    accent: new Color('#C4491F'),
+    pale: new Color('#2B3140'),
+    accent: new Color('#DF6639'),
     hot: new Color('#8E2F1B'),
     lineNear: new Color('#5B6371'),
     // Not the page colour — the wash runs white to #E4E7EC, so a single fade
@@ -61,6 +62,31 @@ const PALETTE = {
     lineFar: new Color('#C9CDD5'),
   },
 } as const;
+
+/**
+ * Soft round sprite with a tight hot core. Without a map, PointsMaterial draws
+ * a flat square, which is what made the nodes read as dull specks.
+ */
+function makeSparkleTexture(): CanvasTexture {
+  const size = 64;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  const half = size / 2;
+
+  const glow = ctx.createRadialGradient(half, half, 0, half, half, half);
+  glow.addColorStop(0, 'rgba(255,255,255,1)');
+  glow.addColorStop(0.14, 'rgba(255,255,255,0.92)');
+  glow.addColorStop(0.34, 'rgba(255,255,255,0.28)');
+  glow.addColorStop(0.62, 'rgba(255,255,255,0.06)');
+  glow.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, size, size);
+
+  const texture = new CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
 
 /** Deterministic PRNG — Math.random would differ between renders. */
 function makeRandom(seed: number) {
@@ -111,6 +137,7 @@ function Constellation({ dark }: { dark: boolean }) {
     homes,
     velocities,
     baseColors,
+    twinkle,
     pointGeom,
     lineGeom,
     pointMat,
@@ -123,6 +150,7 @@ function Constellation({ dark }: { dark: boolean }) {
     const velocities = new Float32Array(NODES * 3);
     const baseColors = new Float32Array(NODES * 3);
     const colors = new Float32Array(NODES * 3);
+    const twinkle = new Float32Array(NODES * 2); // phase, rate
 
     for (let i = 0; i < NODES; i++) {
       const ix = i * 3;
@@ -136,6 +164,9 @@ function Constellation({ dark }: { dark: boolean }) {
       velocities[ix] = (random() - 0.5) * 0.06;
       velocities[ix + 1] = (random() - 0.5) * 0.06;
       velocities[ix + 2] = (random() - 0.5) * 0.04;
+
+      twinkle[i * 2] = random() * Math.PI * 2;
+      twinkle[i * 2 + 1] = 0.7 + random() * 2.1;
 
       // Every seventh node picks up the brand orange
       const c = i % 7 === 0 ? theme.accent : theme.pale;
@@ -159,7 +190,10 @@ function Constellation({ dark }: { dark: boolean }) {
     );
 
     const pointMat = new PointsMaterial({
-      size: 0.036,
+      map: makeSparkleTexture(),
+      // The sprite is mostly falloff, so the quad has to be larger than the
+      // old hard square to end up looking the same size.
+      size: 0.115,
       sizeAttenuation: true,
       vertexColors: true,
       transparent: true,
@@ -182,6 +216,7 @@ function Constellation({ dark }: { dark: boolean }) {
       homes,
       velocities,
       baseColors,
+      twinkle,
       pointGeom,
       lineGeom,
       pointMat,
@@ -189,7 +224,10 @@ function Constellation({ dark }: { dark: boolean }) {
     };
   }, [theme, dark]);
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
+    const elapsed = state.clock.elapsedTime;
+    // Twinkle fades toward the ground the mesh sits on.
+    const fade = theme.lineFar;
     // Clamp: a backgrounded tab hands back a huge delta on return and would
     // fling every node out of bounds at once.
     const step = Math.min(delta, 0.05);
@@ -253,12 +291,21 @@ function Constellation({ dark }: { dark: boolean }) {
       positions[ix + 1] += (targetY - positions[ix + 1]) * k;
       positions[ix + 2] += (targetZ - positions[ix + 2]) * k;
 
-      // Nodes light up as the cursor nears them
-      colorArr[ix] = baseColors[ix] + (theme.hot.r - baseColors[ix]) * heat;
-      colorArr[ix + 1] =
-        baseColors[ix + 1] + (theme.hot.g - baseColors[ix + 1]) * heat;
-      colorArr[ix + 2] =
-        baseColors[ix + 2] + (theme.hot.b - baseColors[ix + 2]) * heat;
+      // Twinkle by lerping toward the background rather than scaling
+      // brightness: on a light ground, scaling down would make a node *more*
+      // visible, so it would read as a pulse rather than a fade.
+      const wave =
+        0.5 + 0.5 * Math.sin(elapsed * twinkle[i * 2 + 1] + twinkle[i * 2]);
+      const lit = 0.4 + 0.6 * wave;
+
+      const r = fade.r + (baseColors[ix] - fade.r) * lit;
+      const g = fade.g + (baseColors[ix + 1] - fade.g) * lit;
+      const b = fade.b + (baseColors[ix + 2] - fade.b) * lit;
+
+      // Nodes flare as the cursor nears them
+      colorArr[ix] = r + (theme.hot.r - r) * heat;
+      colorArr[ix + 1] = g + (theme.hot.g - g) * heat;
+      colorArr[ix + 2] = b + (theme.hot.b - b) * heat;
     }
     pointGeom.getAttribute('position').needsUpdate = true;
     colorAttr.needsUpdate = true;
