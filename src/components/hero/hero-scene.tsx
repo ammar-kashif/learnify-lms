@@ -1,7 +1,7 @@
 'use client';
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import {
   BufferAttribute,
   BufferGeometry,
@@ -31,10 +31,11 @@ const MAX_LINKS = 1800;
 
 const BOUNDS = { x: 3.9, y: 2.4, z: 1.9 };
 
-/** Cursor influence radius, how hard it shoves, and how fast nodes return. */
-const CURSOR_RADIUS = 2.3;
-const CURSOR_FORCE = 7.5;
-const SPRING = 2.4;
+/** Cursor influence radius, how far a node is shoved at the centre of it, and
+ *  how fast a node chases its target. Higher RESPONSE = snappier. */
+const CURSOR_RADIUS = 2.6;
+const PUSH_DISTANCE = 1.15;
+const RESPONSE = 16;
 
 const NODE_PALE = new Color('#E6EAF2');
 const NODE_ACCENT = new Color('#DF6639');
@@ -55,6 +56,26 @@ function Constellation() {
   const pointsRef = useRef<ThreePoints>(null);
   const linesRef = useRef<ThreeLineSegments>(null);
   const cursor = useRef({ x: 0, y: 0 });
+  /** Pointer in normalised device coords, tracked on window. */
+  const ndc = useRef({ x: 0, y: 0, seen: false });
+  const gl = useThree(state => state.gl);
+
+  // R3F derives state.pointer from its own listeners on the canvas, but the
+  // canvas is pointer-events-none so it lives behind the copy and never
+  // receives them. Track the pointer on window instead and map it through the
+  // canvas rect ourselves.
+  useEffect(() => {
+    const el = gl.domElement;
+    const onMove = (event: PointerEvent) => {
+      const rect = el.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      ndc.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.current.y = -(((event.clientY - rect.top) / rect.height) * 2 - 1);
+      ndc.current.seen = true;
+    };
+    window.addEventListener('pointermove', onMove, { passive: true });
+    return () => window.removeEventListener('pointermove', onMove);
+  }, [gl]);
 
   // The cloud is authored in world units, so at a fixed camera it would look
   // huge on a laptop and lost on an ultrawide. Scale it against viewport width
@@ -147,7 +168,7 @@ function Constellation() {
     };
   }, []);
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     // Clamp: a backgrounded tab hands back a huge delta on return and would
     // fling every node out of bounds at once.
     const step = Math.min(delta, 0.05);
@@ -158,12 +179,12 @@ function Constellation() {
 
     // Screen pointer -> world -> this group's local space. Ignoring the group
     // offset, scale and yaw is what made the cursor push in the wrong place.
-    const worldX = (state.pointer.x * viewport.width) / 2;
-    const worldY = (state.pointer.y * viewport.height) / 2;
-    const targetX = (worldX - offsetX) / scale;
-    const targetY = worldY / scale;
-    cursor.current.x += (targetX - cursor.current.x) * 0.12;
-    cursor.current.y += (targetY - cursor.current.y) * 0.12;
+    // Parked far away until the pointer has actually moved, so nothing is
+    // displaced on load.
+    const worldX = (ndc.current.x * viewport.width) / 2;
+    const worldY = (ndc.current.y * viewport.height) / 2;
+    cursor.current.x = ndc.current.seen ? (worldX - offsetX) / scale : 1e6;
+    cursor.current.y = ndc.current.seen ? worldY / scale : 1e6;
 
     const colorAttr = pointGeom.getAttribute('color') as BufferAttribute;
     const colorArr = colorAttr.array as Float32Array;
@@ -181,30 +202,35 @@ function Constellation() {
       if (Math.abs(homes[ix + 1]) > BOUNDS.y) velocities[ix + 1] *= -1;
       if (Math.abs(homes[ix + 2]) > BOUNDS.z) velocities[ix + 2] *= -1;
 
-      const pull = Math.min(1, SPRING * step);
-      positions[ix] += (homes[ix] - positions[ix]) * pull;
-      positions[ix + 1] += (homes[ix + 1] - positions[ix + 1]) * pull;
-      positions[ix + 2] += (homes[ix + 2] - positions[ix + 2]) * pull;
-
-      // Compare against where the node actually *appears*: the mesh spins, so
-      // its local x and z are mixed by the yaw before it reaches the screen.
-      const visualX = positions[ix] * cos + positions[ix + 2] * sin;
-      const dx = visualX - cursor.current.x;
-      const dy = positions[ix + 1] - cursor.current.y;
+      // Compare against where the node's home actually *appears*: the mesh
+      // spins, so local x and z are mixed by the yaw before reaching the screen.
+      const homeVisualX = homes[ix] * cos + homes[ix + 2] * sin;
+      const dx = homeVisualX - cursor.current.x;
+      const dy = homes[ix + 1] - cursor.current.y;
       const d2 = dx * dx + dy * dy;
 
+      // Solve for a target position each frame rather than accumulating force.
+      // Accumulating took several frames to build up and several more to decay,
+      // which is what read as lag.
+      let targetX = homes[ix];
+      let targetY = homes[ix + 1];
+      let targetZ = homes[ix + 2];
       let heat = 0;
-      if (d2 < radius2 && d2 > 0.0001) {
-        const falloff = 1 - d2 / radius2;
+      if (d2 < radius2 && d2 > 1e-6) {
+        const d = Math.sqrt(d2);
+        const falloff = 1 - d / CURSOR_RADIUS;
         heat = falloff;
-        const push = falloff * falloff * CURSOR_FORCE * step;
-        const inv = 1 / Math.sqrt(d2);
-        // Move along the visual-x direction, expressed back in local axes
-        const shiftX = dx * inv * push;
-        positions[ix] += shiftX * cos;
-        positions[ix + 2] += shiftX * sin;
-        positions[ix + 1] += dy * inv * push;
+        const shiftX = (dx / d) * falloff * PUSH_DISTANCE;
+        targetX += shiftX * cos;
+        targetZ += shiftX * sin;
+        targetY += (dy / d) * falloff * PUSH_DISTANCE;
       }
+
+      // Frame-rate independent chase toward the target
+      const k = 1 - Math.exp(-RESPONSE * step);
+      positions[ix] += (targetX - positions[ix]) * k;
+      positions[ix + 1] += (targetY - positions[ix + 1]) * k;
+      positions[ix + 2] += (targetZ - positions[ix + 2]) * k;
 
       // Nodes light up as the cursor nears them
       colorArr[ix] = baseColors[ix] + (NODE_HOT.r - baseColors[ix]) * heat;
