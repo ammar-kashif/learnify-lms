@@ -67,7 +67,7 @@ const PALETTE = {
  * Soft round sprite with a tight hot core. Without a map, PointsMaterial draws
  * a flat square, which is what made the nodes read as dull specks.
  */
-function makeSparkleTexture(): CanvasTexture {
+function makeSparkleTexture(dark: boolean): CanvasTexture {
   const size = 64;
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = size;
@@ -75,11 +75,23 @@ function makeSparkleTexture(): CanvasTexture {
   const half = size / 2;
 
   const glow = ctx.createRadialGradient(half, half, 0, half, half, half);
-  glow.addColorStop(0, 'rgba(255,255,255,1)');
-  glow.addColorStop(0.14, 'rgba(255,255,255,0.92)');
-  glow.addColorStop(0.34, 'rgba(255,255,255,0.28)');
-  glow.addColorStop(0.62, 'rgba(255,255,255,0.06)');
-  glow.addColorStop(1, 'rgba(255,255,255,0)');
+  if (dark) {
+    // Wide falloff reads as light bleeding into darkness.
+    glow.addColorStop(0, 'rgba(255,255,255,1)');
+    glow.addColorStop(0.14, 'rgba(255,255,255,0.92)');
+    glow.addColorStop(0.34, 'rgba(255,255,255,0.28)');
+    glow.addColorStop(0.62, 'rgba(255,255,255,0.06)');
+    glow.addColorStop(1, 'rgba(255,255,255,0)');
+  } else {
+    // On white the same falloff just washes out: a dark node at low alpha is
+    // barely there. Hold near-full alpha across a solid core, then drop fast,
+    // so it lands as a crisp dot with a small halo.
+    glow.addColorStop(0, 'rgba(255,255,255,1)');
+    glow.addColorStop(0.3, 'rgba(255,255,255,1)');
+    glow.addColorStop(0.42, 'rgba(255,255,255,0.72)');
+    glow.addColorStop(0.6, 'rgba(255,255,255,0.2)');
+    glow.addColorStop(1, 'rgba(255,255,255,0)');
+  }
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, size, size);
 
@@ -190,10 +202,10 @@ function Constellation({ dark }: { dark: boolean }) {
     );
 
     const pointMat = new PointsMaterial({
-      map: makeSparkleTexture(),
-      // The sprite is mostly falloff, so the quad has to be larger than the
-      // old hard square to end up looking the same size.
-      size: 0.115,
+      map: makeSparkleTexture(dark),
+      // The dark sprite is mostly falloff so its quad has to be larger; the
+      // light one is a solid core and needs less room.
+      size: dark ? 0.115 : 0.075,
       sizeAttenuation: true,
       vertexColors: true,
       transparent: true,
@@ -296,7 +308,9 @@ function Constellation({ dark }: { dark: boolean }) {
       // visible, so it would read as a pulse rather than a fade.
       const wave =
         0.5 + 0.5 * Math.sin(elapsed * twinkle[i * 2 + 1] + twinkle[i * 2]);
-      const lit = 0.4 + 0.6 * wave;
+      // Light mode swings harder: the contrast available between a mid grey
+      // and near-white is much narrower than white against near-black.
+      const lit = dark ? 0.4 + 0.6 * wave : 0.3 + 0.7 * wave;
 
       const r = fade.r + (baseColors[ix] - fade.r) * lit;
       const g = fade.g + (baseColors[ix + 1] - fade.g) * lit;
