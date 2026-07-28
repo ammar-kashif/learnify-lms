@@ -15,23 +15,30 @@ import {
 /**
  * Network constellation.
  *
- * Drifting nodes joined by a line whenever two come within range, so the mesh
- * continuously forms and dissolves. Nodes ease away from the cursor.
+ * Nodes drift inside a box and are joined by a line whenever two come within
+ * range, so the mesh continuously forms and dissolves. The cursor shoves nodes
+ * aside and lights them up; they spring back once it leaves.
  *
  * Loaded only via `next/dynamic` from `<Hero3D>`; never import it directly, or
  * three.js ends up in the main bundle.
  */
 
-const NODES = 120;
+const NODES = 135;
 /** Nodes closer than this get joined. */
-const LINK_DIST = 1.02;
+const LINK_DIST = 1.12;
 /** Upper bound on segments so a dense frame cannot overflow the buffer. */
-const MAX_LINKS = 1500;
+const MAX_LINKS = 1800;
 
-const BOUNDS = { x: 3.4, y: 2.1, z: 1.7 };
+const BOUNDS = { x: 3.9, y: 2.4, z: 1.9 };
+
+/** Cursor influence radius, how hard it shoves, and how fast nodes return. */
+const CURSOR_RADIUS = 2.3;
+const CURSOR_FORCE = 7.5;
+const SPRING = 2.4;
 
 const NODE_PALE = new Color('#E6EAF2');
 const NODE_ACCENT = new Color('#DF6639');
+const NODE_HOT = new Color('#FF9E6B');
 const LINE_NEAR = new Color('#8A8F98');
 const LINE_FAR = new Color('#0E1220');
 
@@ -47,108 +54,167 @@ function makeRandom(seed: number) {
 function Constellation() {
   const pointsRef = useRef<ThreePoints>(null);
   const linesRef = useRef<ThreeLineSegments>(null);
-  const pointer = useRef({ x: 0, y: 0 });
+  const cursor = useRef({ x: 0, y: 0 });
 
   // The cloud is authored in world units, so at a fixed camera it would look
-  // huge on a laptop and lost on an ultrawide. Scale it against the viewport
-  // width instead, and place it as a fraction of that width rather than at a
-  // fixed offset, so it holds the same position on every screen.
+  // huge on a laptop and lost on an ultrawide. Scale it against viewport width
+  // instead, and place it as a fraction of that width, so it holds the same
+  // position and proportion on every screen.
   const { viewport } = useThree();
-  const REFERENCE_WIDTH = 11.2; // world units across a 16:9 frame at this camera
-  const scale = Math.min(Math.max(viewport.width / REFERENCE_WIDTH, 0.62), 1.35);
+  const REFERENCE_WIDTH = 10.2; // world units across a 16:9 frame at this camera
+  const scale = Math.min(Math.max(viewport.width / REFERENCE_WIDTH, 0.62), 1.4);
   const offsetX = viewport.width * 0.2;
 
-  const { positions, velocities, pointGeom, lineGeom, pointMat, lineMat } =
-    useMemo(() => {
-      const random = makeRandom(20260727);
+  const {
+    positions,
+    homes,
+    velocities,
+    baseColors,
+    pointGeom,
+    lineGeom,
+    pointMat,
+    lineMat,
+  } = useMemo(() => {
+    const random = makeRandom(20260727);
 
-      const positions = new Float32Array(NODES * 3);
-      const velocities = new Float32Array(NODES * 3);
-      const colors = new Float32Array(NODES * 3);
+    const positions = new Float32Array(NODES * 3);
+    const homes = new Float32Array(NODES * 3);
+    const velocities = new Float32Array(NODES * 3);
+    const baseColors = new Float32Array(NODES * 3);
+    const colors = new Float32Array(NODES * 3);
 
-      for (let i = 0; i < NODES; i++) {
-        // Weighted to the right: the copy sits on the left, so bias the cloud
-        // away from it rather than masking it out afterwards.
-        positions[i * 3] = (random() * 2 - 1) * BOUNDS.x;
-        positions[i * 3 + 1] = (random() * 2 - 1) * BOUNDS.y;
-        positions[i * 3 + 2] = (random() * 2 - 1) * BOUNDS.z;
+    for (let i = 0; i < NODES; i++) {
+      const ix = i * 3;
+      homes[ix] = (random() * 2 - 1) * BOUNDS.x;
+      homes[ix + 1] = (random() * 2 - 1) * BOUNDS.y;
+      homes[ix + 2] = (random() * 2 - 1) * BOUNDS.z;
+      positions[ix] = homes[ix];
+      positions[ix + 1] = homes[ix + 1];
+      positions[ix + 2] = homes[ix + 2];
 
-        velocities[i * 3] = (random() - 0.5) * 0.06;
-        velocities[i * 3 + 1] = (random() - 0.5) * 0.06;
-        velocities[i * 3 + 2] = (random() - 0.5) * 0.04;
+      velocities[ix] = (random() - 0.5) * 0.06;
+      velocities[ix + 1] = (random() - 0.5) * 0.06;
+      velocities[ix + 2] = (random() - 0.5) * 0.04;
 
-        // Every seventh node picks up the brand orange
-        const c = i % 7 === 0 ? NODE_ACCENT : NODE_PALE;
-        colors[i * 3] = c.r;
-        colors[i * 3 + 1] = c.g;
-        colors[i * 3 + 2] = c.b;
-      }
+      // Every seventh node picks up the brand orange
+      const c = i % 7 === 0 ? NODE_ACCENT : NODE_PALE;
+      baseColors[ix] = colors[ix] = c.r;
+      baseColors[ix + 1] = colors[ix + 1] = c.g;
+      baseColors[ix + 2] = colors[ix + 2] = c.b;
+    }
 
-      const pointGeom = new BufferGeometry();
-      pointGeom.setAttribute('position', new BufferAttribute(positions, 3));
-      pointGeom.setAttribute('color', new BufferAttribute(colors, 3));
+    const pointGeom = new BufferGeometry();
+    pointGeom.setAttribute('position', new BufferAttribute(positions, 3));
+    pointGeom.setAttribute('color', new BufferAttribute(colors, 3));
 
-      const lineGeom = new BufferGeometry();
-      lineGeom.setAttribute(
-        'position',
-        new BufferAttribute(new Float32Array(MAX_LINKS * 6), 3)
-      );
-      lineGeom.setAttribute(
-        'color',
-        new BufferAttribute(new Float32Array(MAX_LINKS * 6), 3)
-      );
+    const lineGeom = new BufferGeometry();
+    lineGeom.setAttribute(
+      'position',
+      new BufferAttribute(new Float32Array(MAX_LINKS * 6), 3)
+    );
+    lineGeom.setAttribute(
+      'color',
+      new BufferAttribute(new Float32Array(MAX_LINKS * 6), 3)
+    );
 
-      const pointMat = new PointsMaterial({
-        size: 0.04,
-        sizeAttenuation: true,
-        vertexColors: true,
-        transparent: true,
-        opacity: 0.95,
-        depthWrite: false,
-      });
+    const pointMat = new PointsMaterial({
+      size: 0.045,
+      sizeAttenuation: true,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false,
+    });
 
-      // LineBasicMaterial has no per-vertex alpha, so distance is expressed by
-      // darkening toward the background colour instead.
-      const lineMat = new LineBasicMaterial({
-        vertexColors: true,
-        transparent: true,
-        opacity: 0.6,
-        depthWrite: false,
-      });
+    // LineBasicMaterial has no per-vertex alpha, so distance is expressed by
+    // darkening toward the background colour instead.
+    const lineMat = new LineBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.6,
+      depthWrite: false,
+    });
 
-      return { positions, velocities, pointGeom, lineGeom, pointMat, lineMat };
-    }, []);
+    return {
+      positions,
+      homes,
+      velocities,
+      baseColors,
+      pointGeom,
+      lineGeom,
+      pointMat,
+      lineMat,
+    };
+  }, []);
 
   useFrame((state, delta) => {
     // Clamp: a backgrounded tab hands back a huge delta on return and would
     // fling every node out of bounds at once.
     const step = Math.min(delta, 0.05);
 
-    pointer.current.x += (state.pointer.x * BOUNDS.x - pointer.current.x) * 0.05;
-    pointer.current.y += (state.pointer.y * BOUNDS.y - pointer.current.y) * 0.05;
+    const rot = pointsRef.current?.rotation.y ?? 0;
+    const cos = Math.cos(rot);
+    const sin = Math.sin(rot);
 
-    // --- drift, bounce, ease away from the cursor
+    // Screen pointer -> world -> this group's local space. Ignoring the group
+    // offset, scale and yaw is what made the cursor push in the wrong place.
+    const worldX = (state.pointer.x * viewport.width) / 2;
+    const worldY = (state.pointer.y * viewport.height) / 2;
+    const targetX = (worldX - offsetX) / scale;
+    const targetY = worldY / scale;
+    cursor.current.x += (targetX - cursor.current.x) * 0.12;
+    cursor.current.y += (targetY - cursor.current.y) * 0.12;
+
+    const colorAttr = pointGeom.getAttribute('color') as BufferAttribute;
+    const colorArr = colorAttr.array as Float32Array;
+    const radius2 = CURSOR_RADIUS * CURSOR_RADIUS;
+
     for (let i = 0; i < NODES; i++) {
       const ix = i * 3;
-      positions[ix] += velocities[ix] * step;
-      positions[ix + 1] += velocities[ix + 1] * step;
-      positions[ix + 2] += velocities[ix + 2] * step;
 
-      if (Math.abs(positions[ix]) > BOUNDS.x) velocities[ix] *= -1;
-      if (Math.abs(positions[ix + 1]) > BOUNDS.y) velocities[ix + 1] *= -1;
-      if (Math.abs(positions[ix + 2]) > BOUNDS.z) velocities[ix + 2] *= -1;
+      // Home drifts; the node springs toward it, so any displacement decays on
+      // its own once the cursor moves away.
+      homes[ix] += velocities[ix] * step;
+      homes[ix + 1] += velocities[ix + 1] * step;
+      homes[ix + 2] += velocities[ix + 2] * step;
+      if (Math.abs(homes[ix]) > BOUNDS.x) velocities[ix] *= -1;
+      if (Math.abs(homes[ix + 1]) > BOUNDS.y) velocities[ix + 1] *= -1;
+      if (Math.abs(homes[ix + 2]) > BOUNDS.z) velocities[ix + 2] *= -1;
 
-      const dx = positions[ix] - pointer.current.x;
-      const dy = positions[ix + 1] - pointer.current.y;
+      const pull = Math.min(1, SPRING * step);
+      positions[ix] += (homes[ix] - positions[ix]) * pull;
+      positions[ix + 1] += (homes[ix + 1] - positions[ix + 1]) * pull;
+      positions[ix + 2] += (homes[ix + 2] - positions[ix + 2]) * pull;
+
+      // Compare against where the node actually *appears*: the mesh spins, so
+      // its local x and z are mixed by the yaw before it reaches the screen.
+      const visualX = positions[ix] * cos + positions[ix + 2] * sin;
+      const dx = visualX - cursor.current.x;
+      const dy = positions[ix + 1] - cursor.current.y;
       const d2 = dx * dx + dy * dy;
-      if (d2 < 2.6 && d2 > 0.0001) {
-        const push = (1 - d2 / 2.6) * 0.9 * step;
+
+      let heat = 0;
+      if (d2 < radius2 && d2 > 0.0001) {
+        const falloff = 1 - d2 / radius2;
+        heat = falloff;
+        const push = falloff * falloff * CURSOR_FORCE * step;
         const inv = 1 / Math.sqrt(d2);
-        positions[ix] += dx * inv * push;
+        // Move along the visual-x direction, expressed back in local axes
+        const shiftX = dx * inv * push;
+        positions[ix] += shiftX * cos;
+        positions[ix + 2] += shiftX * sin;
         positions[ix + 1] += dy * inv * push;
       }
+
+      // Nodes light up as the cursor nears them
+      colorArr[ix] = baseColors[ix] + (NODE_HOT.r - baseColors[ix]) * heat;
+      colorArr[ix + 1] =
+        baseColors[ix + 1] + (NODE_HOT.g - baseColors[ix + 1]) * heat;
+      colorArr[ix + 2] =
+        baseColors[ix + 2] + (NODE_HOT.b - baseColors[ix + 2]) * heat;
     }
     pointGeom.getAttribute('position').needsUpdate = true;
+    colorAttr.needsUpdate = true;
 
     // --- rebuild the links
     const linePos = lineGeom.getAttribute('position') as BufferAttribute;
