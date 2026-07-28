@@ -37,11 +37,24 @@ const CURSOR_RADIUS = 2.6;
 const PUSH_DISTANCE = 1.15;
 const RESPONSE = 16;
 
-const NODE_PALE = new Color('#E6EAF2');
-const NODE_ACCENT = new Color('#DF6639');
-const NODE_HOT = new Color('#FF9E6B');
-const LINE_NEAR = new Color('#8A8F98');
-const LINE_FAR = new Color('#0E1220');
+/** Two palettes: lines fade toward the *background*, not to alpha, so the far
+ *  colour has to match whichever ground the mesh is sitting on. */
+const PALETTE = {
+  dark: {
+    pale: new Color('#E6EAF2'),
+    accent: new Color('#DF6639'),
+    hot: new Color('#FF9E6B'),
+    lineNear: new Color('#8A8F98'),
+    lineFar: new Color('#0E1220'),
+  },
+  light: {
+    pale: new Color('#7A828F'),
+    accent: new Color('#DF6639'),
+    hot: new Color('#B03A1A'),
+    lineNear: new Color('#9AA1AC'),
+    lineFar: new Color('#F1F2F5'),
+  },
+} as const;
 
 /** Deterministic PRNG — Math.random would differ between renders. */
 function makeRandom(seed: number) {
@@ -52,13 +65,14 @@ function makeRandom(seed: number) {
   };
 }
 
-function Constellation() {
+function Constellation({ dark }: { dark: boolean }) {
   const pointsRef = useRef<ThreePoints>(null);
   const linesRef = useRef<ThreeLineSegments>(null);
   const cursor = useRef({ x: 0, y: 0 });
   /** Pointer in normalised device coords, tracked on window. */
   const ndc = useRef({ x: 0, y: 0, seen: false });
   const gl = useThree(state => state.gl);
+  const theme = dark ? PALETTE.dark : PALETTE.light;
 
   // R3F derives state.pointer from its own listeners on the canvas, but the
   // canvas is pointer-events-none so it lives behind the copy and never
@@ -118,7 +132,7 @@ function Constellation() {
       velocities[ix + 2] = (random() - 0.5) * 0.04;
 
       // Every seventh node picks up the brand orange
-      const c = i % 7 === 0 ? NODE_ACCENT : NODE_PALE;
+      const c = i % 7 === 0 ? theme.accent : theme.pale;
       baseColors[ix] = colors[ix] = c.r;
       baseColors[ix + 1] = colors[ix + 1] = c.g;
       baseColors[ix + 2] = colors[ix + 2] = c.b;
@@ -166,7 +180,7 @@ function Constellation() {
       pointMat,
       lineMat,
     };
-  }, []);
+  }, [theme]);
 
   useFrame((_, delta) => {
     // Clamp: a backgrounded tab hands back a huge delta on return and would
@@ -233,11 +247,11 @@ function Constellation() {
       positions[ix + 2] += (targetZ - positions[ix + 2]) * k;
 
       // Nodes light up as the cursor nears them
-      colorArr[ix] = baseColors[ix] + (NODE_HOT.r - baseColors[ix]) * heat;
+      colorArr[ix] = baseColors[ix] + (theme.hot.r - baseColors[ix]) * heat;
       colorArr[ix + 1] =
-        baseColors[ix + 1] + (NODE_HOT.g - baseColors[ix + 1]) * heat;
+        baseColors[ix + 1] + (theme.hot.g - baseColors[ix + 1]) * heat;
       colorArr[ix + 2] =
-        baseColors[ix + 2] + (NODE_HOT.b - baseColors[ix + 2]) * heat;
+        baseColors[ix + 2] + (theme.hot.b - baseColors[ix + 2]) * heat;
     }
     pointGeom.getAttribute('position').needsUpdate = true;
     colorAttr.needsUpdate = true;
@@ -269,9 +283,9 @@ function Constellation() {
 
         // Fade toward the background as the pair separates
         const t = 1 - dist / LINK_DIST;
-        const r = LINE_FAR.r + (LINE_NEAR.r - LINE_FAR.r) * t;
-        const g = LINE_FAR.g + (LINE_NEAR.g - LINE_FAR.g) * t;
-        const b = LINE_FAR.b + (LINE_NEAR.b - LINE_FAR.b) * t;
+        const r = theme.lineFar.r + (theme.lineNear.r - theme.lineFar.r) * t;
+        const g = theme.lineFar.g + (theme.lineNear.g - theme.lineFar.g) * t;
+        const b = theme.lineFar.b + (theme.lineNear.b - theme.lineFar.b) * t;
         colArr[o] = colArr[o + 3] = r;
         colArr[o + 1] = colArr[o + 4] = g;
         colArr[o + 2] = colArr[o + 5] = b;
@@ -301,7 +315,7 @@ function Constellation() {
   );
 }
 
-export default function HeroScene() {
+export default function HeroScene({ dark = true }: { dark?: boolean }) {
   return (
     <Canvas
       // Cap DPR: retina phones would otherwise render at 3x and tank framerate.
@@ -310,7 +324,7 @@ export default function HeroScene() {
       gl={{ antialias: true, alpha: true, powerPreference: 'default' }}
       style={{ background: 'transparent' }}
     >
-      <Constellation />
+      <Constellation dark={dark} />
     </Canvas>
   );
 }

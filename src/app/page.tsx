@@ -129,11 +129,11 @@ export default function HomePage() {
           copy ranged left. The mesh needs a dark ground to read — thin light
           lines on white are invisible — so this section inverts while the rest
           of the page stays light. */}
-      <section className="relative isolate overflow-hidden bg-gray-900 pb-20 pt-32 sm:pb-24 sm:pt-36">
+      <section className="relative isolate overflow-hidden bg-gray-50 pb-20 pt-32 dark:bg-gray-900 sm:pb-24 sm:pt-36">
         {/* Depth wash behind the mesh */}
         <div
           aria-hidden="true"
-          className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_65%_55%_at_72%_45%,#182130,#090C14_70%)]"
+          className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_65%_55%_at_72%_45%,#FFFFFF,#E4E7EC_70%)] dark:bg-[radial-gradient(ellipse_65%_55%_at_72%_45%,#182130,#090C14_70%)]"
         />
 
         {/* Constellation. Masked so it dissolves toward the copy on the left
@@ -145,7 +145,7 @@ export default function HomePage() {
         {/* Settle the band into the page below */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-24 bg-gradient-to-t from-gray-900 to-transparent"
+          className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-24 bg-gradient-to-t from-gray-50 to-transparent dark:from-gray-900"
         />
 
         <div
@@ -154,12 +154,12 @@ export default function HomePage() {
           }`}
         >
           <div className="max-w-2xl">
-            <h1 className="text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-6xl">
+            <h1 className="text-4xl font-bold leading-[1.08] tracking-tight text-gray-900 dark:text-white sm:text-5xl lg:text-6xl">
               Ace Your O Levels &amp; IGCSE Exams with{' '}
               <span className="text-primary">Learnify.</span>
             </h1>
 
-            <p className="mt-6 max-w-xl text-lg leading-relaxed text-gray-300">
+            <p className="mt-6 max-w-xl text-lg leading-relaxed text-gray-600 dark:text-gray-300">
               Personalized online classes designed to help every student master
               concepts, practice past papers, and achieve A* results with the
               support of expert tutors who truly care.
@@ -181,7 +181,7 @@ export default function HomePage() {
                 asChild
                 size="lg"
                 variant="outline"
-                className="group h-12 border-2 border-white/25 bg-transparent px-7 text-base text-white transition-all duration-300 hover:border-white/50 hover:bg-white/10 hover:text-white"
+                className="group h-12 border-2 border-gray-300 bg-transparent px-7 text-base text-gray-800 transition-all duration-300 hover:border-primary hover:bg-primary/5 hover:text-primary dark:border-white/25 dark:text-white dark:hover:border-white/50 dark:hover:bg-white/10 dark:hover:text-white"
               >
                 <a
                   href={whatsappLink(WHATSAPP_MESSAGES.contact)}
@@ -198,10 +198,10 @@ export default function HomePage() {
 
           {/* Stats, ranged left under the copy */}
           <div className="mt-20 max-w-2xl sm:mt-24">
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               Our results tell a compelling story:
             </p>
-            <div className="mt-4 h-px w-24 bg-white/25" />
+            <div className="mt-4 h-px w-24 bg-gray-300 dark:bg-white/25" />
             <div className="mt-7 flex flex-wrap gap-x-12 gap-y-6">
               {quickStats.map((stat, index) => (
                 <div
@@ -218,7 +218,7 @@ export default function HomePage() {
                   <div className="text-3xl font-bold text-primary sm:text-4xl">
                     {stat.value}
                   </div>
-                  <div className="mt-1 max-w-[7rem] text-sm leading-snug text-gray-400">
+                  <div className="mt-1 max-w-[7rem] text-sm leading-snug text-gray-600 dark:text-gray-400">
                     {stat.label}
                   </div>
                 </div>

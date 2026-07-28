@@ -234,7 +234,7 @@ export default function LandingNav() {
                 'text-lg font-bold tracking-tight transition-colors duration-300',
                 scrolled
                   ? 'text-charcoal-900 dark:text-gray-100'
-                  : 'text-white'
+                  : 'text-charcoal-900 dark:text-white'
               )}
             >
               Learnify
@@ -273,10 +273,10 @@ export default function LandingNav() {
                     isActive
                       ? scrolled
                         ? 'text-primary'
-                        : 'text-primary-300'
+                        : 'text-primary dark:text-primary-300'
                       : scrolled
                         ? 'text-gray-700 hover:text-primary dark:text-gray-300 dark:hover:text-primary'
-                        : 'text-white/75 hover:text-white'
+                        : 'text-gray-700 hover:text-primary dark:text-white/75 dark:hover:text-white'
                   )}
                 >
                   {link.label}
@@ -295,7 +295,7 @@ export default function LandingNav() {
                 'rounded-full transition-colors',
                 scrolled
                   ? 'text-gray-700 hover:bg-primary/10 hover:text-primary dark:text-gray-300'
-                  : 'text-white/90 hover:bg-white/10 hover:text-white'
+                  : 'text-gray-700 hover:bg-primary/10 hover:text-primary dark:text-white/90 dark:hover:bg-white/10 dark:hover:text-white'
               )}
             >
               <Link href="/auth/signin">Sign In</Link>
@@ -319,7 +319,7 @@ export default function LandingNav() {
               'relative z-10 inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors md:hidden',
               scrolled
                 ? 'text-gray-700 hover:bg-primary/10 hover:text-primary dark:text-gray-300'
-                : 'text-white/90 hover:bg-white/10 hover:text-white'
+                : 'text-gray-700 hover:bg-primary/10 hover:text-primary dark:text-white/90 dark:hover:bg-white/10 dark:hover:text-white'
             )}
           >
             {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
