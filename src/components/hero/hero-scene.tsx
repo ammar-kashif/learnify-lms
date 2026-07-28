@@ -23,11 +23,12 @@ import {
  * three.js ends up in the main bundle.
  */
 
-const NODES = 135;
-/** Nodes closer than this get joined. */
-const LINK_DIST = 1.12;
+const NODES = 300;
+/** Nodes closer than this get joined. Falls as node count rises, or the mesh
+ *  turns into a solid mass rather than a web. */
+const LINK_DIST = 0.95;
 /** Upper bound on segments so a dense frame cannot overflow the buffer. */
-const MAX_LINKS = 1800;
+const MAX_LINKS = 4500;
 
 const BOUNDS = { x: 3.9, y: 2.4, z: 1.9 };
 
@@ -48,11 +49,16 @@ const PALETTE = {
     lineFar: new Color('#0E1220'),
   },
   light: {
-    pale: new Color('#7A828F'),
-    accent: new Color('#DF6639'),
-    hot: new Color('#B03A1A'),
-    lineNear: new Color('#9AA1AC'),
-    lineFar: new Color('#F1F2F5'),
+    // Much darker than the dark-mode set: thin marks on near-white have far
+    // less contrast to work with than light marks on near-black.
+    pale: new Color('#3F4653'),
+    accent: new Color('#C4491F'),
+    hot: new Color('#8E2F1B'),
+    lineNear: new Color('#5B6371'),
+    // Not the page colour — the wash runs white to #E4E7EC, so a single fade
+    // target cannot vanish against both. A mid grey keeps distant links faint
+    // rather than inverting to lighter-than-background at the edges.
+    lineFar: new Color('#C9CDD5'),
   },
 } as const;
 
@@ -153,11 +159,11 @@ function Constellation({ dark }: { dark: boolean }) {
     );
 
     const pointMat = new PointsMaterial({
-      size: 0.045,
+      size: 0.036,
       sizeAttenuation: true,
       vertexColors: true,
       transparent: true,
-      opacity: 0.95,
+      opacity: dark ? 0.95 : 1,
       depthWrite: false,
     });
 
@@ -166,7 +172,8 @@ function Constellation({ dark }: { dark: boolean }) {
     const lineMat = new LineBasicMaterial({
       vertexColors: true,
       transparent: true,
-      opacity: 0.6,
+      // Light mode needs more weight to read at all against white.
+      opacity: dark ? 0.55 : 0.8,
       depthWrite: false,
     });
 
@@ -180,7 +187,7 @@ function Constellation({ dark }: { dark: boolean }) {
       pointMat,
       lineMat,
     };
-  }, [theme]);
+  }, [theme, dark]);
 
   useFrame((_, delta) => {
     // Clamp: a backgrounded tab hands back a huge delta on return and would
