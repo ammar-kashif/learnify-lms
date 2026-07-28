@@ -1,6 +1,6 @@
 'use client';
 
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useRef, useMemo } from 'react';
 import {
   BufferAttribute,
@@ -48,6 +48,15 @@ function Constellation() {
   const pointsRef = useRef<ThreePoints>(null);
   const linesRef = useRef<ThreeLineSegments>(null);
   const pointer = useRef({ x: 0, y: 0 });
+
+  // The cloud is authored in world units, so at a fixed camera it would look
+  // huge on a laptop and lost on an ultrawide. Scale it against the viewport
+  // width instead, and place it as a fraction of that width rather than at a
+  // fixed offset, so it holds the same position on every screen.
+  const { viewport } = useThree();
+  const REFERENCE_WIDTH = 11.2; // world units across a 16:9 frame at this camera
+  const scale = Math.min(Math.max(viewport.width / REFERENCE_WIDTH, 0.62), 1.35);
+  const offsetX = viewport.width * 0.2;
 
   const { positions, velocities, pointGeom, lineGeom, pointMat, lineMat } =
     useMemo(() => {
@@ -193,9 +202,7 @@ function Constellation() {
   });
 
   return (
-    // Offset right rather than skewing the spread, so the cloud still
-    // rotates about its own centre.
-    <group position={[2.35, 0, 0]}>
+    <group position={[offsetX, 0, 0]} scale={scale}>
       <points ref={pointsRef} geometry={pointGeom} material={pointMat} />
       <lineSegments ref={linesRef} geometry={lineGeom} material={lineMat} />
     </group>

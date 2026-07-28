@@ -129,7 +129,7 @@ export default function HomePage() {
           copy ranged left. The mesh needs a dark ground to read — thin light
           lines on white are invisible — so this section inverts while the rest
           of the page stays light. */}
-      <section className="relative isolate overflow-hidden bg-gray-900 px-4 pb-20 pt-32 sm:pb-24 sm:pt-36">
+      <section className="relative isolate overflow-hidden bg-gray-900 pb-20 pt-32 sm:pb-24 sm:pt-36">
         {/* Depth wash behind the mesh */}
         <div
           aria-hidden="true"
@@ -149,7 +149,7 @@ export default function HomePage() {
         />
 
         <div
-          className={`relative mx-auto max-w-7xl transition-all duration-1000 ${
+          className={`relative mx-auto w-full max-w-[120rem] px-5 transition-all duration-1000 sm:px-8 lg:px-14 xl:px-20 ${
             isVisible ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'
           }`}
         >
