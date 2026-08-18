@@ -6,10 +6,10 @@
  */
 
 /** E.164 without the leading `+`, which is what wa.me and the WhatsApp API expect. */
-export const WHATSAPP_NUMBER = '923005299693';
+export const WHATSAPP_NUMBER = '923497855488';
 
 /** Human-readable form, for display in the footer and contact blocks. */
-export const WHATSAPP_DISPLAY = '+92 300 5299693';
+export const WHATSAPP_DISPLAY = '+92 349 7855488';
 
 /** Builds a wa.me deep link, optionally pre-filling the first message. */
 export function whatsappLink(message?: string): string {
