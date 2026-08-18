@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
+import { useTheme } from 'next-themes';
 
 /**
  * Gatekeeper for the 3D hero.
@@ -32,13 +33,13 @@ export function HeroFallback() {
       className="absolute inset-0 overflow-hidden"
       data-testid="hero-fallback"
     >
-      <div className="animate-aurora absolute left-1/2 top-1/2 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/25 blur-3xl" />
+      <div className="animate-aurora absolute left-[68%] top-1/2 h-[340px] w-[340px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/15 blur-3xl dark:bg-primary/10" />
       <div
-        className="animate-aurora absolute left-1/3 top-1/3 h-72 w-72 rounded-full bg-primary-300/30 blur-3xl"
+        className="animate-aurora absolute left-[60%] top-1/3 h-64 w-64 rounded-full bg-primary-200/40 blur-3xl dark:bg-primary-900/25"
         style={{ animationDelay: '-6s' }}
       />
       <div
-        className="animate-aurora absolute bottom-1/4 right-1/4 h-64 w-64 rounded-full bg-charcoal-300/25 blur-3xl dark:bg-charcoal-600/25"
+        className="animate-aurora absolute bottom-1/4 right-[18%] h-56 w-56 rounded-full bg-gray-300/40 blur-3xl dark:bg-gray-700/30"
         style={{ animationDelay: '-12s' }}
       />
     </div>
@@ -60,6 +61,10 @@ function supportsWebGL(): boolean {
 export default function Hero3D({ className }: { className?: string }) {
   const reduceMotion = useReducedMotion();
   const [enabled, setEnabled] = useState(false);
+  // Read the theme out here rather than inside the Canvas: R3F renders through
+  // its own reconciler and context across that boundary is fragile.
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme !== 'light';
 
   useEffect(() => {
     if (reduceMotion) return;
@@ -84,7 +89,7 @@ export default function Hero3D({ className }: { className?: string }) {
       <HeroFallback />
       {enabled && (
         <div className="absolute inset-0 animate-[fade-in_1.2s_ease-out_forwards] opacity-0">
-          <HeroScene />
+          <HeroScene dark={isDark} />
         </div>
       )}
     </div>

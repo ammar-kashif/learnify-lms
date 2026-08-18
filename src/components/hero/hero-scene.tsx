@@ -1,32 +1,104 @@
 'use client';
 
-import { Canvas, useFrame } from '@react-three/fiber';
-import { useRef, useMemo } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { useRef, useMemo, useEffect } from 'react';
 import {
   BufferAttribute,
+  CanvasTexture,
   BufferGeometry,
   Color,
-  NormalBlending,
-  ShaderMaterial,
+  LineBasicMaterial,
+  PointsMaterial,
+  type LineSegments as ThreeLineSegments,
   type Points as ThreePoints,
 } from 'three';
 
 /**
- * GPU particle morph.
+ * Network constellation.
  *
- * ~7000 points in a single draw call, morphing between shapes that mean
- * something here: a star (the A* everything on this page is aimed at), an open
- * book, an atom, and a sphere. The morph and the cursor repulsion both run in
- * the vertex shader, so the CPU only uploads a buffer when the target shape
- * changes — roughly once every four seconds.
+ * Nodes drift inside a box and are joined by a line whenever two come within
+ * range, so the mesh continuously forms and dissolves. The cursor shoves nodes
+ * aside and lights them up; they spring back once it leaves.
  *
  * Loaded only via `next/dynamic` from `<Hero3D>`; never import it directly, or
  * three.js ends up in the main bundle.
  */
 
-const COUNT = 7000;
-const HOLD = 2.6; // seconds a shape rests before morphing
-const MORPH = 1.6; // seconds the morph itself takes
+const NODES = 300;
+/** Nodes closer than this get joined. Falls as node count rises, or the mesh
+ *  turns into a solid mass rather than a web. */
+const LINK_DIST = 0.95;
+/** Upper bound on segments so a dense frame cannot overflow the buffer. */
+const MAX_LINKS = 4500;
+
+const BOUNDS = { x: 3.9, y: 2.4, z: 1.9 };
+
+/** Cursor influence radius, how far a node is shoved at the centre of it, and
+ *  how fast a node chases its target. Higher RESPONSE = snappier. */
+const CURSOR_RADIUS = 2.6;
+const PUSH_DISTANCE = 1.15;
+const RESPONSE = 16;
+
+/** Two palettes: lines fade toward the *background*, not to alpha, so the far
+ *  colour has to match whichever ground the mesh is sitting on. */
+const PALETTE = {
+  dark: {
+    pale: new Color('#FFFFFF'),
+    accent: new Color('#FF8A4C'),
+    hot: new Color('#FFD2B0'),
+    lineNear: new Color('#8A8F98'),
+    lineFar: new Color('#0E1220'),
+  },
+  light: {
+    // Much darker than the dark-mode set: thin marks on near-white have far
+    // less contrast to work with than light marks on near-black.
+    pale: new Color('#2B3140'),
+    accent: new Color('#DF6639'),
+    hot: new Color('#8E2F1B'),
+    lineNear: new Color('#5B6371'),
+    // Not the page colour — the wash runs white to #E4E7EC, so a single fade
+    // target cannot vanish against both. A mid grey keeps distant links faint
+    // rather than inverting to lighter-than-background at the edges.
+    lineFar: new Color('#C9CDD5'),
+  },
+} as const;
+
+/**
+ * Soft round sprite with a tight hot core. Without a map, PointsMaterial draws
+ * a flat square, which is what made the nodes read as dull specks.
+ */
+function makeSparkleTexture(dark: boolean): CanvasTexture {
+  const size = 64;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  const half = size / 2;
+
+  const glow = ctx.createRadialGradient(half, half, 0, half, half, half);
+  if (dark) {
+    // Wide falloff reads as light bleeding into darkness.
+    glow.addColorStop(0, 'rgba(255,255,255,1)');
+    glow.addColorStop(0.14, 'rgba(255,255,255,0.92)');
+    glow.addColorStop(0.34, 'rgba(255,255,255,0.28)');
+    glow.addColorStop(0.62, 'rgba(255,255,255,0.06)');
+    glow.addColorStop(1, 'rgba(255,255,255,0)');
+  } else {
+    // On white the same falloff just washes out: a dark node at low alpha is
+    // barely there. Hold near-full alpha across a solid core, then drop fast,
+    // so it lands as a crisp dot with a small halo.
+    glow.addColorStop(0, 'rgba(255,255,255,1)');
+    glow.addColorStop(0.3, 'rgba(255,255,255,1)');
+    glow.addColorStop(0.42, 'rgba(255,255,255,0.72)');
+    glow.addColorStop(0.6, 'rgba(255,255,255,0.2)');
+    glow.addColorStop(1, 'rgba(255,255,255,0)');
+  }
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, size, size);
+
+  const texture = new CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
 
 /** Deterministic PRNG — Math.random would differ between renders. */
 function makeRandom(seed: number) {
@@ -37,270 +109,290 @@ function makeRandom(seed: number) {
   };
 }
 
-/* ------------------------------------------------------------ shape fields */
+function Constellation({ dark }: { dark: boolean }) {
+  const pointsRef = useRef<ThreePoints>(null);
+  const linesRef = useRef<ThreeLineSegments>(null);
+  const cursor = useRef({ x: 0, y: 0 });
+  /** Pointer in normalised device coords, tracked on window. */
+  const ndc = useRef({ x: 0, y: 0, seen: false });
+  const gl = useThree(state => state.gl);
+  const theme = dark ? PALETTE.dark : PALETTE.light;
 
-/** Evenly distributed points on a sphere. */
-function sphereShape(count: number, radius: number, random: () => number) {
-  const out = new Float32Array(count * 3);
-  const golden = Math.PI * (3 - Math.sqrt(5));
-  for (let i = 0; i < count; i++) {
-    const y = 1 - (i / (count - 1)) * 2;
-    const r = Math.sqrt(Math.max(0, 1 - y * y));
-    const theta = golden * i;
-    // Slight jitter stops it reading as a perfect wireframe
-    const jitter = 0.94 + random() * 0.12;
-    out[i * 3] = Math.cos(theta) * r * radius * jitter;
-    out[i * 3 + 1] = y * radius * jitter;
-    out[i * 3 + 2] = Math.sin(theta) * r * radius * jitter;
-  }
-  return out;
-}
+  // R3F derives state.pointer from its own listeners on the canvas, but the
+  // canvas is pointer-events-none so it lives behind the copy and never
+  // receives them. Track the pointer on window instead and map it through the
+  // canvas rect ourselves.
+  useEffect(() => {
+    const el = gl.domElement;
+    const onMove = (event: PointerEvent) => {
+      const rect = el.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      ndc.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.current.y = -(((event.clientY - rect.top) / rect.height) * 2 - 1);
+      ndc.current.seen = true;
+    };
+    window.addEventListener('pointermove', onMove, { passive: true });
+    return () => window.removeEventListener('pointermove', onMove);
+  }, [gl]);
 
-/** Solid five-pointed star with a little depth — the A*. */
-function starShape(count: number, outer: number, random: () => number) {
-  const out = new Float32Array(count * 3);
-  const inner = outer * 0.42;
-  const points = 5;
-  for (let i = 0; i < count; i++) {
-    // Pick a triangle of the star fan, then a random point inside it
-    const segment = Math.floor(random() * points * 2);
-    const a0 = (segment / (points * 2)) * Math.PI * 2 - Math.PI / 2;
-    const a1 = ((segment + 1) / (points * 2)) * Math.PI * 2 - Math.PI / 2;
-    const r0 = segment % 2 === 0 ? outer : inner;
-    const r1 = segment % 2 === 0 ? inner : outer;
+  // The cloud is authored in world units, so at a fixed camera it would look
+  // huge on a laptop and lost on an ultrawide. Scale it against viewport width
+  // instead, and place it as a fraction of that width, so it holds the same
+  // position and proportion on every screen.
+  const { viewport } = useThree();
+  const REFERENCE_WIDTH = 10.2; // world units across a 16:9 frame at this camera
+  const scale = Math.min(Math.max(viewport.width / REFERENCE_WIDTH, 0.62), 1.4);
+  const offsetX = viewport.width * 0.2;
 
-    // Barycentric sample across centre, p0, p1
-    let u = random();
-    let v = random();
-    if (u + v > 1) {
-      u = 1 - u;
-      v = 1 - v;
+  const {
+    positions,
+    homes,
+    velocities,
+    baseColors,
+    twinkle,
+    pointGeom,
+    lineGeom,
+    pointMat,
+    lineMat,
+  } = useMemo(() => {
+    const random = makeRandom(20260727);
+
+    const positions = new Float32Array(NODES * 3);
+    const homes = new Float32Array(NODES * 3);
+    const velocities = new Float32Array(NODES * 3);
+    const baseColors = new Float32Array(NODES * 3);
+    const colors = new Float32Array(NODES * 3);
+    const twinkle = new Float32Array(NODES * 2); // phase, rate
+
+    for (let i = 0; i < NODES; i++) {
+      const ix = i * 3;
+      homes[ix] = (random() * 2 - 1) * BOUNDS.x;
+      homes[ix + 1] = (random() * 2 - 1) * BOUNDS.y;
+      homes[ix + 2] = (random() * 2 - 1) * BOUNDS.z;
+      positions[ix] = homes[ix];
+      positions[ix + 1] = homes[ix + 1];
+      positions[ix + 2] = homes[ix + 2];
+
+      velocities[ix] = (random() - 0.5) * 0.06;
+      velocities[ix + 1] = (random() - 0.5) * 0.06;
+      velocities[ix + 2] = (random() - 0.5) * 0.04;
+
+      twinkle[i * 2] = random() * Math.PI * 2;
+      twinkle[i * 2 + 1] = 0.7 + random() * 2.1;
+
+      // Every seventh node picks up the brand orange
+      const c = i % 7 === 0 ? theme.accent : theme.pale;
+      baseColors[ix] = colors[ix] = c.r;
+      baseColors[ix + 1] = colors[ix + 1] = c.g;
+      baseColors[ix + 2] = colors[ix + 2] = c.b;
     }
-    const x = u * Math.cos(a0) * r0 + v * Math.cos(a1) * r1;
-    const y = u * Math.sin(a0) * r0 + v * Math.sin(a1) * r1;
 
-    out[i * 3] = x;
-    out[i * 3 + 1] = y;
-    out[i * 3 + 2] = (random() - 0.5) * 0.28;
-  }
-  return out;
-}
+    const pointGeom = new BufferGeometry();
+    pointGeom.setAttribute('position', new BufferAttribute(positions, 3));
+    pointGeom.setAttribute('color', new BufferAttribute(colors, 3));
 
-/** Open book: two pages angled from a spine. */
-function bookShape(count: number, size: number, random: () => number) {
-  const out = new Float32Array(count * 3);
-  const tilt = 0.42;
-  for (let i = 0; i < count; i++) {
-    const side = random() > 0.5 ? 1 : -1;
-    const across = random(); // 0 at spine, 1 at outer edge
-    const along = random() - 0.5;
-    // Pages sag slightly toward the outer edge
-    const sag = Math.sin(across * Math.PI * 0.5) * 0.34;
+    const lineGeom = new BufferGeometry();
+    lineGeom.setAttribute(
+      'position',
+      new BufferAttribute(new Float32Array(MAX_LINKS * 6), 3)
+    );
+    lineGeom.setAttribute(
+      'color',
+      new BufferAttribute(new Float32Array(MAX_LINKS * 6), 3)
+    );
 
-    out[i * 3] = side * across * size * 1.15;
-    out[i * 3 + 1] = along * size * 1.35 - sag + 0.1;
-    out[i * 3 + 2] = -across * size * tilt + (random() - 0.5) * 0.08;
-  }
-  return out;
-}
-
-/** Atom: a small nucleus inside three tilted electron rings. */
-function atomShape(count: number, radius: number, random: () => number) {
-  const out = new Float32Array(count * 3);
-  const tilts = [0, Math.PI / 3, -Math.PI / 3];
-  for (let i = 0; i < count; i++) {
-    if (random() < 0.18) {
-      // Nucleus
-      const t = random() * Math.PI * 2;
-      const p = Math.acos(2 * random() - 1);
-      const r = radius * 0.22 * Math.cbrt(random());
-      out[i * 3] = r * Math.sin(p) * Math.cos(t);
-      out[i * 3 + 1] = r * Math.sin(p) * Math.sin(t);
-      out[i * 3 + 2] = r * Math.cos(p);
-    } else {
-      const tilt = tilts[Math.floor(random() * tilts.length)];
-      const angle = random() * Math.PI * 2;
-      const r = radius * (0.97 + random() * 0.06);
-      const x = Math.cos(angle) * r;
-      const y = Math.sin(angle) * r * 0.42;
-      // Rotate the ring around Z by its tilt
-      out[i * 3] = x * Math.cos(tilt) - y * Math.sin(tilt);
-      out[i * 3 + 1] = x * Math.sin(tilt) + y * Math.cos(tilt);
-      out[i * 3 + 2] = (random() - 0.5) * 0.1;
-    }
-  }
-  return out;
-}
-
-/* ---------------------------------------------------------------- material */
-
-const VERTEX = /* glsl */ `
-  uniform float uTime;
-  uniform float uProgress;
-  uniform vec2  uPointer;
-  uniform float uSize;
-  uniform float uPixelRatio;
-
-  attribute vec3  aFrom;
-  attribute vec3  aTo;
-  attribute float aScale;
-  attribute float aSeed;
-
-  varying float vMix;
-  varying float vSeed;
-
-  void main() {
-    // Ease the morph, and stagger it per particle so the shape assembles
-    // rather than snapping all at once.
-    float staggered = clamp(uProgress * 1.35 - aSeed * 0.35, 0.0, 1.0);
-    float eased = staggered * staggered * (3.0 - 2.0 * staggered);
-
-    vec3 pos = mix(aFrom, aTo, eased);
-
-    // Particles bow outward mid-morph, so the transition reads as a burst
-    float burst = sin(eased * 3.14159);
-    pos += normalize(pos + 0.001) * burst * (0.5 + aSeed * 0.8);
-
-    // Gentle idle drift
-    pos.x += sin(uTime * 0.5 + aSeed * 6.28) * 0.045;
-    pos.y += cos(uTime * 0.42 + aSeed * 5.13) * 0.045;
-
-    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-
-    // Cursor repulsion in view space — falls off quickly so it feels local
-    vec2 toPointer = mvPosition.xy - uPointer * 3.2;
-    float dist = length(toPointer);
-    float push = smoothstep(1.7, 0.0, dist) * 0.9;
-    mvPosition.xy += normalize(toPointer + 0.001) * push;
-
-    gl_Position = projectionMatrix * mvPosition;
-    gl_PointSize = uSize * aScale * uPixelRatio * (1.0 / -mvPosition.z);
-
-    vMix = burst;
-    vSeed = aSeed;
-  }
-`;
-
-const FRAGMENT = /* glsl */ `
-  uniform vec3 uColorA;
-  uniform vec3 uColorB;
-  uniform vec3 uColorC;
-
-  varying float vMix;
-  varying float vSeed;
-
-  void main() {
-    // Round, soft-edged point
-    float d = length(gl_PointCoord - 0.5);
-    if (d > 0.5) discard;
-    float alpha = smoothstep(0.5, 0.12, d);
-
-    // Two-stage brand ramp, hottest mid-morph
-    vec3 base = mix(uColorA, uColorB, vSeed);
-    vec3 color = mix(base, uColorC, vMix * 0.65);
-
-    gl_FragColor = vec4(color, alpha * (0.55 + vMix * 0.45));
-  }
-`;
-
-/* ------------------------------------------------------------------- scene */
-
-function ParticleMorph() {
-  const points = useRef<ThreePoints>(null);
-  const state = useRef({ shape: 0, elapsed: 0 });
-
-  const { geometry, material, shapes } = useMemo(() => {
-    const random = makeRandom(20260726);
-    const shapes = [
-      starShape(COUNT, 2.15, random),
-      bookShape(COUNT, 1.65, random),
-      atomShape(COUNT, 2.0, random),
-      sphereShape(COUNT, 1.85, random),
-    ];
-
-    const geometry = new BufferGeometry();
-    geometry.setAttribute('position', new BufferAttribute(shapes[0].slice(), 3));
-    geometry.setAttribute('aFrom', new BufferAttribute(shapes[0].slice(), 3));
-    geometry.setAttribute('aTo', new BufferAttribute(shapes[1].slice(), 3));
-
-    const scale = new Float32Array(COUNT);
-    const seed = new Float32Array(COUNT);
-    for (let i = 0; i < COUNT; i++) {
-      scale[i] = 0.6 + random() * 0.9;
-      seed[i] = random();
-    }
-    geometry.setAttribute('aScale', new BufferAttribute(scale, 1));
-    geometry.setAttribute('aSeed', new BufferAttribute(seed, 1));
-
-    const material = new ShaderMaterial({
-      vertexShader: VERTEX,
-      fragmentShader: FRAGMENT,
+    const pointMat = new PointsMaterial({
+      map: makeSparkleTexture(dark),
+      // The dark sprite is mostly falloff so its quad has to be larger; the
+      // light one is a solid core and needs less room.
+      size: dark ? 0.115 : 0.075,
+      sizeAttenuation: true,
+      vertexColors: true,
       transparent: true,
+      opacity: dark ? 0.95 : 1,
       depthWrite: false,
-      // Normal blending: additive would blow out to white on the light hero.
-      blending: NormalBlending,
-      uniforms: {
-        uTime: { value: 0 },
-        uProgress: { value: 0 },
-        uPointer: { value: [0, 0] },
-        uSize: { value: 260 },
-        uPixelRatio: { value: 1 },
-        uColorA: { value: new Color('#DF6639') },
-        uColorB: { value: new Color('#F48D75') },
-        uColorC: { value: new Color('#B03A1A') },
-      },
     });
 
-    return { geometry, material, shapes };
-  }, []);
+    // LineBasicMaterial has no per-vertex alpha, so distance is expressed by
+    // darkening toward the background colour instead.
+    const lineMat = new LineBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      // Light mode needs more weight to read at all against white.
+      opacity: dark ? 0.55 : 0.8,
+      depthWrite: false,
+    });
 
-  useFrame(({ clock, pointer, viewport }, delta) => {
-    const uniforms = material.uniforms;
-    uniforms.uTime.value = clock.elapsedTime;
-    uniforms.uPixelRatio.value = Math.min(viewport.dpr ?? 1, 2);
+    return {
+      positions,
+      homes,
+      velocities,
+      baseColors,
+      twinkle,
+      pointGeom,
+      lineGeom,
+      pointMat,
+      lineMat,
+    };
+  }, [theme, dark]);
 
-    // Ease the pointer so the repulsion trails rather than snaps
-    const p = uniforms.uPointer.value as number[];
-    p[0] += (pointer.x - p[0]) * 0.08;
-    p[1] += (pointer.y - p[1]) * 0.08;
+  useFrame((state, delta) => {
+    const elapsed = state.clock.elapsedTime;
+    // Twinkle fades toward the ground the mesh sits on.
+    const fade = theme.lineFar;
+    // Clamp: a backgrounded tab hands back a huge delta on return and would
+    // fling every node out of bounds at once.
+    const step = Math.min(delta, 0.05);
 
-    const s = state.current;
-    s.elapsed += delta;
+    const rot = pointsRef.current?.rotation.y ?? 0;
+    const cos = Math.cos(rot);
+    const sin = Math.sin(rot);
 
-    if (s.elapsed < HOLD) {
-      uniforms.uProgress.value = 0;
-    } else if (s.elapsed < HOLD + MORPH) {
-      uniforms.uProgress.value = (s.elapsed - HOLD) / MORPH;
-    } else {
-      // Morph finished: current target becomes the new source, pick the next.
-      const next = (s.shape + 1) % shapes.length;
-      const from = geometry.getAttribute('aFrom') as BufferAttribute;
-      const to = geometry.getAttribute('aTo') as BufferAttribute;
-      from.copyArray(shapes[next]);
-      to.copyArray(shapes[(next + 1) % shapes.length]);
-      from.needsUpdate = true;
-      to.needsUpdate = true;
-      s.shape = next;
-      s.elapsed = 0;
-      uniforms.uProgress.value = 0;
+    // Screen pointer -> world -> this group's local space. Ignoring the group
+    // offset, scale and yaw is what made the cursor push in the wrong place.
+    // Parked far away until the pointer has actually moved, so nothing is
+    // displaced on load.
+    const worldX = (ndc.current.x * viewport.width) / 2;
+    const worldY = (ndc.current.y * viewport.height) / 2;
+    cursor.current.x = ndc.current.seen ? (worldX - offsetX) / scale : 1e6;
+    cursor.current.y = ndc.current.seen ? worldY / scale : 1e6;
+
+    const colorAttr = pointGeom.getAttribute('color') as BufferAttribute;
+    const colorArr = colorAttr.array as Float32Array;
+    const radius2 = CURSOR_RADIUS * CURSOR_RADIUS;
+
+    for (let i = 0; i < NODES; i++) {
+      const ix = i * 3;
+
+      // Home drifts; the node springs toward it, so any displacement decays on
+      // its own once the cursor moves away.
+      homes[ix] += velocities[ix] * step;
+      homes[ix + 1] += velocities[ix + 1] * step;
+      homes[ix + 2] += velocities[ix + 2] * step;
+      if (Math.abs(homes[ix]) > BOUNDS.x) velocities[ix] *= -1;
+      if (Math.abs(homes[ix + 1]) > BOUNDS.y) velocities[ix + 1] *= -1;
+      if (Math.abs(homes[ix + 2]) > BOUNDS.z) velocities[ix + 2] *= -1;
+
+      // Compare against where the node's home actually *appears*: the mesh
+      // spins, so local x and z are mixed by the yaw before reaching the screen.
+      const homeVisualX = homes[ix] * cos + homes[ix + 2] * sin;
+      const dx = homeVisualX - cursor.current.x;
+      const dy = homes[ix + 1] - cursor.current.y;
+      const d2 = dx * dx + dy * dy;
+
+      // Solve for a target position each frame rather than accumulating force.
+      // Accumulating took several frames to build up and several more to decay,
+      // which is what read as lag.
+      let targetX = homes[ix];
+      let targetY = homes[ix + 1];
+      let targetZ = homes[ix + 2];
+      let heat = 0;
+      if (d2 < radius2 && d2 > 1e-6) {
+        const d = Math.sqrt(d2);
+        const falloff = 1 - d / CURSOR_RADIUS;
+        heat = falloff;
+        const shiftX = (dx / d) * falloff * PUSH_DISTANCE;
+        targetX += shiftX * cos;
+        targetZ += shiftX * sin;
+        targetY += (dy / d) * falloff * PUSH_DISTANCE;
+      }
+
+      // Frame-rate independent chase toward the target
+      const k = 1 - Math.exp(-RESPONSE * step);
+      positions[ix] += (targetX - positions[ix]) * k;
+      positions[ix + 1] += (targetY - positions[ix + 1]) * k;
+      positions[ix + 2] += (targetZ - positions[ix + 2]) * k;
+
+      // Twinkle by lerping toward the background rather than scaling
+      // brightness: on a light ground, scaling down would make a node *more*
+      // visible, so it would read as a pulse rather than a fade.
+      const wave =
+        0.5 + 0.5 * Math.sin(elapsed * twinkle[i * 2 + 1] + twinkle[i * 2]);
+      // Light mode swings harder: the contrast available between a mid grey
+      // and near-white is much narrower than white against near-black.
+      const lit = dark ? 0.4 + 0.6 * wave : 0.3 + 0.7 * wave;
+
+      const r = fade.r + (baseColors[ix] - fade.r) * lit;
+      const g = fade.g + (baseColors[ix + 1] - fade.g) * lit;
+      const b = fade.b + (baseColors[ix + 2] - fade.b) * lit;
+
+      // Nodes flare as the cursor nears them
+      colorArr[ix] = r + (theme.hot.r - r) * heat;
+      colorArr[ix + 1] = g + (theme.hot.g - g) * heat;
+      colorArr[ix + 2] = b + (theme.hot.b - b) * heat;
+    }
+    pointGeom.getAttribute('position').needsUpdate = true;
+    colorAttr.needsUpdate = true;
+
+    // --- rebuild the links
+    const linePos = lineGeom.getAttribute('position') as BufferAttribute;
+    const lineCol = lineGeom.getAttribute('color') as BufferAttribute;
+    const posArr = linePos.array as Float32Array;
+    const colArr = lineCol.array as Float32Array;
+
+    let link = 0;
+    for (let i = 0; i < NODES && link < MAX_LINKS; i++) {
+      const ix = i * 3;
+      for (let j = i + 1; j < NODES && link < MAX_LINKS; j++) {
+        const jx = j * 3;
+        const dx = positions[ix] - positions[jx];
+        const dy = positions[ix + 1] - positions[jx + 1];
+        const dz = positions[ix + 2] - positions[jx + 2];
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (dist > LINK_DIST) continue;
+
+        const o = link * 6;
+        posArr[o] = positions[ix];
+        posArr[o + 1] = positions[ix + 1];
+        posArr[o + 2] = positions[ix + 2];
+        posArr[o + 3] = positions[jx];
+        posArr[o + 4] = positions[jx + 1];
+        posArr[o + 5] = positions[jx + 2];
+
+        // Fade toward the background as the pair separates
+        const t = 1 - dist / LINK_DIST;
+        const r = theme.lineFar.r + (theme.lineNear.r - theme.lineFar.r) * t;
+        const g = theme.lineFar.g + (theme.lineNear.g - theme.lineFar.g) * t;
+        const b = theme.lineFar.b + (theme.lineNear.b - theme.lineFar.b) * t;
+        colArr[o] = colArr[o + 3] = r;
+        colArr[o + 1] = colArr[o + 4] = g;
+        colArr[o + 2] = colArr[o + 5] = b;
+
+        link++;
+      }
     }
 
-    if (points.current) points.current.rotation.y += delta * 0.11;
+    // Collapse unused slots to a degenerate segment so they render as nothing
+    if (link < MAX_LINKS) posArr.fill(0, link * 6);
+
+    linePos.needsUpdate = true;
+    lineCol.needsUpdate = true;
+
+    // Very slow yaw so the mesh reads as volumetric rather than flat
+    if (pointsRef.current && linesRef.current) {
+      pointsRef.current.rotation.y += step * 0.025;
+      linesRef.current.rotation.y = pointsRef.current.rotation.y;
+    }
   });
 
-  return <points ref={points} geometry={geometry} material={material} />;
+  return (
+    <group position={[offsetX, 0, 0]} scale={scale}>
+      <points ref={pointsRef} geometry={pointGeom} material={pointMat} />
+      <lineSegments ref={linesRef} geometry={lineGeom} material={lineMat} />
+    </group>
+  );
 }
 
-export default function HeroScene() {
+export default function HeroScene({ dark = true }: { dark?: boolean }) {
   return (
     <Canvas
       // Cap DPR: retina phones would otherwise render at 3x and tank framerate.
       dpr={[1, 1.75]}
-      camera={{ position: [0, 0, 6.2], fov: 45 }}
+      camera={{ position: [0, 0, 7.6], fov: 45 }}
       gl={{ antialias: true, alpha: true, powerPreference: 'default' }}
       style={{ background: 'transparent' }}
     >
-      <ParticleMorph />
+      <Constellation dark={dark} />
     </Canvas>
   );
 }

@@ -125,95 +125,106 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
       <LandingNav />
 
-      {/* Hero Section. Top padding clears the fixed nav, which floats over the
-          3D scene rather than sitting above it. */}
-      <section className="relative overflow-hidden px-4 pb-24 pt-32 text-center sm:pb-28 sm:pt-36">
-        {/* Base wash */}
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-white to-white dark:from-primary/10 dark:via-gray-900 dark:to-gray-900" />
-
-        {/* 3D scene. Renders a static aurora immediately and layers WebGL over
-            it only on capable, non-reduced-motion, larger-than-mobile devices. */}
-        <Hero3D className="pointer-events-none absolute inset-0" />
-
-        {/* Readability scrim. The 3D sits directly behind the headline, and a
-            metallic orange sphere drifting under dark text destroys contrast.
-            This keeps a page-coloured wash under the copy while leaving the
-            scene visible around the edges. */}
+      {/* Hero. Dark band with a network constellation weighted to the right,
+          copy ranged left. The mesh needs a dark ground to read — thin light
+          lines on white are invisible — so this section inverts while the rest
+          of the page stays light. */}
+      <section className="relative isolate overflow-hidden bg-gray-50 pb-20 pt-32 dark:bg-gray-900 sm:pb-24 sm:pt-36">
+        {/* Depth wash behind the mesh */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_45%,rgba(255,255,255,0.92),rgba(255,255,255,0.65)_55%,transparent_80%)] dark:bg-[radial-gradient(ellipse_60%_50%_at_50%_45%,rgba(17,24,39,0.92),rgba(17,24,39,0.7)_55%,transparent_80%)]"
+          className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_65%_55%_at_72%_45%,#FFFFFF,#E4E7EC_70%)] dark:bg-[radial-gradient(ellipse_65%_55%_at_72%_45%,#182130,#090C14_70%)]"
         />
 
-        {/* Fade the scene into the page below */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-white to-transparent dark:from-gray-900" />
+        {/* Constellation. Masked so it dissolves toward the copy on the left
+            instead of competing with it. */}
+        <Hero3D
+          className="pointer-events-none absolute inset-0 -z-10 opacity-90 [mask-image:linear-gradient(to_right,transparent_0%,transparent_34%,rgba(0,0,0,0.5)_52%,black_72%)] [-webkit-mask-image:linear-gradient(to_right,transparent_0%,transparent_34%,rgba(0,0,0,0.5)_52%,black_72%)]"
+        />
 
-        <div className={`relative mx-auto max-w-4xl will-change-transform transition-transform duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
-          
-          <h1 className="mb-6 text-5xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-6xl lg:text-7xl animate-slide-up">
-            Ace Your O Levels &amp; IGCSE Exams with{' '}
-            <span className="bg-gradient-to-r from-primary via-primary-600 to-primary-700 bg-clip-text text-transparent animate-gradient-x">
-              Learnify
-            </span>
-          </h1>
+        {/* Settle the band into the page below */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-24 bg-gradient-to-t from-gray-50 to-transparent dark:from-gray-900"
+        />
 
-          <p className="mx-auto mb-8 max-w-3xl text-xl leading-relaxed text-gray-600 dark:text-gray-300">
-            Personalized online classes designed to help every student master
-            concepts, practice past papers, and achieve A* results with the
-            support of expert tutors who truly care.
-          </p>
+        <div
+          className={`relative mx-auto w-full max-w-[120rem] px-5 transition-all duration-1000 sm:px-8 lg:px-14 xl:px-20 ${
+            isVisible ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'
+          }`}
+        >
+          <div className="max-w-2xl">
+            <h1 className="text-4xl font-bold leading-[1.08] tracking-tight text-gray-900 dark:text-white sm:text-5xl lg:text-6xl">
+              Ace Your O Levels &amp; IGCSE Exams with{' '}
+              <span className="text-primary">Learnify.</span>
+            </h1>
 
-          <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:justify-center">
-            <Button
-              asChild
-              size="lg"
-              className="group h-12 bg-gradient-to-r from-primary to-primary-600 px-8 text-lg text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-primary/25"
-            >
-              <Link href="/courses" className="flex items-center space-x-2">
-                <Play className="h-5 w-5 transition-transform group-hover:scale-110" />
-                <span>Book a Free Trial Class</span>
-                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="group h-12 border-2 border-gray-300 px-8 text-lg text-gray-700 transition-all duration-300 hover:scale-105 hover:bg-gray-50 hover:border-primary hover:text-primary dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:border-primary"
-            >
-              <a
-                href={whatsappLink(WHATSAPP_MESSAGES.contact)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center space-x-2"
+            <p className="mt-6 max-w-xl text-lg leading-relaxed text-gray-600 dark:text-gray-300">
+              Personalized online classes designed to help every student master
+              concepts, practice past papers, and achieve A* results with the
+              support of expert tutors who truly care.
+            </p>
+
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <Button
+                asChild
+                size="lg"
+                className="group h-12 bg-primary px-7 text-base text-white shadow-lg shadow-primary/20 transition-all duration-300 hover:bg-primary-600"
               >
-                <MessageCircle className="h-5 w-5 transition-transform group-hover:scale-110" />
-                <span>Contact Now</span>
-              </a>
-            </Button>
+                <Link href="/courses" className="flex items-center gap-2">
+                  <Play className="h-5 w-5 transition-transform group-hover:scale-110" />
+                  <span>Book a Free Trial Class</span>
+                  <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="group h-12 border-2 border-gray-300 bg-transparent px-7 text-base text-gray-800 transition-all duration-300 hover:border-primary hover:bg-primary/5 hover:text-primary dark:border-white/25 dark:text-white dark:hover:border-white/50 dark:hover:bg-white/10 dark:hover:text-white"
+              >
+                <a
+                  href={whatsappLink(WHATSAPP_MESSAGES.contact)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2"
+                >
+                  <MessageCircle className="h-5 w-5 transition-transform group-hover:scale-110" />
+                  <span>Contact Now</span>
+                </a>
+              </Button>
+            </div>
           </div>
 
-          {/* Quick Stats */}
-          <div className="mb-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 sm:gap-x-12">
-            {quickStats.map((stat, index) => (
-              <div
-                key={index}
-                id={`stat-${index}`}
-                data-animate
-                className={`text-center transition-all duration-500 ${
-                  visibleElements.has(`stat-${index}`) ? 'animate-scale-in' : 'opacity-0 scale-90'
-                }`}
-                style={{ animationDelay: `${index * 120}ms` }}
-              >
-                <div className="text-3xl font-bold text-primary sm:text-4xl">
-                  {stat.value}
+          {/* Stats, ranged left under the copy */}
+          <div className="mt-20 max-w-2xl sm:mt-24">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Our results tell a compelling story:
+            </p>
+            <div className="mt-4 h-px w-24 bg-gray-300 dark:bg-white/25" />
+            <div className="mt-7 flex flex-wrap gap-x-12 gap-y-6">
+              {quickStats.map((stat, index) => (
+                <div
+                  key={index}
+                  id={`stat-${index}`}
+                  data-animate
+                  className={`transition-all duration-500 ${
+                    visibleElements.has(`stat-${index}`)
+                      ? 'animate-scale-in'
+                      : 'scale-90 opacity-0'
+                  }`}
+                  style={{ animationDelay: `${index * 120}ms` }}
+                >
+                  <div className="text-3xl font-bold text-primary sm:text-4xl">
+                    {stat.value}
+                  </div>
+                  <div className="mt-1 max-w-[7rem] text-sm leading-snug text-gray-600 dark:text-gray-400">
+                    {stat.label}
+                  </div>
                 </div>
-                <div className="mt-1 text-sm font-medium text-gray-600 dark:text-gray-400">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-
         </div>
       </section>
 

@@ -48,6 +48,9 @@ module.exports = {
           700: '#434343',
           800: '#3E3E3C',
           900: '#2A2A2A',
+          // Near-black end of the charcoal ramp, for the dark hero band. The
+          // node mesh needs a much deeper ground than 900 to read.
+          950: '#141413',
         },
         // Extended color palette based on brand colors
         primary: {
