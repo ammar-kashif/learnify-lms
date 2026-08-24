@@ -15,6 +15,7 @@ import { CreditCard, Copy, Check, AlertCircle, MessageCircle } from 'lucide-reac
 import { toast } from 'sonner';
 import ModernSubscriptionModal from './modern-subscription-modal';
 import { WHATSAPP_NUMBER } from '@/config/contact';
+import { parseCourseTitle } from '@/lib/course-taxonomy';
 
 interface PaymentPopupProps {
   isOpen: boolean;
@@ -648,8 +649,11 @@ export default function PaymentPopup({
                       {course.subject}
                     </p>
                   </div>
+                  {/* Derived from the title — this was hardcoded to "O Levels",
+                      so an IGCSE purchase showed the wrong qualification on the
+                      payment screen. */}
                   <Badge variant="secondary" className="bg-primary/10 text-primary-700 dark:text-primary-300">
-                    O Levels
+                    {parseCourseTitle(course.title).level}
                   </Badge>
                 </div>
               </div>

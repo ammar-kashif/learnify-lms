@@ -21,6 +21,7 @@ import {
   MapPin,
   ChevronDown,
   MessageCircle,
+  CalendarCheck,
   GraduationCap,
   FileText,
   Trophy,
@@ -33,7 +34,13 @@ import Hero3D from '@/components/hero/hero-3d';
 import TiltCard from '@/components/ui/tilt-card';
 import { Reveal, RevealItem } from '@/components/ui/reveal';
 import { scaleIn } from '@/lib/motion';
-import { whatsappLink, WHATSAPP_MESSAGES, WHATSAPP_DISPLAY } from '@/config/contact';
+import {
+  whatsappLink,
+  consultationLink,
+  WHATSAPP_MESSAGES,
+  WHATSAPP_DISPLAY,
+} from '@/config/contact';
+import { FEATURED_SUBJECTS } from '@/config/subjects';
 
 export default function HomePage() {
   const [isVisible, setIsVisible] = useState(false);
@@ -171,7 +178,10 @@ export default function HomePage() {
                 size="lg"
                 className="group h-12 bg-primary px-7 text-base text-white shadow-lg shadow-primary/20 transition-all duration-300 hover:bg-primary-600"
               >
-                <Link href="/courses" className="flex items-center gap-2">
+                <Link
+                  href="/book-trial?src=hero"
+                  className="flex items-center gap-2"
+                >
                   <Play className="h-5 w-5 transition-transform group-hover:scale-110" />
                   <span>Book a Free Trial Class</span>
                   <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
@@ -184,13 +194,13 @@ export default function HomePage() {
                 className="group h-12 border-2 border-gray-300 bg-transparent px-7 text-base text-gray-800 transition-all duration-300 hover:border-primary hover:bg-primary/5 hover:text-primary dark:border-white/25 dark:text-white dark:hover:border-white/50 dark:hover:bg-white/10 dark:hover:text-white"
               >
                 <a
-                  href={whatsappLink(WHATSAPP_MESSAGES.contact)}
+                  href={consultationLink()}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2"
                 >
-                  <MessageCircle className="h-5 w-5 transition-transform group-hover:scale-110" />
-                  <span>Contact Now</span>
+                  <CalendarCheck className="h-5 w-5 transition-transform group-hover:scale-110" />
+                  <span>Book a Free Consultation</span>
                 </a>
               </Button>
             </div>
@@ -459,7 +469,7 @@ export default function HomePage() {
                   className="group h-12 bg-white px-8 text-lg text-primary shadow-lg transition-all duration-300 hover:scale-105 hover:bg-gray-100 hover:shadow-2xl hover:shadow-white/25"
                 >
                   <Link
-                    href="/courses"
+                    href="/book-trial?src=cta"
                     className="flex items-center space-x-2"
                   >
                     <Play className="h-5 w-5 transition-transform group-hover:scale-110" />
@@ -500,7 +510,7 @@ export default function HomePage() {
                 <span className="text-lg font-bold text-gray-900 dark:text-gray-100">Learnify</span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                Your one-stop platform for Cambridge O Level preparation. Expert teachers, comprehensive courses, and everything you need to succeed.
+                Your one-stop platform for Cambridge O Level and IGCSE preparation, now including Edexcel IGCSE. Expert teachers, comprehensive courses, and everything you need to succeed.
               </p>
             </div>
 
@@ -527,9 +537,9 @@ export default function HomePage() {
             <div>
               <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-900 dark:text-gray-100">Subjects</h3>
               <ul className="space-y-2.5">
-                {['Chemistry', 'Physics', 'Biology', 'Mathematics', 'English Language', 'English Literature'].map((subj) => (
+                {FEATURED_SUBJECTS.map((subj) => (
                   <li key={subj}>
-                    <Link href="/courses" className="text-sm text-gray-600 transition-colors hover:text-primary dark:text-gray-400 dark:hover:text-primary">
+                    <Link href={`/courses?q=${encodeURIComponent(subj)}`} className="text-sm text-gray-600 transition-colors hover:text-primary dark:text-gray-400 dark:hover:text-primary">
                       {subj}
                     </Link>
                   </li>
@@ -598,15 +608,15 @@ function FAQAccordion() {
   const faqs = [
     {
       q: 'Which exam boards does Learnify cover?',
-      a: 'We focus on the O Level and IGCSE syllabi, so every lesson, quiz, and assignment is directly relevant to your exams.',
+      a: 'We cover Cambridge for both O Level and IGCSE, and Edexcel for IGCSE, so every lesson, quiz, and assignment is directly relevant to your exams.',
     },
     {
       q: 'Can I try before I subscribe?',
-      a: 'Absolutely. You can book a free trial class, watch a demo lecture, or join a live class without signing up. Just pick a course and click "Try Free Demo".',
+      a: 'Absolutely. Click "Book a Free Trial Class", pick your subject and a time that suits you, and join — no account and no payment needed. You can also watch a demo lecture without signing up.',
     },
     {
       q: 'What subjects are available?',
-      a: 'We cover Mathematics, Physics, Chemistry, Biology, Computer Science, and English, with more subjects added regularly.',
+      a: 'At O Level we cover Mathematics, Physics, Chemistry, Computer Science, Biology, Pakistan Studies, Islamiyat, Urdu, and English. At IGCSE we cover the full Cambridge range, plus Mathematics, Physics, Chemistry, Biology, and Computer Science with Edexcel.',
     },
     {
       q: 'How big are the classes?',

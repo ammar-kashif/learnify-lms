@@ -24,7 +24,8 @@ export default function Loading() {
         <div className="mb-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <Skeleton className="h-11 w-full rounded-full lg:max-w-sm" />
           <div className="flex gap-2">
-            {[64, 84, 76, 72].map((w, i) => (
+            {/* All / O Level / IGCSE — A Level was removed from the catalogue. */}
+            {[64, 84, 76].map((w, i) => (
               <Skeleton key={i} className="h-10 rounded-full" style={{ width: w }} />
             ))}
           </div>

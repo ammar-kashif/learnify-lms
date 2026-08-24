@@ -98,6 +98,23 @@ export async function POST(request: NextRequest) {
       }
 
       console.log('✅ User profile created successfully');
+
+      // Link any free-trial bookings this person made as a guest, so the admin
+      // lead list shows which trials actually converted into signups.
+      // Deliberately non-blocking: a failure here must never fail a signup.
+      try {
+        await supabaseAdmin
+          .from('trial_bookings')
+          .update({
+            converted_at: new Date().toISOString(),
+            converted_user_id: authData.user.id,
+            user_id: authData.user.id,
+          })
+          .eq('guest_email', email.toLowerCase().trim())
+          .is('converted_at', null);
+      } catch (conversionError) {
+        console.error('Trial booking conversion link failed:', conversionError);
+      }
     }
 
     // Return success

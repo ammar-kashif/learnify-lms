@@ -20,38 +20,87 @@ import {
 } from 'lucide-react';
 
 /**
- * The `courses` table has no `level` or `subject` column — the qualification is
- * encoded in the title ("Cambridge O Level Physics", "Cambridge IGCSE Biology").
- * This derives both so the catalogue can be grouped and filtered without a
- * migration. If a level column is ever added, swap the parser for a read.
+ * Qualification, board and subject for a course.
+ *
+ * These now live on `courses` as real columns (`level`, `board`, `subject`),
+ * added by migrations/001-course-taxonomy.sql. The title parser below is kept
+ * only as a fallback for rows whose columns are still null — read the columns
+ * first via `courseTaxonomy()`.
  */
 
-export type CourseLevel = 'O Level' | 'IGCSE' | 'A Level' | 'Other';
+export type CourseLevel = 'O Level' | 'IGCSE' | 'Other';
+export type CourseBoard = 'Cambridge' | 'Edexcel';
 
-/** Display order for grouped sections. */
-export const LEVEL_ORDER: CourseLevel[] = ['O Level', 'IGCSE', 'A Level', 'Other'];
+/** Display order for grouped sections and filter tabs. */
+export const LEVEL_ORDER: CourseLevel[] = ['O Level', 'IGCSE', 'Other'];
+
+/** Display order for the board sub-filter. */
+export const BOARD_ORDER: CourseBoard[] = ['Cambridge', 'Edexcel'];
 
 const PATTERNS: Array<{ re: RegExp; level: CourseLevel }> = [
-  // IGCSE must be tested before O Level — both may start with "Cambridge".
-  { re: /^(?:cambridge\s+)?igcse\s+(.+)$/i, level: 'IGCSE' },
-  { re: /^(?:cambridge\s+)?o[\s-]*levels?\s+(.+)$/i, level: 'O Level' },
-  { re: /^(?:cambridge\s+)?a[\s-]*levels?\s+(.+)$/i, level: 'A Level' },
+  // IGCSE must be tested before O Level — both may start with a board prefix.
+  { re: /^(?:cambridge|edexcel)?\s*igcse\s+(.+)$/i, level: 'IGCSE' },
+  { re: /^(?:cambridge|edexcel)?\s*o[\s-]*levels?\s+(.+)$/i, level: 'O Level' },
 ];
 
 export interface ParsedCourse {
   /** Qualification the course belongs to. */
   level: CourseLevel;
-  /** Title with the qualification prefix stripped, e.g. "Physics". */
+  /** Exam board, when it can be determined. */
+  board: CourseBoard | null;
+  /** Title with the board and qualification prefix stripped, e.g. "Physics". */
   subject: string;
 }
 
+/** Fallback parser for rows whose taxonomy columns have not been backfilled. */
 export function parseCourseTitle(title: string): ParsedCourse {
   const trimmed = (title ?? '').trim();
+
+  let board: CourseBoard | null = null;
+  if (/^edexcel/i.test(trimmed)) board = 'Edexcel';
+  else if (/^cambridge/i.test(trimmed)) board = 'Cambridge';
+
   for (const { re, level } of PATTERNS) {
     const match = re.exec(trimmed);
-    if (match) return { level, subject: match[1].trim() };
+    if (match) return { level, board, subject: match[1].trim() };
   }
-  return { level: 'Other', subject: trimmed };
+  return { level: 'Other', board, subject: trimmed };
+}
+
+/** A course as far as this module is concerned — columns optional. */
+export interface TaxonomySource {
+  title: string;
+  level?: string | null;
+  board?: string | null;
+  subject?: string | null;
+}
+
+const LEVELS = new Set<string>(['O Level', 'IGCSE']);
+const BOARDS = new Set<string>(['Cambridge', 'Edexcel']);
+
+/**
+ * Reads the taxonomy off a course row, falling back to the title parser for
+ * any field the database has not filled in.
+ */
+export function courseTaxonomy(course: TaxonomySource): ParsedCourse {
+  const needsFallback =
+    !course.level || !course.subject || !LEVELS.has(course.level);
+  const parsed = needsFallback ? parseCourseTitle(course.title) : null;
+
+  const level: CourseLevel =
+    course.level && LEVELS.has(course.level)
+      ? (course.level as CourseLevel)
+      : (parsed?.level ?? 'Other');
+
+  const board: CourseBoard | null =
+    course.board && BOARDS.has(course.board)
+      ? (course.board as CourseBoard)
+      : (parsed?.board ?? parseCourseTitle(course.title).board);
+
+  const subject =
+    course.subject?.trim() || parsed?.subject || course.title.trim();
+
+  return { level, board, subject };
 }
 
 /**
@@ -99,12 +148,12 @@ export function subjectIcon(subject: string): LucideIcon {
 }
 
 /** Groups courses by level, preserving LEVEL_ORDER and dropping empty groups. */
-export function groupByLevel<T extends { title: string }>(
+export function groupByLevel<T extends TaxonomySource>(
   courses: T[]
 ): Array<{ level: CourseLevel; courses: T[] }> {
   const buckets = new Map<CourseLevel, T[]>();
   for (const course of courses) {
-    const { level } = parseCourseTitle(course.title);
+    const { level } = courseTaxonomy(course);
     const bucket = buckets.get(level) ?? [];
     bucket.push(course);
     buckets.set(level, bucket);

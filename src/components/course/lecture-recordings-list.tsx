@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, MouseEvent } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,11 +23,11 @@ import {
 import { EmptyState, panel, TabSpinner } from '@/components/course/course-ui';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth-context';
-import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { trackVideoPlay, trackVideoComplete } from '@/lib/tracking';
 import { getGuestDemo, setGuestDemo, hasGuestDemoExpired } from '@/lib/guest-demo';
 import DemoCountdownTimer from './demo-countdown-timer';
+import YouTubePlayer from './youtube-player';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +39,9 @@ interface LectureRecording {
   id: string;
   title: string;
   description?: string;
+  /** Playback source. Null on locked rows — the API strips it. */
+  youtube_video_id: string | null;
+  /** Legacy S3 columns, kept so old rows still render their metadata. */
   video_url: string | null;
   video_key: string | null;
   duration?: number;
@@ -84,7 +87,6 @@ export default function LectureRecordingsList({
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [watchedVideos, setWatchedVideos] = useState<Set<string>>(new Set());
   const [demoVideoId, setDemoVideoId] = useState<string | null>(null);
-  const [videoTokens, setVideoTokens] = useState<Record<string, string>>({});
   const [guestDemo, setGuestDemoState] = useState<ReturnType<typeof getGuestDemo>>(null);
   const [showGuestDemoExpiredModal, setShowGuestDemoExpiredModal] = useState(false);
 
@@ -105,52 +107,10 @@ export default function LectureRecordingsList({
     }
   }, [session, courseId]);
 
-  // Prevent right-click on video
-  const handleContextMenu = (e: MouseEvent<HTMLElement>) => {
-    e.preventDefault();
-    return false;
-  };
-
-  // Block keyboard shortcuts for downloading/saving videos
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Block Ctrl+S / Cmd+S (Save)
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        return false;
-      }
-      // Block Ctrl+P / Cmd+P (Print)
-      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-        e.preventDefault();
-        return false;
-      }
-      // Block F12 (Dev Tools)
-      if (e.key === 'F12') {
-        e.preventDefault();
-        return false;
-      }
-      // Block Ctrl+Shift+I / Cmd+Option+I (Dev Tools)
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'I') {
-        e.preventDefault();
-        return false;
-      }
-      // Block Ctrl+Shift+J / Cmd+Option+J (Console)
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'J') {
-        e.preventDefault();
-        return false;
-      }
-      // Block Ctrl+U / Cmd+U (View Source)
-      if ((e.ctrlKey || e.metaKey) && e.key === 'u') {
-        e.preventDefault();
-        return false;
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []);
+  // The right-click and Ctrl+S / Ctrl+P / F12 blockers that used to live here
+  // have been removed. With lectures hosted on YouTube's origin they protected
+  // nothing — the video is one click away on youtube.com — while hijacking
+  // Save, Print and devtools for every student.
 
   // Check enrollment status immediately for authenticated users, or load demo state for guests
   useEffect(() => {
@@ -731,53 +691,9 @@ export default function LectureRecordingsList({
       return;
     }
 
-    // Ensure we have a short‑lived access token for this recording before opening
-    try {
-      if (!videoTokens[recordingId]) {
-        // Try to get fresh session if not available
-        let accessToken = session?.access_token;
-        if (!accessToken) {
-          console.log('🔄 No session in context, trying to get fresh session...');
-          try {
-            const { data: { session: freshSession } } = await supabase.auth.getSession();
-            if (freshSession?.access_token) {
-              accessToken = freshSession.access_token;
-              console.log('✅ Fresh session obtained');
-            } else {
-              console.error('No auth session for video access');
-              toast.error('You need to be signed in to play this video. Please sign in and try again.');
-              return;
-            }
-          } catch (error) {
-            console.error('Error getting session:', error);
-            toast.error('Authentication error. Please sign in again.');
-            return;
-          }
-        }
-
-        const res = await fetch('/api/lecture-recordings/access-token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({ recordingId }),
-        });
-
-        const data = await res.json();
-        if (!res.ok) {
-          console.error('Failed to get video access token:', data);
-          toast.error(data.error || 'Unable to start video stream.');
-          return;
-        }
-
-        setVideoTokens((prev) => ({ ...prev, [recordingId]: data.token }));
-      }
-    } catch (e) {
-      console.error('Error requesting video access token:', e);
-      toast.error('Unable to start video stream.');
-      return;
-    }
+    // Videos are YouTube embeds now, so there is no signed stream token to
+    // mint — the access checks above are what gate playback. The list API
+    // already withholds youtube_video_id for rows the caller cannot access.
 
     setOpenRecordingId(recordingId);
     
@@ -1193,75 +1109,36 @@ export default function LectureRecordingsList({
               </div>
 
               {openRecordingId === recording.id && (
-                <div 
-                  className="mt-4 rounded-lg overflow-hidden bg-black select-none" 
-                  onContextMenu={handleContextMenu}
-                  style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
-                >
-                  <video
-                    ref={(el) => {
-                      if (el && videoTokens[recording.id]) {
-                        // Force play when video loads
-                        const playPromise = el.play();
-                        if (playPromise !== undefined) {
-                          playPromise.catch(() => {
-                            // Auto-play was prevented, unmute might help
-                            el.muted = true;
-                            el.play().catch(() => {
-                              // Still failed, user needs to click play
-                            });
-                          });
-                        }
-                      }
-                    }}
-                    className="w-full h-64 object-contain bg-black"
-                    controls
-                    preload="auto"
-                    playsInline
-                    controlsList="nodownload noremoteplayback"
-                    disablePictureInPicture
-                    onContextMenu={handleContextMenu}
-                    onLoadedMetadata={(e) => {
-                      const video = e.currentTarget;
-                      // Set buffer size for smoother playback
-                      if ('buffered' in video) {
-                        video.volume = 1.0;
-                      }
-                    }}
-                    onCanPlay={(e) => {
-                      const video = e.currentTarget;
-                      // Auto-play when enough data is buffered
-                      if (video.paused) {
-                        const playPromise = video.play();
-                        if (playPromise !== undefined) {
-                          playPromise.catch(() => {
-                            // Auto-play prevented by browser
-                            video.muted = true;
-                            video.play();
-                          });
-                        }
-                      }
-                    }}
-                    onEnded={() => {
-                      // Track video completion
-                      trackVideoComplete(recording.id, courseId, {
-                        title: recording.title,
-                        duration: recording.duration,
-                      }, session?.access_token || null);
-                    }}
-                  >
-                    {videoTokens[recording.id] && (
-                      <source
-                        src={`/api/lecture-recordings/stream?key=${encodeURIComponent(
-                          recording.video_key || ''
-                        )}&accessToken=${encodeURIComponent(
-                          videoTokens[recording.id]
-                        )}`}
-                        type="video/mp4"
-                      />
-                    )}
-                    <track kind="captions" />
-                  </video>
+                <div className="mt-4">
+                  {recording.youtube_video_id ? (
+                    <YouTubePlayer
+                      videoId={recording.youtube_video_id}
+                      title={recording.title}
+                      // The ONLY source of video_complete, which is in turn the
+                      // only input to student course progress. If this stops
+                      // firing, every student's progress silently reads 0%.
+                      onEnded={() => {
+                        trackVideoComplete(
+                          recording.id,
+                          courseId,
+                          {
+                            title: recording.title,
+                            duration: recording.duration,
+                          },
+                          session?.access_token || null
+                        );
+                      }}
+                    />
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center dark:border-gray-700">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        Video unavailable
+                      </p>
+                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        This lecture has no YouTube link yet.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

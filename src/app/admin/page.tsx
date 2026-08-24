@@ -33,6 +33,7 @@ import {
   FileText,
   Settings,
   Calendar,
+  CalendarClock,
   Edit,
   Bug,
   User,
@@ -40,6 +41,7 @@ import {
 } from 'lucide-react';
 import LiveClassCalendar from '@/components/attendance/live-class-calendar';
 import LiveClassForm from '@/components/attendance/live-class-form';
+import TrialSlotManager from '@/components/trial/trial-slot-manager';
 import { useTheme } from 'next-themes';
 import { formatDate } from '@/utils/date';
 import BugReportForm from '@/components/bug-reports/bug-report-form';
@@ -81,7 +83,7 @@ export default function AdminDashboard() {
   const [paymentVerifications, setPaymentVerifications] = useState<any[]>([]);
   const [enrollments, setEnrollments] = useState<any[]>([]);
   // const [enrollmentStats] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'assignments' | 'payments' | 'enrollments' | 'live-classes' | 'plans' | 'bug-reports'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'assignments' | 'payments' | 'enrollments' | 'live-classes' | 'trial-slots' | 'plans' | 'bug-reports'>('users');
   
   // Enrollment management states
   const [showEditEnrollment, setShowEditEnrollment] = useState(false);
@@ -905,6 +907,9 @@ export default function AdminDashboard() {
     { id: 'assignments', label: 'Assignments', icon: GraduationCap },
     { id: 'payments', label: 'Payments', icon: CreditCard },
     { id: 'enrollments', label: 'Enrollments', icon: Users },
+    // Open to admins as well as superadmins — whoever runs the trial calendar
+    // is an ops admin, and admins already manage enrollments and payments.
+    { id: 'trial-slots', label: 'Trial Slots', icon: CalendarClock },
     { id: 'bug-reports', label: 'Bug Reports', icon: Bug },
     ...(userRole === 'superadmin' ? [
       { id: 'live-classes', label: 'Live Classes', icon: Calendar },
@@ -1045,6 +1050,7 @@ export default function AdminDashboard() {
                   {activeTab === 'payments' && 'Payment Verification'}
                   {activeTab === 'enrollments' && 'Enrollment Management'}
                   {activeTab === 'live-classes' && 'All Live Classes Calendar'}
+                  {activeTab === 'trial-slots' && 'Free Trial Slots'}
                   {activeTab === 'plans' && 'Subscription Plans'}
                   {activeTab === 'bug-reports' && 'Bug Reports'}
                 </h1>
@@ -1896,6 +1902,10 @@ export default function AdminDashboard() {
                 />
               </div>
             )}
+
+            {/* Free trial slots — all logic lives in the component so this
+                2400-line file doesn't grow another few hundred lines. */}
+            {activeTab === 'trial-slots' && <TrialSlotManager />}
 
           </div>
         </div>

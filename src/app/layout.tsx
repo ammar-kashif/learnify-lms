@@ -9,7 +9,7 @@ import MotionProvider from '@/components/providers/motion-provider';
 const inter = Inter({ subsets: ['latin'] });
 
 const DESCRIPTION =
-  'Join Learnify — Pakistan’s leading online academy for O Levels and IGCSE students. Get personalized tutoring, past paper practice, and guaranteed results in Maths, Physics, Chemistry, Biology, Computer Science and English.';
+  'Join Learnify — Pakistan’s leading online academy for O Level and IGCSE students, covering Cambridge and Edexcel. Book a free trial class, and get personalized tutoring, past paper practice, and guaranteed results in Maths, Physics, Chemistry, Biology, Computer Science and English.';
 
 export const metadata: Metadata = {
   title: {
@@ -20,9 +20,12 @@ export const metadata: Metadata = {
   keywords: [
     'O Level',
     'IGCSE',
+    'Cambridge',
+    'Edexcel',
     'online tutoring',
     'Pakistan',
     'past papers',
+    'free trial class',
     'Maths',
     'Physics',
     'Chemistry',

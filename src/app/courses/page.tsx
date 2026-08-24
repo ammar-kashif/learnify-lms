@@ -11,18 +11,20 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { BookOpen, Clock, Star, X, CheckCircle, Crown, Video, ArrowLeft, Search } from 'lucide-react';
+import { BookOpen, CalendarClock, Clock, X, Video, ArrowLeft, Search } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import DemoAccessRequest from '@/components/course/demo-access-request';
 import ModernSubscriptionModal from '@/components/modern-subscription-modal';
 import { Skeleton, SkeletonCourseGrid } from '@/components/ui/skeleton';
 import {
-  parseCourseTitle,
+  courseTaxonomy,
   subjectIcon,
   groupByLevel,
   LEVEL_ORDER,
+  BOARD_ORDER,
   type CourseLevel,
+  type CourseBoard,
 } from '@/lib/course-taxonomy';
 
 interface Course {
@@ -32,6 +34,10 @@ interface Course {
   created_by: string;
   created_at: string;
   updated_at: string;
+  /** Taxonomy columns added by migrations/001-course-taxonomy.sql. */
+  level?: string | null;
+  board?: string | null;
+  subject?: string | null;
 }
 
 export default function CoursesPage() {
@@ -39,7 +45,6 @@ export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showChoiceModal, setShowChoiceModal] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   // Removed unused courseEnrollments state to satisfy build
   const [checkingEnrollment, setCheckingEnrollment] = useState<string | null>(null);
@@ -49,19 +54,35 @@ export default function CoursesPage() {
   const [subscriptionPlansLoading, setSubscriptionPlansLoading] = useState(false);
   const [query, setQuery] = useState('');
   const [activeLevel, setActiveLevel] = useState<CourseLevel | 'All'>('All');
+  const [activeBoard, setActiveBoard] = useState<CourseBoard | 'All'>('All');
 
   // Which level tabs to offer — only those with courses behind them.
   const availableLevels = useMemo(() => {
-    const present = new Set(courses.map(c => parseCourseTitle(c.title).level));
+    const present = new Set(courses.map(c => courseTaxonomy(c).level));
     return LEVEL_ORDER.filter(level => present.has(level));
   }, [courses]);
+
+  // Boards only within the active level, and only when there is a real choice
+  // to make — O Level is Cambridge-only, so a board row there would be noise.
+  const availableBoards = useMemo(() => {
+    if (activeLevel === 'All') return [];
+    const present = new Set(
+      courses
+        .filter(c => courseTaxonomy(c).level === activeLevel)
+        .map(c => courseTaxonomy(c).board)
+        .filter((b): b is CourseBoard => !!b)
+    );
+    const boards = BOARD_ORDER.filter(board => present.has(board));
+    return boards.length > 1 ? boards : [];
+  }, [courses, activeLevel]);
 
   // Search matches subject or description, so "bio" and "genetics" both work.
   const filteredCourses = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return courses.filter(course => {
-      const { level, subject } = parseCourseTitle(course.title);
+      const { level, board, subject } = courseTaxonomy(course);
       if (activeLevel !== 'All' && level !== activeLevel) return false;
+      if (activeBoard !== 'All' && board !== activeBoard) return false;
       if (!needle) return true;
       return (
         subject.toLowerCase().includes(needle) ||
@@ -69,7 +90,7 @@ export default function CoursesPage() {
         (course.description ?? '').toLowerCase().includes(needle)
       );
     });
-  }, [courses, query, activeLevel]);
+  }, [courses, query, activeLevel, activeBoard]);
 
   const groupedCourses = useMemo(
     () => groupByLevel(filteredCourses),
@@ -151,7 +172,15 @@ export default function CoursesPage() {
     }
   };
 
-  const handleEnroll = async (course: Course) => {
+  /**
+   * "Subscribe" on a course card.
+   *
+   * Keeps the already-enrolled guard that the old "Enroll Now" button had, but
+   * goes straight to the subscription modal — the trial/subscribe choice is now
+   * made by which button the visitor pressed, so the intermediate choice modal
+   * has nothing left to ask.
+   */
+  const handleSubscribe = async (course: Course) => {
     // If user is authenticated, check if they already have access
     if (user && session?.access_token) {
       setCheckingEnrollment(course.id);
@@ -184,24 +213,7 @@ export default function CoursesPage() {
       }
     }
 
-    // Show choice modal for users without existing access
     setSelectedCourse(course);
-    setShowChoiceModal(true);
-  };
-
-  const handleDemoChoice = () => {
-    if (!selectedCourse) return;
-    
-    // Always show demo access modal first (for both authenticated and unauthenticated users)
-    setShowChoiceModal(false);
-    setShowDemoModal(true);
-  };
-
-  const handleSubscriptionChoice = () => {
-    if (!selectedCourse) return;
-    
-    // Always show subscription plans modal first, regardless of authentication status
-    setShowChoiceModal(false);
     fetchSubscriptionPlans();
     setShowSubscriptionModal(true);
   };
@@ -257,7 +269,8 @@ export default function CoursesPage() {
             <div className="mb-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <Skeleton className="h-11 w-full rounded-full lg:max-w-sm" />
               <div className="flex gap-2">
-                {[64, 84, 76, 72].map((w, i) => (
+                {/* All / O Level / IGCSE — A Level was removed from the catalogue. */}
+                {[64, 84, 76].map((w, i) => (
                   <Skeleton key={i} className="h-10 rounded-full" style={{ width: w }} />
                 ))}
               </div>
@@ -307,15 +320,18 @@ export default function CoursesPage() {
                   const count =
                     level === 'All'
                       ? courses.length
-                      : courses.filter(
-                          c => parseCourseTitle(c.title).level === level
-                        ).length;
+                      : courses.filter(c => courseTaxonomy(c).level === level).length;
                   return (
                     <button
                       key={level}
                       role="tab"
                       aria-selected={isActive}
-                      onClick={() => setActiveLevel(level)}
+                      onClick={() => {
+                        setActiveLevel(level);
+                        // A board chosen under one level is meaningless under
+                        // another — Edexcel exists at IGCSE but not O Level.
+                        setActiveBoard('All');
+                      }}
                       className={`flex-shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200 ${
                         isActive
                           ? 'border-primary bg-primary text-white shadow-sm'
@@ -332,6 +348,34 @@ export default function CoursesPage() {
                   );
                 })}
               </div>
+
+              {/* Exam board, only under a level that actually offers a choice. */}
+              {availableBoards.length > 0 && (
+                <div
+                  role="tablist"
+                  aria-label="Filter by exam board"
+                  className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:overflow-visible lg:px-0 lg:pb-0"
+                >
+                  {(['All', ...availableBoards] as const).map(board => {
+                    const isActive = activeBoard === board;
+                    return (
+                      <button
+                        key={board}
+                        role="tab"
+                        aria-selected={isActive}
+                        onClick={() => setActiveBoard(board)}
+                        className={`flex-shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all duration-200 ${
+                          isActive
+                            ? 'border-gray-900 bg-gray-900 text-white dark:border-gray-100 dark:bg-gray-100 dark:text-gray-900'
+                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300'
+                        }`}
+                      >
+                        {board === 'All' ? 'All boards' : board}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {filteredCourses.length === 0 ? (
@@ -374,7 +418,7 @@ export default function CoursesPage() {
 
                     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                       {group.courses.map(course => {
-                        const { level, subject } = parseCourseTitle(course.title);
+                        const { level, board, subject } = courseTaxonomy(course);
                         const Icon = subjectIcon(subject);
                         return (
                           <Card
@@ -386,12 +430,22 @@ export default function CoursesPage() {
                                 <div className="inline-flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10 transition-transform duration-300 group-hover:scale-110">
                                   <Icon className="h-6 w-6 text-primary" />
                                 </div>
-                                <Badge
-                                  variant="secondary"
-                                  className="border-primary/20 bg-primary/10 text-primary-700"
-                                >
-                                  {level}
-                                </Badge>
+                                <div className="flex flex-shrink-0 flex-col items-end gap-1.5">
+                                  <Badge
+                                    variant="secondary"
+                                    className="border-primary/20 bg-primary/10 text-primary-700"
+                                  >
+                                    {level}
+                                  </Badge>
+                                  {board && (
+                                    <Badge
+                                      variant="outline"
+                                      className="border-gray-300 text-xs font-normal text-gray-500 dark:border-gray-700 dark:text-gray-400"
+                                    >
+                                      {board}
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
                               <CardTitle className="text-lg font-bold leading-snug text-gray-900 dark:text-gray-100">
                                 {subject}
@@ -407,32 +461,52 @@ export default function CoursesPage() {
                                 <span>Self-paced</span>
                               </div>
 
+                              {/* One primary per card. The trial is the CTA we
+                                  actually want clicked, so subscribing and the
+                                  preview step down to outline and ghost — three
+                                  solid buttons would leave none of them leading. */}
                               <div className="flex flex-col gap-2 border-t border-gray-200 pt-4 dark:border-gray-800">
                                 <Button
+                                  asChild
                                   className="h-10 w-full bg-primary text-white transition-colors hover:bg-primary-600"
-                                  onClick={() => handleEnroll(course)}
-                                  disabled={
-                                    authLoading || checkingEnrollment === course.id
-                                  }
                                 >
-                                  <BookOpen className="mr-2 h-4 w-4 flex-shrink-0" />
-                                  <span className="truncate">
-                                    {authLoading
-                                      ? 'Loading…'
-                                      : checkingEnrollment === course.id
-                                        ? 'Checking…'
-                                        : 'Enroll Now'}
-                                  </span>
+                                  <Link
+                                    href={`/book-trial?course=${course.id}&src=course_card`}
+                                  >
+                                    <CalendarClock className="mr-2 h-4 w-4 flex-shrink-0" />
+                                    <span className="truncate">
+                                      Book Your Free Trial Class
+                                    </span>
+                                  </Link>
                                 </Button>
-                                <Link
-                                  href={`/courses/${course.id}/preview`}
-                                  className="block w-full"
-                                >
-                                  <Button className="h-10 w-full bg-blue-700 text-white transition-colors hover:bg-blue-800">
-                                    <Video className="mr-2 h-4 w-4 flex-shrink-0" />
-                                    <span className="truncate">Watch a Video</span>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                  <Button
+                                    variant="outline"
+                                    className="h-10 w-full"
+                                    onClick={() => handleSubscribe(course)}
+                                    disabled={
+                                      authLoading || checkingEnrollment === course.id
+                                    }
+                                  >
+                                    <BookOpen className="mr-1.5 h-4 w-4 flex-shrink-0" />
+                                    <span className="truncate">
+                                      {checkingEnrollment === course.id
+                                        ? 'Checking…'
+                                        : 'Subscribe'}
+                                    </span>
                                   </Button>
-                                </Link>
+                                  <Button
+                                    asChild
+                                    variant="ghost"
+                                    className="h-10 w-full text-gray-600 dark:text-gray-400"
+                                  >
+                                    <Link href={`/courses/${course.id}/preview`}>
+                                      <Video className="mr-1.5 h-4 w-4 flex-shrink-0" />
+                                      <span className="truncate">Watch</span>
+                                    </Link>
+                                  </Button>
+                                </div>
                               </div>
                             </CardContent>
                           </Card>
@@ -446,107 +520,6 @@ export default function CoursesPage() {
           </>
         )}
       </div>
-
-      {/* Choice Modal - Demo or Direct Subscription */}
-      {showChoiceModal && selectedCourse && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                  Choose Your Path
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowChoiceModal(false);
-                    setSelectedCourse(null);
-                  }}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-              
-              <div className="text-center mb-8">
-                <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                  How would you like to access {selectedCourse.title}?
-                </h4>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Choose between trying our demo first or subscribing directly
-                </p>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-4">
-                {/* Demo Option */}
-                <button 
-                  type="button"
-                  className="p-6 border-2 border-blue-200 rounded-lg cursor-pointer hover:border-blue-300 transition-all bg-blue-50 dark:bg-blue-950 dark:border-blue-800 w-full text-left"
-                  onClick={handleDemoChoice}
-                >
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Star className="h-6 w-6 text-white" />
-                    </div>
-                    <h5 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                      Try Demo First
-                    </h5>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                      Get 24-hour free access to experience the content before subscribing
-                    </p>
-                    <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                      <div className="flex items-center justify-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span>24-hour free access</span>
-                      </div>
-                      <div className="flex items-center justify-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span>No commitment required</span>
-                      </div>
-                      <div className="flex items-center justify-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span>Full content preview</span>
-                      </div>
-                    </div>
-                  </div>
-                </button>
-
-                {/* Direct Subscription Option */}
-                <button 
-                  type="button"
-                  className="p-6 border-2 border-orange-200 rounded-lg cursor-pointer hover:border-orange-300 transition-all bg-orange-50 dark:bg-orange-950 dark:border-orange-800 w-full text-left"
-                  onClick={handleSubscriptionChoice}
-                >
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Crown className="h-6 w-6 text-white" />
-                    </div>
-                    <h5 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                      Subscribe Now
-                    </h5>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                      Get immediate full access with our flexible subscription plans
-                    </p>
-                    <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                      <div className="flex items-center justify-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span>Immediate access</span>
-                      </div>
-                      <div className="flex items-center justify-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span>All content included</span>
-                      </div>
-                      <div className="flex items-center justify-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span>Cancel anytime</span>
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Demo Access Modal */}
       {showDemoModal && selectedCourse && (

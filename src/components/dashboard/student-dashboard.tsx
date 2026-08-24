@@ -34,6 +34,7 @@ import { toast } from 'sonner';
 import PaymentPopup from '@/components/payment-popup';
 import DemoAccessRequest from '@/components/course/demo-access-request';
 import CourseGradeCard from '@/components/course/course-grade-card';
+import { courseTaxonomy } from '@/lib/course-taxonomy';
 
 export default function StudentDashboard() {
   const { user, session, loading: authLoading, userRole } = useAuth();
@@ -305,10 +306,10 @@ export default function StudentDashboard() {
 
       </div>
 
-      {/* Available O Levels Courses (Enroll) */}
+      {/* Courses the student is not yet enrolled in */}
       <Card className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm" data-section="available-courses">
         <CardHeader>
-          <CardTitle className="text-xl text-gray-900 dark:text-white">Available Cambridge O Levels Courses</CardTitle>
+          <CardTitle className="text-xl text-gray-900 dark:text-white">Available Courses</CardTitle>
           <CardDescription className="text-gray-600 dark:text-gray-300">Enroll into new courses.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -320,10 +321,18 @@ export default function StudentDashboard() {
                 {availableCourses.map(course => (
                   <Card key={course.id} className="border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
                     <CardHeader className="pb-3">
-                      <div className="mb-2 flex items-center justify-between">
+                      {/* Read the level off the course — this badge used to be
+                          hardcoded to "O Levels" on every card, so IGCSE
+                          courses were labelled as O Level. */}
+                      <div className="mb-2 flex items-center gap-1.5">
                         <Badge variant="secondary" className="border-primary/20 bg-primary/10 text-xs text-primary-700 dark:text-primary-300">
-                          O Levels
+                          {courseTaxonomy(course).level}
                         </Badge>
+                        {courseTaxonomy(course).board && (
+                          <Badge variant="outline" className="text-xs font-normal text-gray-500 dark:text-gray-400">
+                            {courseTaxonomy(course).board}
+                          </Badge>
+                        )}
                       </div>
                       <CardTitle className="text-base leading-tight text-gray-900 dark:text-white">{course.title}</CardTitle>
                       <CardDescription className="text-gray-600 dark:text-gray-300">{course.description}</CardDescription>
