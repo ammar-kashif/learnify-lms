@@ -8,7 +8,11 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// List available Cambridge O Levels courses a student is not yet enrolled in
+/**
+ * Lists published courses a student is not yet enrolled in — the "browse and
+ * enrol" surface, so it is filtered to the public catalogue. A student's own
+ * enrolled courses are served elsewhere and must NOT be filtered this way.
+ */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -21,17 +25,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch all courses (schema may not include level/status)
     const { data: allCourses, error: coursesError } = await supabase
       .from('courses')
-      .select('*');
+      .select('id, title, description, level, board, subject, created_at, updated_at')
+      .eq('is_published', true);
 
     if (coursesError) {
-      console.error('❌ Error fetching courses:', coursesError);
+      console.error('Error fetching courses:', coursesError);
       throw coursesError;
     }
-
-    console.log('🔍 Available courses query result:', { allCourses, count: allCourses?.length || 0 });
 
     // Fetch student's enrollments
     const { data: enrollments, error: enrollError } = await supabase
@@ -43,8 +45,6 @@ export async function GET(request: NextRequest) {
 
     const enrolledSet = new Set((enrollments || []).map(e => e.course_id));
     const available = (allCourses || []).filter(c => !enrolledSet.has(c.id));
-
-    console.log('🔍 Final available courses:', { available, count: available.length });
 
     return NextResponse.json({ courses: available });
   } catch (error) {

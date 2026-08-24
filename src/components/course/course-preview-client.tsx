@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, MouseEvent } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Video, Loader2, ArrowLeft, User, Clock, FileVideo, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
+import YouTubePlayer from './youtube-player';
 
 interface Course {
   id: string;
@@ -20,6 +20,9 @@ interface LectureRecording {
   id: string;
   title: string;
   description?: string;
+  /** Playback source. Null when the API withholds it. */
+  youtube_video_id: string | null;
+  /** Legacy S3 columns, retained for old rows. */
   video_url: string | null;
   video_key: string | null;
   duration?: number;
@@ -41,56 +44,12 @@ export default function CoursePreviewClient({ course, courseId }: CoursePreviewC
   const [recording, setRecording] = useState<LectureRecording | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [videoToken, setVideoToken] = useState<string | null>(null);
-  const [fetchingToken, setFetchingToken] = useState(false);
   const router = useRouter();
 
-  // Prevent right-click on video
-  const handleContextMenu = (e: MouseEvent<HTMLElement>) => {
-    e.preventDefault();
-    return false;
-  };
-
-  // Block keyboard shortcuts for downloading/saving videos
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Block Ctrl+S / Cmd+S (Save)
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        return false;
-      }
-      // Block Ctrl+P / Cmd+P (Print)
-      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-        e.preventDefault();
-        return false;
-      }
-      // Block F12 (Dev Tools)
-      if (e.key === 'F12') {
-        e.preventDefault();
-        return false;
-      }
-      // Block Ctrl+Shift+I / Cmd+Option+I (Dev Tools)
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'I') {
-        e.preventDefault();
-        return false;
-      }
-      // Block Ctrl+Shift+J / Cmd+Option+J (Console)
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'J') {
-        e.preventDefault();
-        return false;
-      }
-      // Block Ctrl+U / Cmd+U (View Source)
-      if ((e.ctrlKey || e.metaKey) && e.key === 'u') {
-        e.preventDefault();
-        return false;
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []);
+  // The Ctrl+S / Ctrl+P / F12 blocker that used to live here has been removed.
+  // With the video hosted on YouTube's origin it protected nothing — the media
+  // is one click away on youtube.com — while still hijacking Save, Print and
+  // devtools for every visitor. Dead weight with a real usability cost.
 
   useEffect(() => {
     fetchRecording();
@@ -121,43 +80,13 @@ export default function CoursePreviewClient({ course, courseId }: CoursePreviewC
       const firstRecording = recordingsList[0];
       setRecording(firstRecording);
 
-      // Automatically fetch access token for the first recording
-      if (firstRecording.id) {
-        fetchAccessToken(firstRecording.id);
-      }
+      // No access token needed — playback is a YouTube embed, and the list API
+      // only returns youtube_video_id for recordings a guest may watch.
     } catch (err) {
       console.error('Error fetching recording:', err);
       setError(err instanceof Error ? err.message : 'Failed to load preview');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchAccessToken = async (recordingId: string) => {
-    try {
-      setFetchingToken(true);
-      
-      // For guest preview, we don't send an auth header
-      const response = await fetch('/api/lecture-recordings/access-token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ recordingId }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to get video access');
-      }
-
-      setVideoToken(data.token);
-    } catch (err) {
-      console.error('Error fetching access token:', err);
-      toast.error('Failed to load video. Please try again.');
-    } finally {
-      setFetchingToken(false);
     }
   };
 
@@ -260,64 +189,16 @@ export default function CoursePreviewClient({ course, courseId }: CoursePreviewC
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {fetchingToken && !videoToken ? (
+                {loading ? (
                   <div className="flex items-center justify-center h-64 bg-black rounded-lg">
                     <Loader2 className="h-8 w-8 animate-spin text-white" />
                   </div>
-                ) : recording && videoToken ? (
+                ) : recording?.youtube_video_id ? (
                   <div className="space-y-4">
-                    <div 
-                      className="rounded-lg overflow-hidden bg-black select-none" 
-                      onContextMenu={handleContextMenu}
-                      style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
-                    >
-                      <video
-                        ref={(el) => {
-                          if (el && videoToken) {
-                            // Force play when video loads
-                            const playPromise = el.play();
-                            if (playPromise !== undefined) {
-                              playPromise.catch(() => {
-                                // Auto-play was prevented, unmute might help
-                                el.muted = true;
-                                el.play().catch(() => {
-                                  // Still failed, user needs to click play
-                                });
-                              });
-                            }
-                          }
-                        }}
-                        className="w-full h-auto max-h-[500px] object-contain bg-black"
-                        controls
-                        preload="auto"
-                        playsInline
-                        controlsList="nodownload noremoteplayback"
-                        disablePictureInPicture
-                        onContextMenu={handleContextMenu}
-                        onCanPlay={(e) => {
-                          const video = e.currentTarget;
-                          // Auto-play when enough data is buffered
-                          if (video.paused) {
-                            const playPromise = video.play();
-                            if (playPromise !== undefined) {
-                              playPromise.catch(() => {
-                                // Auto-play prevented by browser
-                                video.muted = true;
-                                video.play();
-                              });
-                            }
-                          }
-                        }}
-                      >
-                        <source
-                          src={`/api/lecture-recordings/stream?key=${encodeURIComponent(
-                            recording.video_key || ''
-                          )}&accessToken=${encodeURIComponent(videoToken)}`}
-                          type="video/mp4"
-                        />
-                        <track kind="captions" />
-                      </video>
-                    </div>
+                    <YouTubePlayer
+                      videoId={recording.youtube_video_id}
+                      title={recording.title}
+                    />
                     <div>
                       <h3 className="text-lg font-semibold mb-2">{recording.title}</h3>
                       {recording.description && (

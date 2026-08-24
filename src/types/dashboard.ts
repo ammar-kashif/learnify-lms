@@ -14,7 +14,7 @@ export interface Course {
   id: string;
   title: string;
   subject: string;
-  level: 'O Level' | 'A Level' | 'IGCSE';
+  level: 'O Level' | 'IGCSE';
   description: string;
   thumbnail_url?: string;
   duration_weeks: number;

@@ -17,7 +17,8 @@
     "test:e2e:ui": "playwright test --ui",
     "schema:dump": "node scripts/dump-supabase-schema.mjs",
     "schema:check": "node scripts/check-supabase-columns.mjs",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "check:rls": "node scripts/check-rls.mjs"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.19",
@@ -83,7 +84,6 @@
     "tailwind-merge": "^2.2.0",
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.169.0",
-    "video.js": "^8.6.1",
     "zod": "^3.22.4"
   },
   "devDependencies": {
@@ -96,7 +96,6 @@
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
     "@types/three": "^0.169.0",
-    "@types/video.js": "^7.3.56",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
     "@vitejs/plugin-react": "^4.2.1",

@@ -23,6 +23,7 @@ type NavLink = { key: string; label: string; href: string };
 const LINKS: NavLink[] = [
   { key: 'home', label: 'Home', href: '/' },
   { key: 'courses', label: 'Courses', href: '/courses' },
+  { key: 'trial', label: 'Free Trial', href: '/book-trial' },
   { key: 'blog', label: 'Blog', href: '/blog' },
   { key: 'features', label: 'Features', href: '#features' },
   { key: 'about', label: 'About', href: '#about' },
@@ -48,6 +49,7 @@ export default function LandingNav() {
   // route matches win over scroll position.
   const routeKey =
     pathname?.startsWith('/courses') ? 'courses'
+    : pathname?.startsWith('/book-trial') ? 'trial'
     : pathname?.startsWith('/blog') ? 'blog'
     : null;
 

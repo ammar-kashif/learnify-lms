@@ -1,24 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import AWS from 'aws-sdk';
 import { createClient } from '@supabase/supabase-js';
 
-export const dynamic = 'force-dynamic';
+import { parseYouTubeId } from '@/lib/youtube';
 
-// Configure AWS SDK
-const s3 = new AWS.S3({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: process.env.AWS_REGION,
-});
+export const dynamic = 'force-dynamic';
 
 // Configure Supabase
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-
-// Video bucket name
-const VIDEO_BUCKET = process.env.AWS_S3_BUCKET_LESSON_HLS!;
 
 export async function PATCH(
   request: NextRequest,
@@ -80,6 +71,20 @@ export async function PATCH(
     if (body.description !== undefined) updateData.description = body.description?.trim() || null;
     if (body.is_published !== undefined) updateData.is_published = body.is_published;
 
+    // Lets a teacher fix or attach the YouTube link without recreating the row —
+    // the only way the six legacy S3 rows can be brought back to life.
+    if (body.youtubeVideoId !== undefined || body.youtubeUrl !== undefined) {
+      const videoId = parseYouTubeId(body.youtubeVideoId || body.youtubeUrl || '');
+      if (!videoId) {
+        return NextResponse.json(
+          { error: 'A valid YouTube link is required.' },
+          { status: 400 }
+        );
+      }
+      updateData.youtube_video_id = videoId;
+      updateData.thumbnail_url = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+    }
+
     const { data: updatedRecording, error: updateError } = await supabaseAdmin
       .from('lecture_recordings')
       .update(updateData)
@@ -90,6 +95,7 @@ export async function PATCH(
         description,
         video_url,
         video_key,
+        youtube_video_id,
         duration,
         file_size,
         thumbnail_url,
@@ -125,6 +131,7 @@ export async function PATCH(
       description: updatedRecording.description,
       video_url: updatedRecording.video_url,
       video_key: updatedRecording.video_key,
+      youtube_video_id: updatedRecording.youtube_video_id,
       duration: updatedRecording.duration,
       file_size: updatedRecording.file_size,
       thumbnail_url: updatedRecording.thumbnail_url,
@@ -199,16 +206,9 @@ export async function DELETE(
       }, { status: 403 });
     }
 
-    // Delete from S3
-    try {
-      await s3.deleteObject({ 
-        Bucket: VIDEO_BUCKET, 
-        Key: lectureRecording.video_key 
-      }).promise();
-    } catch (s3Error) {
-      console.error('S3 deletion error:', s3Error);
-      // Continue with database deletion even if S3 deletion fails
-    }
+    // No S3 object to remove — lectures are YouTube-hosted now. Deleting the
+    // row does not touch the video on YouTube, which is deliberate: the
+    // channel is managed there, not from this app.
 
     // Delete from database
     const { error: deleteError } = await supabaseAdmin

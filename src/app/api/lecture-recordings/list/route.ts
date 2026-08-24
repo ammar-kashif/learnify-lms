@@ -69,6 +69,7 @@ export async function GET(request: NextRequest) {
         description,
         video_url,
         video_key,
+        youtube_video_id,
         duration,
         file_size,
         thumbnail_url,
@@ -147,6 +148,7 @@ export async function GET(request: NextRequest) {
           description,
           video_url,
           video_key,
+          youtube_video_id,
           duration,
           file_size,
           thumbnail_url,
@@ -170,6 +172,7 @@ export async function GET(request: NextRequest) {
       description: recording.description,
       video_url: recording.video_url,
       video_key: recording.video_key,
+      youtube_video_id: recording.youtube_video_id,
       duration: recording.duration,
       file_size: recording.file_size,
       thumbnail_url: recording.thumbnail_url,
@@ -191,6 +194,8 @@ export async function GET(request: NextRequest) {
           description: recording.description,
           video_url: null, // Don't expose video URL for locked lectures
           video_key: null,
+          // Withheld too, or the paywall leaks the playable video.
+          youtube_video_id: null,
           duration: recording.duration,
           file_size: recording.file_size,
           thumbnail_url: recording.thumbnail_url,
