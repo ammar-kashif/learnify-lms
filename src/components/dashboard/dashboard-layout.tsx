@@ -81,7 +81,7 @@ const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } =
 function Logo() {
   return (
     <div className="flex items-center space-x-3">
-      <img src="/images/Logo.PNG" alt="Learnify Logo" className="h-10 w-10" />
+      <img src="/images/logo-mark.png" alt="" className="h-10 w-10" />
       <span className="text-xl font-bold text-charcoal-800 dark:text-white">Learnify</span>
     </div>
   );

@@ -506,7 +506,7 @@ export default function HomePage() {
             {/* Brand */}
             <div className="md:col-span-1">
               <div className="flex items-center space-x-2 mb-4">
-                <img src="/images/Logo.PNG" alt="Learnify Logo" className="h-12 w-12" />
+                <img src="/images/logo-mark.png" alt="" className="h-12 w-12" />
                 <span className="text-lg font-bold text-gray-900 dark:text-gray-100">Learnify</span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
