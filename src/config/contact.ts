@@ -27,26 +27,26 @@ export const WHATSAPP_MESSAGES = {
 } as const;
 
 /**
- * Calendly booking link for the free consultation.
+ * Booking page behind "Book a Free Consultation" — TidyCal, not Calendly.
  *
- * Read from the environment so it can be swapped without a code change — set
- * `NEXT_PUBLIC_CALENDLY_URL` in `.env` and in the Vercel project settings.
- * Inlined at build time by Next, so it must be referenced as a full literal
- * `process.env.NEXT_PUBLIC_CALENDLY_URL` rather than destructured.
+ * The real link is the default rather than being left to the environment. This
+ * used to read `NEXT_PUBLIC_CALENDLY_URL` and quietly fall back to WhatsApp
+ * when it was unset, which meant forgetting the variable in Vercel silently
+ * downgraded the CTA in production with nothing to notice it. Baking the link
+ * in makes the button correct everywhere by default, and the override is still
+ * read first so it can be repointed without a code change.
+ *
+ * Next inlines `process.env.NEXT_PUBLIC_*` at build time by matching the
+ * literal text, so it has to be written out in full — not destructured, and
+ * not looked up through a variable.
  */
-export const CALENDLY_URL = (process.env.NEXT_PUBLIC_CALENDLY_URL ?? '').trim();
+const CONSULTATION_URL_FALLBACK = 'https://tidycal.com/ayaanahmadk2004';
 
-/**
- * Where "Book a Free Consultation" points.
- *
- * Falls back to WhatsApp when the Calendly URL has not been configured, so the
- * button never dead-links in an environment that is missing the variable.
- */
+export const CONSULTATION_URL =
+  (process.env.NEXT_PUBLIC_CONSULTATION_URL ?? '').trim() ||
+  CONSULTATION_URL_FALLBACK;
+
+/** Where "Book a Free Consultation" points. */
 export function consultationLink(): string {
-  return CALENDLY_URL || whatsappLink(WHATSAPP_MESSAGES.contact);
-}
-
-/** True when the consultation CTA will open Calendly rather than WhatsApp. */
-export function hasCalendly(): boolean {
-  return CALENDLY_URL.length > 0;
+  return CONSULTATION_URL;
 }
