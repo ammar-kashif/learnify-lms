@@ -154,6 +154,11 @@ export async function POST(request: NextRequest) {
             startsAt: result.starts_at,
             durationMinutes: result.duration_minutes,
             remainingSeats: result.remaining_seats,
+            // Safe to hand over here, unlike on the public slot endpoints:
+            // book_trial_slot() only returns this on a booking that just
+            // succeeded, so the caller is a confirmed attendee of this exact
+            // slot. `toPublicSlot` still strips it everywhere pre-booking.
+            meetingLink: result.meeting_link ?? null,
           },
           courseTitle,
           whatsappMessage: buildTrialWhatsappMessage({

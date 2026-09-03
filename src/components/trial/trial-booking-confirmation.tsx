@@ -8,6 +8,7 @@ import {
   Copy,
   MessageCircle,
   PartyPopper,
+  Video,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,9 @@ export default function TrialBookingConfirmation({
       courseTitle: result.courseTitle,
       startsAtIso: result.slot.startsAt,
       durationMinutes: result.slot.durationMinutes,
+      // Without this the entry lands in their calendar reading
+      // "LOCATION:Online" — no way in, at the exact moment they need one.
+      meetingLink: result.slot.meetingLink,
       reference: result.booking.reference,
     });
     const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
@@ -90,8 +94,10 @@ export default function TrialBookingConfirmation({
         {/* Honest about what happens next — the app cannot send email, so we
             do not pretend a confirmation is on its way to their inbox. */}
         <p className="mt-5 text-sm text-gray-600 dark:text-gray-400">
-          We&apos;ll message you on WhatsApp before the class with the joining
-          link. Send us a message now so we have your booking in the thread.
+          {result.slot.meetingLink
+            ? "Your joining link is below, and it's saved into the calendar file too. We'll message you on WhatsApp before the class as well."
+            : "We'll message you on WhatsApp before the class with the joining link."}{' '}
+          Send us a message now so we have your booking in the thread.
         </p>
 
         <div className="mt-6 flex flex-col gap-2">
@@ -104,6 +110,22 @@ export default function TrialBookingConfirmation({
             <MessageCircle className="h-5 w-5" aria-hidden="true" />
             Send us a WhatsApp to confirm
           </a>
+
+          {/* Only when an admin actually set one on the slot. Secondary to the
+              WhatsApp CTA: the class is usually days away, so confirming the
+              booking matters more right now than joining it. */}
+          {result.slot.meetingLink && (
+            <Button asChild variant="outline" className="h-11 w-full">
+              <a
+                href={result.slot.meetingLink}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Video className="mr-2 h-4 w-4" aria-hidden="true" />
+                Join the class
+              </a>
+            </Button>
+          )}
 
           <Button variant="outline" className="h-11 w-full" onClick={handleAddToCalendar}>
             <CalendarPlus className="mr-2 h-4 w-4" aria-hidden="true" />

@@ -32,6 +32,8 @@ export interface BookingResult {
     startsAt: string;
     durationMinutes: number;
     remainingSeats: number;
+    /** Null when no admin has set one on the slot — the column is optional. */
+    meetingLink: string | null;
   };
   courseTitle: string;
   whatsappMessage: string;
@@ -191,16 +193,18 @@ export default function TrialBookingDialog({
               placeholder="0300 1234567"
               autoComplete="tel"
               required
-              aria-describedby="trial-phone-hint"
+              // Only points at the hint while the hint exists — a dangling
+              // aria-describedby is announced as nothing by some readers.
+              aria-describedby={normalisedPhone ? 'trial-phone-hint' : undefined}
             />
-            <p
-              id="trial-phone-hint"
-              className="text-xs text-muted-foreground"
-            >
-              {normalisedPhone
-                ? `We'll message you on ${normalisedPhone}`
-                : 'This is how we confirm your class — a Pakistani number like 0300 1234567.'}
-            </p>
+            {/* Nothing is shown until the number parses. The placeholder
+                already carries the expected format, so an idle hint under the
+                field was just repeating it. */}
+            {normalisedPhone && (
+              <p id="trial-phone-hint" className="text-xs text-muted-foreground">
+                We&apos;ll message you on {normalisedPhone}
+              </p>
+            )}
           </div>
 
           {/* Honeypot. Hidden from people, irresistible to bots. Not
