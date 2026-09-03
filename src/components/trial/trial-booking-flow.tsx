@@ -183,24 +183,20 @@ export default function TrialBookingFlow({
           Loading available classes…
         </div>
       ) : optionsError ? (
-        <div className="space-y-4">
-          <p role="alert" className="rounded-lg bg-red-50 p-4 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">
-            {optionsError}
-          </p>
-          <WhatsAppHelpNote />
-        </div>
+        // The help note below renders in every state, so error and empty states
+        // must not add their own — two identical notes would stack.
+        <p role="alert" className="rounded-lg bg-red-50 p-4 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">
+          {optionsError}
+        </p>
       ) : levels.length === 0 ? (
-        <div className="space-y-4 text-center">
-          <div className="rounded-2xl border border-dashed border-gray-300 px-6 py-10 dark:border-gray-700">
-            <CalendarClock className="mx-auto h-10 w-10 text-primary" aria-hidden="true" />
-            <p className="mt-3 font-medium text-gray-900 dark:text-white">
-              No trial classes are scheduled right now
-            </p>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Message us on WhatsApp and we&apos;ll arrange one for you.
-            </p>
-          </div>
-          <WhatsAppHelpNote />
+        <div className="rounded-2xl border border-dashed border-gray-300 px-6 py-10 text-center dark:border-gray-700">
+          <CalendarClock className="mx-auto h-10 w-10 text-primary" aria-hidden="true" />
+          <p className="mt-3 font-medium text-gray-900 dark:text-white">
+            No trial classes are scheduled right now
+          </p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            New times go up every week — or ask us to arrange one for you.
+          </p>
         </div>
       ) : (
         <>
