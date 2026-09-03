@@ -4,8 +4,7 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, m, useReducedMotion } from 'framer-motion';
-import { Menu, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ArrowRight, Menu, X } from 'lucide-react';
 import ThemeToggle from '@/components/theme-toggle';
 import { DURATION, EASE } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -20,14 +19,31 @@ import { cn } from '@/lib/utils';
 
 type NavLink = { key: string; label: string; href: string };
 
+/**
+ * Order is load-bearing, not just taste.
+ *
+ * The pill tracks scroll position across `home` and the three anchored
+ * sections, so those four are kept together and the indicator only ever steps
+ * between neighbours. Wedging the route links back into that run — the old
+ * order put Courses, Free Trial and Blog between Home and Features — drags the
+ * pill the full width of the bar every time you scroll out of the hero, and
+ * lights up three links that have nothing to do with where the page is.
+ *
+ * It also reads better: this page's own sections first, then everywhere else.
+ *
+ * Free Trial is deliberately not here. It is the top of the funnel — booking
+ * needs no account and no payment — so it sits in the action cluster next to
+ * Sign In and Get Started rather than being the sixth item in a link list.
+ * `routeKey` still resolves /book-trial, which parks the pill (no link matches
+ * that key) and stops the scroll-spy claiming Home on a page with no sections.
+ */
 const LINKS: NavLink[] = [
   { key: 'home', label: 'Home', href: '/' },
-  { key: 'courses', label: 'Courses', href: '/courses' },
-  { key: 'trial', label: 'Free Trial', href: '/book-trial' },
-  { key: 'blog', label: 'Blog', href: '/blog' },
   { key: 'features', label: 'Features', href: '#features' },
   { key: 'about', label: 'About', href: '#about' },
   { key: 'contact', label: 'Contact', href: '#contact' },
+  { key: 'courses', label: 'Courses', href: '/courses' },
+  { key: 'blog', label: 'Blog', href: '/blog' },
 ];
 
 /** Anchored sections the indicator tracks, in document order. */
@@ -40,10 +56,22 @@ export default function LandingNav() {
   const [scrolled, setScrolled] = useState(false);
   const [activeKey, setActiveKey] = useState('home');
   const [menuOpen, setMenuOpen] = useState(false);
-  const [pill, setPill] = useState<{ left: number; width: number } | null>(null);
+  /**
+   * `slide` travels with the position rather than living in its own state, so
+   * a single render carries both where the pill goes and whether it animates
+   * getting there. Split across two states, React would paint the new position
+   * with the old flag still applied and the animation would run anyway.
+   */
+  const [pill, setPill] = useState<{
+    left: number;
+    width: number;
+    slide: boolean;
+  } | null>(null);
 
   const progressRef = useRef<HTMLSpanElement>(null);
   const itemRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
+  /** Which link the pill is currently on, to measure how far the next move is. */
+  const pillKeyRef = useRef<string | null>(null);
 
   // The nav also renders on /courses and /blog if it's ever reused there, so
   // route matches win over scroll position.
@@ -57,6 +85,18 @@ export default function LandingNav() {
     if (routeKey) setActiveKey(routeKey);
   }, [routeKey]);
 
+  // The anchored sections only exist on the landing page. Left as bare hashes
+  // they resolve against whatever page the nav is on — `#features` on
+  // /book-trial becomes /book-trial#features, which matches nothing and makes
+  // the link do nothing at all. Off the landing page they have to go home first.
+  const isHome = pathname === '/';
+  const hrefFor = (link: NavLink) =>
+    !isHome && link.href.startsWith('#') ? `/${link.href}` : link.href;
+
+  // Free Trial is a button, not one of LINKS, so the pill can't mark it — it
+  // carries its own active state instead.
+  const onTrial = routeKey === 'trial';
+
   // One rAF-throttled listener drives all three scroll-derived pieces. Progress
   // is written straight to the DOM rather than through state — it changes every
   // frame and would otherwise re-render the whole bar on each one.
@@ -65,28 +105,37 @@ export default function LandingNav() {
 
     const read = () => {
       frame = 0;
+
+      // Every layout read happens before the one write below. Interleaving them
+      // would force a synchronous reflow on each scroll frame.
       const y = window.scrollY;
       const max = document.documentElement.scrollHeight - window.innerHeight;
+
+      // A section stays active until the next one starts. Tracking intersection
+      // alone would leave the pill homeless over the stretches of page that
+      // carry no id, and would pick the wrong one when scrolling back up.
+      let next: string | null = null;
+      if (!routeKey) {
+        const probe = y + window.innerHeight * 0.35;
+        next = 'home';
+        for (const id of SECTIONS) {
+          const el = document.getElementById(id);
+          if (el && el.getBoundingClientRect().top + y <= probe) next = id;
+        }
+      }
 
       if (progressRef.current) {
         const ratio = max > 0 ? Math.min(1, Math.max(0, y / max)) : 0;
         progressRef.current.style.transform = `scaleX(${ratio})`;
       }
 
-      setScrolled(y > 16);
+      // Hysteresis. A single threshold makes the island flip between its two
+      // sizes when a scroll settles right on the boundary, and each flip runs
+      // a 300ms resize — so it visibly wobbles. Contracting and expanding at
+      // different points means a small jitter can't cross both.
+      setScrolled(prev => (prev ? y > 8 : y > 24));
 
-      if (routeKey) return;
-
-      // A section stays active until the next one starts. Tracking intersection
-      // alone would leave the pill homeless over the stretches of page that
-      // carry no id, and would pick the wrong one when scrolling back up.
-      const probe = y + window.innerHeight * 0.35;
-      let next = 'home';
-      for (const id of SECTIONS) {
-        const el = document.getElementById(id);
-        if (el && el.getBoundingClientRect().top + y <= probe) next = id;
-      }
-      setActiveKey(next);
+      if (next !== null) setActiveKey(next);
     };
 
     const onScroll = () => {
@@ -105,9 +154,33 @@ export default function LandingNav() {
 
   // Links keep their positions relative to the list while the island resizes,
   // so measuring against the list is stable through the whole transition.
+  //
+  // The pill only slides when it steps to a neighbouring link. Home and the
+  // three anchored sections are adjacent now (see LINKS), so every ordinary
+  // scroll-driven move animates. Everything else snaps, because none of it is
+  // the pill walking to the next section: the first placement, a re-measure of
+  // the link it is already on after a resize or webfont swap, and the long
+  // hops — a fast flick past several sections, or landing on a route link.
+  // Animating those drags it across the bar for no reason.
   const measurePill = useCallback(() => {
     const el = itemRefs.current[activeKey];
-    setPill(el ? { left: el.offsetLeft, width: el.offsetWidth } : null);
+    if (!el) {
+      pillKeyRef.current = null;
+      setPill(null);
+      return;
+    }
+
+    const from = pillKeyRef.current;
+    const fromIndex = from ? LINKS.findIndex(l => l.key === from) : -1;
+    const toIndex = LINKS.findIndex(l => l.key === activeKey);
+    // No previous position means this is the first placement, which must not
+    // animate either — the pill would otherwise fly in from the left corner.
+    // A re-measure of the same link (resize, webfont swap) is a layout
+    // correction, not a move, so that snaps as well.
+    const slide = fromIndex >= 0 && Math.abs(toIndex - fromIndex) === 1;
+
+    pillKeyRef.current = activeKey;
+    setPill({ left: el.offsetLeft, width: el.offsetWidth, slide });
   }, [activeKey]);
 
   useEffect(() => {
@@ -179,14 +252,14 @@ export default function LandingNav() {
 
       <div
         className={cn(
-          'relative z-10 mx-auto px-4 transition-[max-width,padding] duration-500 sm:px-6 lg:px-8',
+          'relative z-10 mx-auto px-4 transition-[max-width,padding] duration-300 sm:px-6 lg:px-8',
           scrolled ? 'max-w-6xl pt-3' : 'max-w-7xl pt-0'
         )}
         style={{ transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
       >
         <div
           className={cn(
-            'relative flex items-center justify-between transition-[height,padding] duration-500',
+            'relative flex items-center justify-between transition-[height,padding] duration-300',
             scrolled ? 'h-14 pl-4 pr-2' : 'h-20 px-0'
           )}
           style={{ transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
@@ -199,7 +272,7 @@ export default function LandingNav() {
           <div
             aria-hidden="true"
             className={cn(
-              'glass-panel shadow-depth absolute inset-0 z-0 rounded-full transition-opacity duration-500',
+              'glass-panel shadow-depth absolute inset-0 z-0 rounded-full transition-opacity duration-300',
               scrolled ? 'opacity-100' : 'opacity-0'
             )}
             style={
@@ -224,10 +297,10 @@ export default function LandingNav() {
             className="relative z-10 flex items-center gap-2.5 rounded-full"
           >
             <img
-              src="/images/Logo.PNG"
+              src="/images/logo-mark.png"
               alt=""
               className={cn(
-                'object-contain transition-all duration-500',
+                'object-contain transition-[height,width] duration-300',
                 scrolled ? 'h-8 w-8' : 'h-9 w-9'
               )}
             />
@@ -250,12 +323,21 @@ export default function LandingNav() {
             <span
               aria-hidden="true"
               className={cn(
-                'pointer-events-none absolute top-1/2 h-9 rounded-full bg-primary/10 transition-[transform,width,opacity] duration-300 dark:bg-primary/25',
+                'pointer-events-none absolute top-1/2 h-9 rounded-full bg-primary/10 dark:bg-primary/25',
                 pill ? 'opacity-100' : 'opacity-0'
               )}
               style={{
                 width: pill?.width ?? 0,
                 transform: `translate3d(${pill?.left ?? 0}px, -50%, 0)`,
+                // Declared here rather than as a class so the sliding and
+                // snapping cases can't collide as competing utilities. Opacity
+                // always eases, so the pill still fades in on first paint.
+                transitionProperty:
+                  pill?.slide && !reduceMotion
+                    ? 'transform, width, opacity'
+                    : 'opacity',
+                transitionDuration:
+                  pill?.slide && !reduceMotion ? '300ms' : '200ms',
                 transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)',
               }}
             />
@@ -264,7 +346,7 @@ export default function LandingNav() {
               return (
                 <Link
                   key={link.key}
-                  href={link.href}
+                  href={hrefFor(link)}
                   ref={(el) => {
                     itemRefs.current[link.key] = el;
                   }}
@@ -287,28 +369,53 @@ export default function LandingNav() {
             })}
           </nav>
 
-          <div className="relative z-10 hidden items-center gap-1 md:flex">
+          {/* One segmented pill rather than three loose buttons.
+
+              Sign in stays transparent and quiet; Free Trial takes the right
+              half as the bar's only filled CTA. Sharing a single bordered
+              container means the boundary between them does the separating, so
+              neither needs its own chrome to compete with — which is what made
+              three pill buttons in a row read as one mushy blob.
+
+              `overflow-hidden` is what clips the fill into the container's
+              rounded end, so the focus rings have to be `ring-inset` or they
+              get clipped away with it. */}
+          <div className="relative z-10 hidden items-center gap-3 md:flex">
             <ThemeToggle />
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
+            <div
               className={cn(
-                'rounded-full transition-colors',
+                'flex items-center overflow-hidden rounded-full border shadow-sm transition-colors',
                 scrolled
-                  ? 'text-gray-700 hover:bg-primary/10 hover:text-primary dark:text-gray-300'
-                  : 'text-gray-700 hover:bg-primary/10 hover:text-primary dark:text-white/90 dark:hover:bg-white/10 dark:hover:text-white'
+                  ? 'border-gray-200 dark:border-white/15'
+                  : 'border-gray-300/80 dark:border-white/20'
               )}
             >
-              <Link href="/auth/signin">Sign In</Link>
-            </Button>
-            <Button
-              asChild
-              size="sm"
-              className="rounded-full bg-primary px-4 text-white shadow-sm shadow-primary/25 transition-all hover:bg-primary-600 hover:shadow-md hover:shadow-primary/30"
-            >
-              <Link href="/auth/signup">Get Started</Link>
-            </Button>
+              <Link
+                href="/auth/signin"
+                className={cn(
+                  'px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
+                  scrolled
+                    ? 'text-gray-700 hover:bg-primary/10 hover:text-primary dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-white'
+                    : 'text-gray-700 hover:bg-primary/10 hover:text-primary dark:text-white/90 dark:hover:bg-white/10 dark:hover:text-white'
+                )}
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/book-trial"
+                aria-current={onTrial ? 'page' : undefined}
+                className={cn(
+                  'group inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white',
+                  onTrial ? 'bg-primary-600' : 'bg-primary hover:bg-primary-600'
+                )}
+              >
+                Free Trial
+                <ArrowRight
+                  className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                />
+              </Link>
+            </div>
           </div>
 
           <button
@@ -343,7 +450,7 @@ export default function LandingNav() {
                     return (
                       <Link
                         key={link.key}
-                        href={link.href}
+                        href={hrefFor(link)}
                         onClick={handleLinkClick(link.href)}
                         aria-current={isActive ? 'page' : undefined}
                         className={cn(
@@ -359,27 +466,31 @@ export default function LandingNav() {
                   })}
                 </div>
 
+                {/* The same segmented pill as the bar, stretched across the
+                    panel so both halves stay comfortable tap targets. */}
                 <div className="mt-3 flex items-center gap-2 border-t border-gray-200/70 pt-3 dark:border-gray-700/60">
                   <ThemeToggle />
-                  <Button
-                    asChild
-                    variant="ghost"
-                    size="sm"
-                    className="flex-1 rounded-full text-gray-700 hover:bg-primary/10 hover:text-primary dark:text-gray-300"
-                  >
-                    <Link href="/auth/signin" onClick={() => setMenuOpen(false)}>
-                      Sign In
+                  <div className="flex flex-1 items-center overflow-hidden rounded-full border border-gray-200 dark:border-white/15">
+                    <Link
+                      href="/auth/signin"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex-1 px-4 py-3 text-center text-sm font-medium text-gray-700 transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-white"
+                    >
+                      Sign in
                     </Link>
-                  </Button>
-                  <Button
-                    asChild
-                    size="sm"
-                    className="flex-1 rounded-full bg-primary text-white shadow-sm shadow-primary/25 hover:bg-primary-600"
-                  >
-                    <Link href="/auth/signup" onClick={() => setMenuOpen(false)}>
-                      Get Started
+                    <Link
+                      href="/book-trial"
+                      onClick={() => setMenuOpen(false)}
+                      aria-current={onTrial ? 'page' : undefined}
+                      className={cn(
+                        'flex flex-1 items-center justify-center gap-1.5 px-4 py-3 text-sm font-semibold text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white',
+                        onTrial ? 'bg-primary-600' : 'bg-primary hover:bg-primary-600'
+                      )}
+                    >
+                      Free Trial
+                      <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                     </Link>
-                  </Button>
+                  </div>
                 </div>
               </div>
             </m.div>
