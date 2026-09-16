@@ -96,7 +96,9 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
-  const navigation = getNavigationByRole(userRole || 'student');
+  // No fallback role: an unknown role must not silently render the student
+  // navigation. getNavigationByRole returns [] for anything unrecognised.
+  const navigation = getNavigationByRole(userRole ?? '');
 
   const handleSignOut = async () => {
     await signOut();
@@ -176,7 +178,7 @@ export default function DashboardLayout({
                     {userProfile?.full_name || user?.email}
                   </p>
                   <p className="text-xs capitalize text-charcoal-600 dark:text-gray-400">
-                    {userRole || 'student'}
+                    {userRole ?? ''}
                   </p>
                 </div>
               </div>

@@ -16,12 +16,24 @@ export interface UserProfile {
   updated_at: string;
 }
 
+/**
+ * Whether the role for the current user is known.
+ *
+ * 'loading' — a lookup is in flight; nothing role-specific may render yet.
+ * 'ready'   — userRole is authoritative (null means the user has no profile row).
+ * 'error'   — the lookup failed. userRole holds the last known good value, which
+ *             may be stale, so consumers must not treat it as authoritative.
+ */
+export type RoleStatus = 'loading' | 'ready' | 'error';
+
 export interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
   session: Session | null;
   loading: boolean;
   userRole: string | null;
+  roleStatus: RoleStatus;
+  refreshRole: () => Promise<void>;
   signIn: (
     email: string,
     password: string
@@ -39,71 +51,177 @@ export interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const PROFILE_COLUMNS =
+  'id, email, full_name, phone_number, role, avatar_url, created_at, updated_at';
+const PROFILE_TIMEOUT_MS = 6000;
+const PROFILE_ATTEMPTS = 3;
+
+type ProfileResult =
+  | { status: 'ok'; profile: UserProfile }
+  | { status: 'missing' }
+  | { status: 'error' };
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error('Profile fetch timed out')),
+      ms
+    );
+    Promise.resolve(promise).then(
+      value => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      error => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
+
+/**
+ * Read the user's profile row, retrying transient failures.
+ *
+ * A network blip or a slow response must not be reported the same way as "this
+ * user has no profile": the caller decides very different things from each, and
+ * conflating them is what let a failed lookup silently downgrade a teacher.
+ */
+async function fetchProfile(userId: string): Promise<ProfileResult> {
+  for (let attempt = 0; attempt < PROFILE_ATTEMPTS; attempt++) {
+    try {
+      const { data, error } = await withTimeout(
+        supabase.from('users').select(PROFILE_COLUMNS).eq('id', userId).single(),
+        PROFILE_TIMEOUT_MS
+      );
+
+      // PGRST116 is "no rows". The row genuinely is not there, so retrying
+      // cannot change the answer.
+      if (error && error.code === 'PGRST116') return { status: 'missing' };
+      if (!error && data) return { status: 'ok', profile: data as UserProfile };
+
+      console.error('Error fetching user profile:', error);
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+
+    if (attempt < PROFILE_ATTEMPTS - 1) await sleep(300 * 2 ** attempt);
+  }
+
+  return { status: 'error' };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const lastRoleUserIdRef = useRef<string | null>(null);
+  const [roleStatus, setRoleStatus] = useState<RoleStatus>('loading');
 
-  // Function to fetch user role from profile
-  const fetchUserRole = useCallback(async (userId: string) => {
-    try {
-      console.log('🔍 Fetching user role for ID:', userId);
-      
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Role fetch timeout')), 10000)
-      );
-      
-      const fetchPromise = supabase
-        .from('users')
-        .select('id, role, avatar_url, full_name, email, phone_number, created_at, updated_at')
-        .eq('id', userId)
-        .single();
-      
-      const { data: profile, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
-      
-      if (error) {
-        console.error('❌ Error fetching user profile:', error);
-        return null;
-      }
-      
-      console.log('✅ Successfully fetched user profile:', profile);
+  // Only the most recent resolution may write to state. Two lookups can be in
+  // flight at once (the initial session and a SIGNED_IN event, say), and
+  // without this the slower one wins and can install a stale role.
+  const roleSeqRef = useRef(0);
+  // The user the role currently in state belongs to.
+  const roleUserIdRef = useRef<string | null>(null);
+  // Mirrors userRole so the auth listener, which is registered once and closes
+  // over the first render's state, can read the current value.
+  const userRoleRef = useRef<string | null>(null);
+
+  const applyProfile = useCallback(
+    (userId: string, profile: UserProfile | null) => {
+      roleUserIdRef.current = userId;
+      userRoleRef.current = profile?.role ?? null;
       setUserProfile(profile);
-      return profile?.role;
-    } catch (error) {
-      console.error('❌ Error fetching user role:', error);
-      return null;
+      setUserRole(profile?.role ?? null);
+    },
+    []
+  );
+
+  const clearRole = useCallback(() => {
+    // Invalidate anything in flight so a late response cannot resurrect the
+    // role of a user who has just signed out.
+    roleSeqRef.current += 1;
+    roleUserIdRef.current = null;
+    userRoleRef.current = null;
+    setUserProfile(null);
+    setUserRole(null);
+    setRoleStatus('ready');
+  }, []);
+
+  const loadRole = useCallback(
+    async (userId: string, force = false) => {
+      // Already resolved for this user. Token refreshes and metadata updates
+      // re-fire the auth listener, and refetching on each one is what gave a
+      // transient failure a chance to overwrite a good role.
+      if (!force && roleUserIdRef.current === userId && userRoleRef.current) {
+        return;
+      }
+
+      const seq = roleSeqRef.current + 1;
+      roleSeqRef.current = seq;
+      setRoleStatus('loading');
+
+      const result = await fetchProfile(userId);
+
+      // A newer resolution started while this one was in flight.
+      if (seq !== roleSeqRef.current) return;
+
+      if (result.status === 'ok') {
+        applyProfile(userId, result.profile);
+        setRoleStatus('ready');
+      } else if (result.status === 'missing') {
+        applyProfile(userId, null);
+        setRoleStatus('ready');
+      } else {
+        // Keep whatever we had rather than demoting the user to no role.
+        // Consumers gate on roleStatus, so nothing renders as if this were
+        // an authoritative answer.
+        setRoleStatus('error');
+      }
+    },
+    [applyProfile]
+  );
+
+  const updateUserProfile = useCallback((updates: Partial<UserProfile>) => {
+    setUserProfile(prev => (prev ? { ...prev, ...updates } : prev));
+    if (updates.role) {
+      userRoleRef.current = updates.role;
+      setUserRole(updates.role);
     }
   }, []);
 
-  // Function to update user profile
-  const updateUserProfile = useCallback((updates: Partial<UserProfile>) => {
-    setUserProfile(prev => prev ? { ...prev, ...updates } : null);
-  }, []);
-
-  // Removed unused getRoleWithFallback to satisfy linter
+  const refreshRole = useCallback(async () => {
+    const userId = user?.id;
+    if (userId) await loadRole(userId, true);
+  }, [user?.id, loadRole]);
 
   useEffect(() => {
-    // Get initial session
+    let active = true;
+
     const getInitialSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!active) return;
+
         setSession(session);
         setUser(session?.user ?? null);
-        
-        // Fetch user role if we have a session
+
         if (session?.user) {
-          const role = await fetchUserRole(session.user.id);
-          setUserRole(role);
+          await loadRole(session.user.id);
+        } else {
+          clearRole();
         }
       } catch (error) {
         console.error('Error getting initial session:', error);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
@@ -113,32 +231,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!active) return;
+
       // Avoid logging raw tokens in the console
       console.log('Auth state changed:', event, {
         userId: session?.user?.id ?? null,
         expires_at: session?.expires_at ?? null,
       });
+
       setSession(session);
       setUser(session?.user ?? null);
-      
-      // Fetch user role if we have a user
+
       if (session?.user) {
-        // Prevent duplicate role fetches for the same user (helps with StrictMode double effects)
-        if (lastRoleUserIdRef.current !== session.user.id || !userRole) {
-          lastRoleUserIdRef.current = session.user.id;
-        const role = await fetchUserRole(session.user.id);
-        setUserRole(role);
-        }
+        // A no-op when this user's role is already resolved, so TOKEN_REFRESHED
+        // and USER_UPDATED do not trigger a redundant lookup.
+        await loadRole(session.user.id);
       } else {
-        setUserRole(null);
-        lastRoleUserIdRef.current = null;
+        clearRole();
       }
-      
-      setLoading(false);
+
+      if (active) setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [loadRole, clearRole]);
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -152,54 +271,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error };
       }
 
-      // If signin is successful, check if user profile exists
+      // Resolve the role before returning, so the caller never navigates into
+      // a role-specific screen while it is still unknown. Forced, because a
+      // previous session in this tab may have left a role cached.
       if (data.user) {
-        console.log('🔍 Checking if user profile exists for:', data.user.id);
-        console.log('🔍 User metadata:', data.user.user_metadata);
-
-        try {
-          const { data: profile, error: profileError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', data.user.id)
-            .single();
-
-          if (profileError && profileError.code === 'PGRST116') {
-            // Profile doesn't exist - user needs to be created by superadmin
-            console.log('❌ User profile not found - user must be created by superadmin');
-            console.log('🔍 User ID:', data.user.id);
-            console.log('🔍 User email:', data.user.email);
-            
-            // Don't create profile automatically - return null role
-            return { error: null };
-          } else if (profile) {
-            console.log('✅ User profile found:', profile);
-            console.log('🔍 Profile role:', profile.role);
-            
-            // Set the user role immediately
-            setUserRole(profile.role);
-            
-            // Update user metadata with the role from the profile if it's different
-            if (profile.role !== data.user.user_metadata?.role) {
-              console.log('🔄 Updating user metadata role from profile:', profile.role);
-              try {
-                const { error: updateError } = await supabase.auth.updateUser({
-                  data: { role: profile.role }
-                });
-                if (updateError) {
-                  console.error('❌ Failed to update user metadata:', updateError);
-                } else {
-                  console.log('✅ User metadata updated with role:', profile.role);
-                }
-              } catch (updateError) {
-                console.error('❌ Error updating user metadata:', updateError);
-              }
-            }
-          }
-        } catch (profileError) {
-          console.error('❌ Error checking/creating user profile:', profileError);
-          // Don't fail the signin if profile operations fail
-        }
+        await loadRole(data.user.id, true);
       }
 
       return { error: null };
@@ -216,10 +292,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     phoneNumber: string
   ) => {
     try {
-      console.log('🚀 Starting signup process for:', email);
-
       // Use our server-side API endpoint instead of client-side signup
-      console.log('🔐 Creating user via server API...');
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
@@ -229,40 +302,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: email,
           password: password,
           fullName: fullName,
-          phoneNumber: phoneNumber
+          phoneNumber: phoneNumber,
           // All signups are automatically student role
-        })
+        }),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        console.error('❌ User creation failed:', result.error);
+        console.error('User creation failed:', result.error);
         return { error: { message: result.error } as AuthError };
       }
 
-      console.log('✅ User created successfully:', result.user);
-      
       // Now sign in the user to establish a session
-      console.log('🔐 Signing in user to establish session...');
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password
-      });
+      const { data: signInData, error: signInError } =
+        await supabase.auth.signInWithPassword({
+          email: email,
+          password: password,
+        });
 
       if (signInError) {
-        console.error('❌ Sign in failed after signup:', signInError);
+        console.error('Sign in failed after signup:', signInError);
         return { error: signInError };
       }
 
-      console.log('✅ User signed in successfully, session established');
-      
-      // Set the user role immediately to student
-      setUserRole('student');
+      // Read the role back rather than assuming it, so the same rules apply
+      // here as on any other sign-in.
+      if (signInData.user) {
+        await loadRole(signInData.user.id, true);
+      }
 
       return { error: null };
     } catch (error) {
-      console.error('💥 Unexpected error during signup:', error);
+      console.error('Unexpected error during signup:', error);
       return { error: error as AuthError };
     }
   };
@@ -270,22 +342,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Sign out error:', error);
-      } else {
-        // Clear local state
-        setUser(null);
-        setSession(null);
-        setUserRole(null);
-        
-        // Redirect to landing page immediately
-        if (typeof window !== 'undefined') {
-          // Use router.push for smoother navigation
-          window.location.href = '/';
-        }
-      }
+      if (error) console.error('Sign out error:', error);
     } catch (error) {
       console.error('Sign out error:', error);
+    } finally {
+      // Clear local state and leave either way. Staying on screen as a
+      // signed-in user after a failed sign-out is worse than a redirect that
+      // raced the network.
+      setUser(null);
+      setSession(null);
+      clearRole();
+
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
     }
   };
 
@@ -313,6 +383,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session,
     loading,
     userRole,
+    roleStatus,
+    refreshRole,
     signIn,
     signUp,
     signOut,

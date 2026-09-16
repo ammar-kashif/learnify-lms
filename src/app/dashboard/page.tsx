@@ -14,10 +14,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { user, userRole, loading } = useAuth();
+  const { user, userRole, roleStatus, loading, refreshRole } = useAuth();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
@@ -56,23 +57,25 @@ export default function DashboardPage() {
     }
   }, [userRole, router]);
 
+  const loadingScreen = (
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <Card className="w-96">
+        <CardHeader>
+          <CardTitle className="text-center">Loading Dashboard</CardTitle>
+          <CardDescription className="text-center">
+            Please wait while we load your dashboard...
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </CardContent>
+      </Card>
+    </div>
+  );
+
   // Show loading state while auth is loading or checking
   if (loading || !mounted || (!authChecked && !user)) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Card className="w-96">
-          <CardHeader>
-            <CardTitle className="text-center">Loading Dashboard</CardTitle>
-            <CardDescription className="text-center">
-              Please wait while we load your dashboard...
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return loadingScreen;
   }
 
   // Redirect to signin if not authenticated (after auth check completed)
@@ -86,14 +89,57 @@ export default function DashboardPage() {
     return null;
   }
 
+  // The role lookup is still in flight. Waiting is the only correct thing to
+  // do here: picking a dashboard now means guessing.
+  if (roleStatus === 'loading') {
+    return loadingScreen;
+  }
+
+  // The lookup failed. userRole may hold a stale value from earlier in the
+  // session, so it is not safe to render a role-specific dashboard from it.
+  if (roleStatus === 'error') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-center">
+              Could not load your dashboard
+            </CardTitle>
+            <CardDescription className="text-center">
+              We could not confirm your account details. Check your connection
+              and try again.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+            <Button onClick={() => refreshRole()}>Try again</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Role is known but is not one we have a dashboard for — an account with no
+  // profile row, which a superadmin has to set up.
+  if (userRole !== 'teacher' && userRole !== 'student') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-center">Account not set up</CardTitle>
+            <CardDescription className="text-center">
+              Your account does not have a role assigned yet, so there is no
+              dashboard to show. Please contact support to finish setting it up.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
   // Render dashboard based on user role
   return (
     <DashboardLayout>
-      {userRole === 'teacher' ? (
-        <TeacherDashboard />
-      ) : (
-        <StudentDashboard />
-      )}
+      {userRole === 'teacher' ? <TeacherDashboard /> : <StudentDashboard />}
     </DashboardLayout>
   );
 }
