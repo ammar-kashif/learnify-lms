@@ -616,7 +616,7 @@ function FAQAccordion() {
     },
     {
       q: 'What subjects are available?',
-      a: 'At O Level we cover Mathematics, Physics, Chemistry, Computer Science, Biology, Pakistan Studies, Islamiyat, Urdu, and English. At IGCSE we cover the full Cambridge range, plus Mathematics, Physics, Chemistry, Biology, and Computer Science with Edexcel.',
+      a: 'With Cambridge, at both O Level and IGCSE, we cover Mathematics, Physics, Chemistry, Computer Science, Biology, Pakistan Studies, Islamiyat, Urdu, and English. With Edexcel IGCSE we cover Mathematics, Physics, Chemistry, Biology, and Computer Science.',
     },
     {
       q: 'How big are the classes?',

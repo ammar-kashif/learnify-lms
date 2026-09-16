@@ -37,6 +37,30 @@ export const O_LEVEL_SUBJECTS = [
   'English Language',
 ] as const;
 
+/**
+ * Cambridge IGCSE mirrors the O Level nine.
+ *
+ * The requirements doc said "keep the existing IGCSE structure", which was first
+ * read as the full 25-subject Cambridge range. The user corrected that on
+ * 2026-09-16: "the existing structure is O levels, not the one built rn" — the
+ * structure to mirror is O Level's. Seventeen Cambridge IGCSE courses were
+ * unpublished by migration 006 to match.
+ *
+ * Only the Urdu title differs: Cambridge examines it as a second language, and
+ * the course row is titled accordingly.
+ */
+export const CAMBRIDGE_IGCSE_SUBJECTS = [
+  'Mathematics',
+  'Physics',
+  'Chemistry',
+  'Computer Science',
+  'Biology',
+  'Pakistan Studies',
+  'Islamiyat',
+  'Urdu as a Second Language',
+  'English Language',
+] as const;
+
 /** The five subjects offered under Edexcel IGCSE. */
 export const EDEXCEL_IGCSE_SUBJECTS = [
   'Mathematics',
@@ -46,18 +70,18 @@ export const EDEXCEL_IGCSE_SUBJECTS = [
   'Computer Science',
 ] as const;
 
-/**
- * Boards available per level. Cambridge IGCSE keeps its full existing range, so
- * it has no fixed subject allow-list — only Edexcel is constrained.
- */
+/** Boards available per level. */
 export const BOARDS_BY_LEVEL: Record<Level, Board[]> = {
   'O Level': ['Cambridge'],
   IGCSE: ['Cambridge', 'Edexcel'],
 };
 
 /**
- * Subjects allowed for a level/board pair. `null` means "no restriction" —
- * whatever exists in the database is offered.
+ * Subjects allowed for a level/board pair.
+ *
+ * Every pair is now constrained — there is no "whatever exists in the database"
+ * case left — but the return type keeps `null` so a future unrestricted board
+ * does not have to change every call site.
  */
 export function allowedSubjects(
   level: Level,
@@ -65,6 +89,7 @@ export function allowedSubjects(
 ): readonly string[] | null {
   if (level === 'O Level') return O_LEVEL_SUBJECTS;
   if (level === 'IGCSE' && board === 'Edexcel') return EDEXCEL_IGCSE_SUBJECTS;
+  if (level === 'IGCSE' && board === 'Cambridge') return CAMBRIDGE_IGCSE_SUBJECTS;
   return null;
 }
 
