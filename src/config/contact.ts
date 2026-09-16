@@ -27,7 +27,7 @@ export const WHATSAPP_MESSAGES = {
 } as const;
 
 /**
- * Booking page behind "Book a Free Consultation" — TidyCal, not Calendly.
+ * Booking page behind "Book a Free Consultation" — a Calendly event.
  *
  * The real link is the default rather than being left to the environment. This
  * used to read `NEXT_PUBLIC_CALENDLY_URL` and quietly fall back to WhatsApp
@@ -40,7 +40,8 @@ export const WHATSAPP_MESSAGES = {
  * literal text, so it has to be written out in full — not destructured, and
  * not looked up through a variable.
  */
-const CONSULTATION_URL_FALLBACK = 'https://tidycal.com/ayaanahmadk2004';
+const CONSULTATION_URL_FALLBACK =
+  'https://calendly.com/ayaanahmadk2004/consultation';
 
 export const CONSULTATION_URL =
   (process.env.NEXT_PUBLIC_CONSULTATION_URL ?? '').trim() ||
