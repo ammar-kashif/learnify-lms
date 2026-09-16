@@ -126,3 +126,5 @@ pnpm-lock.yaml
 
 # Cursor
 .cursorignore
+# AI planning scaffolding — local only, same as .claude/ and CLAUDE.md
+tasks/
